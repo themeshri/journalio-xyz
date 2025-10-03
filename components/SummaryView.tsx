@@ -8,23 +8,64 @@ interface SummaryViewProps {
   walletAddress: string;
 }
 
+// Cache to store wallet balances and avoid rate limiting
+const balanceCache = new Map<string, { tokens: WalletToken[], timestamp: number }>();
+const CACHE_DURATION = 60000; // 1 minute cache
+
 export default function SummaryView({ trades, walletAddress }: SummaryViewProps) {
   const [walletTokens, setWalletTokens] = useState<WalletToken[]>([]);
-  const [loadingBalances, setLoadingBalances] = useState(true);
+  const [loadingBalances, setLoadingBalances] = useState(false);
+  const [balancesFetched, setBalancesFetched] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchWalletBalances = async () => {
-      try {
-        const tokens = await getWalletTokens(walletAddress);
-        setWalletTokens(tokens);
-      } catch (error) {
-        console.error('Failed to fetch wallet balances:', error);
-      } finally {
+  const fetchWalletBalances = async () => {
+    setLoadingBalances(true);
+    setError('');
+
+    try {
+      // Check cache first
+      const cached = balanceCache.get(walletAddress);
+      const now = Date.now();
+
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        console.log('Using cached wallet balances');
+        setWalletTokens(cached.tokens);
+        setBalancesFetched(true);
         setLoadingBalances(false);
+        return;
       }
-    };
 
-    fetchWalletBalances();
+      // Fetch from API
+      console.log('Fetching fresh wallet balances');
+      const tokens = await getWalletTokens(walletAddress);
+      setWalletTokens(tokens);
+      setBalancesFetched(true);
+
+      // Store in cache
+      balanceCache.set(walletAddress, { tokens, timestamp: now });
+    } catch (error) {
+      console.error('Failed to fetch wallet balances:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch balances');
+
+      // On rate limit error, try to use stale cache if available
+      const cached = balanceCache.get(walletAddress);
+      if (cached) {
+        console.log('Using stale cache due to error');
+        setWalletTokens(cached.tokens);
+        setBalancesFetched(true);
+      }
+    } finally {
+      setLoadingBalances(false);
+    }
+  };
+
+  // Auto-fetch balances 1 second after component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchWalletBalances();
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [walletAddress]);
 
   if (trades.length === 0) {
@@ -42,7 +83,7 @@ export default function SummaryView({ trades, walletAddress }: SummaryViewProps)
   let flattenedTrades = flattenTradeCycles(tradeCycles);
 
   // Update cycle completion based on actual wallet balances
-  if (!loadingBalances) {
+  if (balancesFetched && !loadingBalances) {
     flattenedTrades = flattenedTrades.map(trade => {
       // Find if this token exists in wallet
       const walletToken = walletTokens.find(t => t.address === trade.tokenMint);

@@ -8,6 +8,14 @@ interface TradeCycleCardProps {
   trade: FlattenedTrade;
 }
 
+interface JournalData {
+  buyCategory: string;
+  buyNotes: string;
+  sellRating: number;
+  sellMistakes: string[];
+  sellNotes: string;
+}
+
 export default function TradeCycleCard({ trade: initialTrade }: TradeCycleCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [trade, setTrade] = useState(initialTrade);
@@ -17,6 +25,8 @@ export default function TradeCycleCard({ trade: initialTrade }: TradeCycleCardPr
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
   const [showBuysModal, setShowBuysModal] = useState(false);
   const [showSellsModal, setShowSellsModal] = useState(false);
+  const [showJournalModal, setShowJournalModal] = useState(false);
+  const [journalData, setJournalData] = useState<JournalData | null>(null);
 
   const avgBuyPrice = trade.totalBuyAmount > 0 ? trade.totalBuyValue / trade.totalBuyAmount : 0;
   const avgSellPrice = trade.totalSellAmount > 0 ? trade.totalSellValue / trade.totalSellAmount : 0;
@@ -35,21 +45,22 @@ export default function TradeCycleCard({ trade: initialTrade }: TradeCycleCardPr
   };
 
   const handleSave = () => {
-    const newBuyAmount = parseFloat(editedBuyAmount);
-    const newSellAmount = parseFloat(editedSellAmount);
-    const newBalance = parseFloat(editedBalance);
+    // Trim whitespace before parsing
+    const newBuyAmount = parseFloat(editedBuyAmount.trim());
+    const newSellAmount = parseFloat(editedSellAmount.trim());
+    const newBalance = parseFloat(editedBalance.trim());
 
-    // Validation
+    // Validation - allow 0 as valid
     if (isNaN(newBuyAmount) || newBuyAmount < 0) {
-      alert('Invalid buy amount. Please enter a valid positive number.');
+      alert(`Invalid buy amount: "${editedBuyAmount}". Please enter a valid number (0 or greater).`);
       return;
     }
     if (isNaN(newSellAmount) || newSellAmount < 0) {
-      alert('Invalid sell amount. Please enter a valid positive number.');
+      alert(`Invalid sell amount: "${editedSellAmount}". Please enter a valid number (0 or greater).`);
       return;
     }
     if (isNaN(newBalance) || newBalance < 0) {
-      alert('Invalid balance. Please enter a valid positive number.');
+      alert(`Invalid balance: "${editedBalance}". Please enter a valid number (0 or greater).`);
       return;
     }
 
@@ -269,9 +280,8 @@ export default function TradeCycleCard({ trade: initialTrade }: TradeCycleCardPr
           </div>
         </div>
 
-        {/* Balance Column */}
+        {/* Balance/Journal Column */}
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-gray-800 mb-3">BALANCE</h4>
           <div className="space-y-2">
             <div>
               <div className="text-xs text-gray-700">
@@ -281,16 +291,43 @@ export default function TradeCycleCard({ trade: initialTrade }: TradeCycleCardPr
                 {formatTokenAmount(trade.endBalance)} {trade.token}
               </div>
             </div>
-            <div>
-              <div className="text-xs text-gray-700">Start Time</div>
-              <div className="text-sm text-gray-800">{formatTime(trade.startDate)}</div>
-            </div>
-            {trade.endDate && (
-              <div>
-                <div className="text-xs text-gray-700">End Time</div>
-                <div className="text-sm text-gray-800">{formatTime(trade.endDate)}</div>
-              </div>
+
+            {journalData && (
+              <>
+                {journalData.buyCategory && (
+                  <div className="pt-2 border-t border-gray-300">
+                    <div className="text-xs text-gray-700">Category</div>
+                    <div className="text-sm font-medium text-gray-900">{journalData.buyCategory}</div>
+                  </div>
+                )}
+                {journalData.sellMistakes.length > 0 && (
+                  <div>
+                    <div className="text-xs text-gray-700">Mistakes</div>
+                    <div className="text-xs text-gray-800">{journalData.sellMistakes.join(', ')}</div>
+                  </div>
+                )}
+                {journalData.sellRating > 0 && (
+                  <div>
+                    <div className="text-xs text-gray-700">Rating</div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: journalData.sellRating }).map((_, i) => (
+                        <span key={i} className="text-yellow-400 text-sm">★</span>
+                      ))}
+                      <span className="text-xs text-gray-600 ml-1">{journalData.sellRating}/10</span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
+
+            <div className="mt-3 pt-3 border-t border-gray-300">
+              <button
+                onClick={() => setShowJournalModal(true)}
+                className="w-full px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                {journalData ? 'Edit Journal' : 'Journal'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -310,6 +347,19 @@ export default function TradeCycleCard({ trade: initialTrade }: TradeCycleCardPr
           trades={trade.sells}
           title={`${trade.token} - Sell Transactions (${trade.sells.length})`}
           onClose={() => setShowSellsModal(false)}
+        />
+      )}
+
+      {/* Journal Modal */}
+      {showJournalModal && (
+        <JournalModal
+          trade={trade}
+          initialData={journalData}
+          onSave={(data) => {
+            setJournalData(data);
+            setShowJournalModal(false);
+          }}
+          onClose={() => setShowJournalModal(false)}
         />
       )}
     </div>
@@ -437,6 +487,230 @@ function TransactionModal({ trades, title, onClose }: TransactionModalProps) {
               );
             })}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Journal Modal Component
+interface JournalModalProps {
+  trade: FlattenedTrade;
+  initialData: JournalData | null;
+  onSave: (data: JournalData) => void;
+  onClose: () => void;
+}
+
+function JournalModal({ trade, initialData, onSave, onClose }: JournalModalProps) {
+  const [buyCategory, setBuyCategory] = useState(initialData?.buyCategory || '');
+  const [buyNotes, setBuyNotes] = useState(initialData?.buyNotes || '');
+  const [sellRating, setSellRating] = useState(initialData?.sellRating || 0);
+  const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
+  const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
+
+  const buyCategories = [
+    'Trend Following',
+    'Breakout',
+    'Dip Buy',
+    'News/Event',
+    'Technical Setup',
+    'Fundamental Analysis',
+    'FOMO',
+    'Other'
+  ];
+
+  const mistakeOptions = [
+    'Entered too early',
+    'Entered too late',
+    'Position size too large',
+    'Position size too small',
+    'Didn\'t follow plan',
+    'Emotional decision',
+    'Ignored stop loss',
+    'Held too long',
+    'Sold too early',
+    'Poor risk management',
+    'Didn\'t do enough research',
+    'Overtraded',
+    'Other'
+  ];
+
+  const handleSave = () => {
+    onSave({
+      buyCategory,
+      buyNotes,
+      sellRating,
+      sellMistakes,
+      sellNotes
+    });
+  };
+
+  const toggleMistake = (mistake: string) => {
+    setSellMistakes(prev =>
+      prev.includes(mistake)
+        ? prev.filter(m => m !== mistake)
+        : [...prev, mistake]
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50">
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900">{trade.token} - Trade Journal</h3>
+            <div className="mt-2 space-y-1">
+              <div className="flex items-center gap-3 text-xs text-gray-600">
+                <span>Start: {formatTime(trade.startDate)}</span>
+                {trade.endDate && (
+                  <>
+                    <span>•</span>
+                    <span>End: {formatTime(trade.endDate)}</span>
+                  </>
+                )}
+                {trade.duration && (
+                  <>
+                    <span>•</span>
+                    <span>Duration: {formatDuration(trade.duration)}</span>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-green-600 font-medium">
+                  Buy MC: {formatMarketCap((trade.totalBuyAmount > 0 ? trade.totalBuyValue / trade.totalBuyAmount : 0) * 1_000_000_000)}
+                </span>
+                {trade.totalSellAmount > 0 && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-red-600 font-medium">
+                      Sell MC: {formatMarketCap((trade.totalSellValue / trade.totalSellAmount) * 1_000_000_000)}
+                    </span>
+                  </>
+                )}
+                <span className="text-gray-400">•</span>
+                <span className={`font-bold ${trade.profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  P/L: {trade.profitLoss >= 0 ? '+' : ''}{formatValue(trade.profitLoss)}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          {/* Journal the Buy Section */}
+          <div className="mb-8">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Journal the Buy</h4>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <select
+                value={buyCategory}
+                onChange={(e) => setBuyCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select a category...</option>
+                {buyCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+              <textarea
+                value={buyNotes}
+                onChange={(e) => setBuyNotes(e.target.value)}
+                placeholder="Why did you enter this trade? What was your thesis?"
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Sell Section */}
+          <div>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Sell Analysis</h4>
+
+            {/* Star Rating */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Rate this trade</label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
+                  <button
+                    key={star}
+                    onClick={() => setSellRating(star)}
+                    className={`text-2xl transition-colors ${
+                      star <= sellRating ? 'text-yellow-400' : 'text-gray-300'
+                    } hover:text-yellow-500`}
+                  >
+                    ★
+                  </button>
+                ))}
+                {sellRating > 0 && (
+                  <span className="ml-2 text-sm text-gray-600 self-center">{sellRating}/10</span>
+                )}
+              </div>
+            </div>
+
+            {/* Mistakes */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mistakes (select all that apply)</label>
+              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                {mistakeOptions.map(mistake => (
+                  <label
+                    key={mistake}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={sellMistakes.includes(mistake)}
+                      onChange={() => toggleMistake(mistake)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">{mistake}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Sell Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
+              <textarea
+                value={sellNotes}
+                onChange={(e) => setSellNotes(e.target.value)}
+                placeholder="What did you learn? What would you do differently?"
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Save Journal
+          </button>
         </div>
       </div>
     </div>
