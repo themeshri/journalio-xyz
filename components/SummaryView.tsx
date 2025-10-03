@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { Trade, getWalletTokens, WalletToken } from '@/lib/solana-tracker';
 import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles';
 import TradeCycleCard from './TradeCycleCard';
@@ -12,13 +12,14 @@ interface SummaryViewProps {
 const balanceCache = new Map<string, { tokens: WalletToken[], timestamp: number }>();
 const CACHE_DURATION = 60000; // 1 minute cache
 
-export default function SummaryView({ trades, walletAddress }: SummaryViewProps) {
+const SummaryView = memo(function SummaryView({ trades, walletAddress }: SummaryViewProps) {
   const [walletTokens, setWalletTokens] = useState<WalletToken[]>([]);
   const [loadingBalances, setLoadingBalances] = useState(false);
   const [balancesFetched, setBalancesFetched] = useState(false);
   const [error, setError] = useState('');
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchWalletBalances = async () => {
+  const fetchWalletBalances = async (signal: AbortSignal) => {
     setLoadingBalances(true);
     setError('');
 
@@ -29,43 +30,82 @@ export default function SummaryView({ trades, walletAddress }: SummaryViewProps)
 
       if (cached && (now - cached.timestamp) < CACHE_DURATION) {
         console.log('Using cached wallet balances');
-        setWalletTokens(cached.tokens);
-        setBalancesFetched(true);
-        setLoadingBalances(false);
+        if (!signal.aborted) {
+          setWalletTokens(cached.tokens);
+          setBalancesFetched(true);
+          setLoadingBalances(false);
+        }
+        return;
+      }
+
+      // Check if request was aborted before fetch
+      if (signal.aborted) {
+        console.log('Request aborted before fetch');
         return;
       }
 
       // Fetch from API
       console.log('Fetching fresh wallet balances');
       const tokens = await getWalletTokens(walletAddress);
+
+      // Check if request was aborted after fetch
+      if (signal.aborted) {
+        console.log('Request aborted after fetch, ignoring results');
+        return;
+      }
+
       setWalletTokens(tokens);
       setBalancesFetched(true);
 
       // Store in cache
       balanceCache.set(walletAddress, { tokens, timestamp: now });
     } catch (error) {
-      console.error('Failed to fetch wallet balances:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch balances');
+      // Ignore abort errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Request was aborted');
+        return;
+      }
 
-      // On rate limit error, try to use stale cache if available
-      const cached = balanceCache.get(walletAddress);
-      if (cached) {
-        console.log('Using stale cache due to error');
-        setWalletTokens(cached.tokens);
-        setBalancesFetched(true);
+      console.error('Failed to fetch wallet balances:', error);
+
+      if (!signal.aborted) {
+        setError(error instanceof Error ? error.message : 'Failed to fetch balances');
+
+        // On rate limit error, try to use stale cache if available
+        const cached = balanceCache.get(walletAddress);
+        if (cached) {
+          console.log('Using stale cache due to error');
+          setWalletTokens(cached.tokens);
+          setBalancesFetched(true);
+        }
       }
     } finally {
-      setLoadingBalances(false);
+      if (!signal.aborted) {
+        setLoadingBalances(false);
+      }
     }
   };
 
   // Auto-fetch balances 1 second after component mounts
   useEffect(() => {
+    // Abort any pending requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const timer = setTimeout(() => {
-      fetchWalletBalances();
+      fetchWalletBalances(controller.signal);
     }, 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Abort on unmount or wallet change
+      controller.abort();
+    };
   }, [walletAddress]);
 
   if (trades.length === 0) {
@@ -165,4 +205,6 @@ export default function SummaryView({ trades, walletAddress }: SummaryViewProps)
       </div>
     </div>
   );
-}
+});
+
+export default SummaryView;

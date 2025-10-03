@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Providers } from '@/components/Providers'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 export const metadata: Metadata = {
   title: 'Solana Wallet Tracker',
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-gray-50">
-        <Providers>{children}</Providers>
+        <ErrorBoundary>
+          <Providers>{children}</Providers>
+        </ErrorBoundary>
       </body>
     </html>
   )

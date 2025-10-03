@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://data.solanatracker.io';
-const API_KEY = process.env.NEXT_PUBLIC_SOLANA_TRACKER_API_KEY;
+// Use internal API proxy endpoints instead of direct API calls
+// This keeps the API key secure on the server-side
+const USE_PROXY = typeof window !== 'undefined'; // Use proxy in browser
+const API_BASE_URL = USE_PROXY ? '/api/solana' : 'https://data.solanatracker.io';
+const API_KEY = process.env.SOLANA_TRACKER_API_KEY;
 
 export interface TokenInfo {
   address: string;
@@ -70,22 +73,19 @@ export async function getWalletTrades(
     throw new Error('Invalid Solana wallet address');
   }
 
-  if (!API_KEY) {
-    throw new Error('API key is not configured. Please add NEXT_PUBLIC_SOLANA_TRACKER_API_KEY to your .env.local file');
-  }
-
   try {
-    const response = await axios.get(
-      `${API_BASE_URL}/wallet/${walletAddress}/trades`,
-      {
-        params: {
-          limit,
-        },
-        headers: {
-          'x-api-key': API_KEY,
-        },
-      }
-    );
+    const url = USE_PROXY
+      ? `${API_BASE_URL}/wallet/${walletAddress}/trades?limit=${limit}`
+      : `${API_BASE_URL}/wallet/${walletAddress}/trades`;
+
+    const config = USE_PROXY
+      ? {} // No headers needed for proxy
+      : {
+          params: { limit },
+          headers: { 'x-api-key': API_KEY },
+        };
+
+    const response = await axios.get(url, config);
 
     // Map API response to our Trade interface
     const trades = response.data.trades || [];
@@ -125,7 +125,7 @@ export async function getWalletTrades(
         throw new Error('Wallet not found or has no trades');
       }
       console.error('API Error:', error.response?.data);
-      throw new Error(error.response?.data?.message || 'Failed to fetch wallet trades');
+      throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to fetch wallet trades');
     }
     throw error;
   }
@@ -133,22 +133,20 @@ export async function getWalletTrades(
 
 // Fetch token data including market cap
 export async function getTokenData(tokenAddress: string): Promise<TokenData | null> {
-  if (!API_KEY) {
-    console.error('API key not configured');
-    return null;
-  }
-
   try {
-    const response = await axios.get(
-      `${API_BASE_URL}/tokens/${tokenAddress}`,
-      {
-        headers: {
-          'x-api-key': API_KEY,
-        },
-      }
-    );
+    const url = USE_PROXY
+      ? `${API_BASE_URL}/token/${tokenAddress}`
+      : `${API_BASE_URL}/tokens/${tokenAddress}`;
 
-    const data = response.data;
+    const config = USE_PROXY
+      ? {} // No headers needed for proxy
+      : {
+          headers: { 'x-api-key': API_KEY },
+        };
+
+    const response = await axios.get(url, config);
+
+    const data = USE_PROXY ? response.data.data : response.data;
 
     return {
       address: data.address || tokenAddress,
@@ -174,19 +172,18 @@ export async function getWalletTokens(
     throw new Error('Invalid Solana wallet address');
   }
 
-  if (!API_KEY) {
-    throw new Error('API key is not configured. Please add NEXT_PUBLIC_SOLANA_TRACKER_API_KEY to your .env.local file');
-  }
-
   try {
-    const response = await axios.get(
-      `${API_BASE_URL}/wallet/${walletAddress}/basic`,
-      {
-        headers: {
-          'x-api-key': API_KEY,
-        },
-      }
-    );
+    const url = USE_PROXY
+      ? `${API_BASE_URL}/wallet/${walletAddress}/balances`
+      : `${API_BASE_URL}/wallet/${walletAddress}/basic`;
+
+    const config = USE_PROXY
+      ? {} // No headers needed for proxy
+      : {
+          headers: { 'x-api-key': API_KEY },
+        };
+
+    const response = await axios.get(url, config);
 
     const tokens = response.data.tokens || [];
     return tokens.map((token: any) => ({
@@ -209,7 +206,7 @@ export async function getWalletTokens(
       } else if (error.response?.status === 404) {
         throw new Error('Wallet not found or has no tokens');
       }
-      throw new Error(error.response?.data?.message || 'Failed to fetch wallet tokens');
+      throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to fetch wallet tokens');
     }
     throw error;
   }

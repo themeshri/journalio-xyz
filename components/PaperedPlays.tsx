@@ -161,42 +161,53 @@ export default function PaperedPlays() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Coin Name</label>
+                <label htmlFor="coinName" className="block text-sm font-medium text-gray-700 mb-2">Coin Name</label>
                 <input
+                  id="coinName"
                   type="text"
                   value={coinName}
                   onChange={(e) => setCoinName(e.target.value)}
                   placeholder="e.g., BONK, PEPE"
+                  maxLength={50}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">MC When I Saw</label>
+                <label htmlFor="mcWhenSaw" className="block text-sm font-medium text-gray-700 mb-2">MC When I Saw</label>
                 <input
+                  id="mcWhenSaw"
                   type="text"
                   value={mcWhenSaw}
                   onChange={(e) => setMcWhenSaw(e.target.value)}
                   placeholder="e.g., $500K, 1M"
+                  maxLength={30}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ATH</label>
+                <label htmlFor="ath" className="block text-sm font-medium text-gray-700 mb-2">ATH</label>
                 <input
+                  id="ath"
                   type="text"
                   value={ath}
                   onChange={(e) => setAth(e.target.value)}
                   placeholder="e.g., $50M, 100M"
+                  maxLength={30}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Reason Why I Missed</label>
+              <label htmlFor="reasonMissed" className="block text-sm font-medium text-gray-700 mb-2">Reason Why I Missed</label>
               <textarea
+                id="reasonMissed"
                 value={reasonMissed}
                 onChange={(e) => setReasonMissed(e.target.value)}
+                maxLength={500}
                 placeholder="Why didn't you ape? What made you hesitate?"
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"

@@ -13,14 +13,12 @@ export default function DebugPage() {
     setApiResponse(null);
 
     try {
+      // Use secure server-side proxy endpoint instead of direct API call
       const response = await axios.get(
-        `https://data.solanatracker.io/wallet/${walletAddress}/trades`,
+        `/api/solana/wallet/${walletAddress}/trades`,
         {
           params: {
             limit: 50,
-          },
-          headers: {
-            'x-api-key': process.env.NEXT_PUBLIC_SOLANA_TRACKER_API_KEY,
           },
         }
       );

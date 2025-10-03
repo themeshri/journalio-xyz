@@ -1,5 +1,6 @@
 'use client';
 
+import React, { memo, useCallback } from 'react';
 import { Trade } from '@/lib/solana-tracker';
 import { format } from 'date-fns';
 import { formatMarketCap, formatPrice } from '@/lib/formatters';
@@ -8,7 +9,7 @@ interface TransactionListProps {
   trades: Trade[];
 }
 
-export default function TransactionList({ trades }: TransactionListProps) {
+const TransactionList = memo(function TransactionList({ trades }: TransactionListProps) {
   if (trades.length === 0) {
     return (
       <div className="max-w-6xl mx-auto mt-8">
@@ -32,35 +33,35 @@ export default function TransactionList({ trades }: TransactionListProps) {
       </div>
     </div>
   );
-}
+});
 
-function TransactionCard({ trade }: { trade: Trade }) {
+const TransactionCard = memo(function TransactionCard({ trade }: { trade: Trade }) {
   // Calculate market cap: price × 1 billion supply
   const ASSUMED_SUPPLY = 1_000_000_000;
   const marketCap = trade.priceUSD * ASSUMED_SUPPLY;
 
-  const formatNumber = (num: number, decimals: number = 2) => {
+  const formatNumber = useCallback((num: number, decimals: number = 2) => {
     if (num === 0) return '0';
     if (num < 0.01) return num.toExponential(2);
     return num.toLocaleString('en-US', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals
     });
-  };
+  }, []);
 
-  const formatTimestamp = (timestamp: number) => {
+  const formatTimestamp = useCallback((timestamp: number) => {
     try {
       return format(new Date(timestamp * 1000), 'MMM dd, yyyy HH:mm:ss');
     } catch {
       return 'Invalid date';
     }
-  };
+  }, []);
 
-  const getTransactionType = () => {
+  const getTransactionType = useCallback(() => {
     if (trade.type === 'buy') return { label: 'Buy', color: 'text-green-600 bg-green-50' };
     if (trade.type === 'sell') return { label: 'Sell', color: 'text-red-600 bg-red-50' };
     return { label: 'Swap', color: 'text-blue-600 bg-blue-50' };
-  };
+  }, [trade.type]);
 
   const typeInfo = getTransactionType();
 
@@ -155,4 +156,6 @@ function TransactionCard({ trade }: { trade: Trade }) {
       </div>
     </div>
   );
-}
+});
+
+export default TransactionList;
