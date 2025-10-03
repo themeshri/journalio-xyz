@@ -151,21 +151,6 @@ export default function Home() {
                   </ul>
                 </li>
               </ol>
-              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  <strong>Note:</strong> Make sure to add your Solana Tracker API key to the{' '}
-                  <code className="bg-yellow-100 px-1 py-0.5 rounded">.env.local</code> file.
-                  Get your API key from{' '}
-                  <a
-                    href="https://docs.solanatracker.io/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-yellow-900 underline hover:text-yellow-700"
-                  >
-                    Solana Tracker Documentation
-                  </a>
-                </p>
-              </div>
             </div>
           </div>
         )}
