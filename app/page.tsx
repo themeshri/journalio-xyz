@@ -4,11 +4,12 @@ import { useState } from 'react';
 import WalletInput from '@/components/WalletInput';
 import TransactionList from '@/components/TransactionList';
 import SummaryView from '@/components/SummaryView';
+import PaperedPlays from '@/components/PaperedPlays';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorMessage from '@/components/ErrorMessage';
 import { getWalletTrades, Trade } from '@/lib/solana-tracker';
 
-type ViewMode = 'transactions' | 'summary';
+type ViewMode = 'transactions' | 'summary' | 'papered';
 
 export default function Home() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -84,6 +85,16 @@ export default function Home() {
                 >
                   Summary
                 </button>
+                <button
+                  onClick={() => setViewMode('papered')}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    viewMode === 'papered'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-blue-800 hover:bg-blue-100'
+                  }`}
+                >
+                  Papered Plays
+                </button>
               </div>
             </div>
           </div>
@@ -95,16 +106,17 @@ export default function Home() {
         {/* Error State */}
         {error && <ErrorMessage message={error} />}
 
-        {/* Transaction List or Summary View */}
-        {!isLoading && !error && trades.length > 0 && (
+        {/* Transaction List or Summary View or Papered Plays */}
+        {!isLoading && !error && (
           <>
-            {viewMode === 'transactions' && <TransactionList trades={trades} />}
-            {viewMode === 'summary' && <SummaryView trades={trades} walletAddress={currentWallet} />}
+            {viewMode === 'transactions' && trades.length > 0 && <TransactionList trades={trades} />}
+            {viewMode === 'summary' && trades.length > 0 && <SummaryView trades={trades} walletAddress={currentWallet} />}
+            {viewMode === 'papered' && <PaperedPlays />}
           </>
         )}
 
         {/* Empty State (when not loading, no error, but no results) */}
-        {!isLoading && !error && currentWallet && trades.length === 0 && (
+        {!isLoading && !error && currentWallet && trades.length === 0 && viewMode !== 'papered' && (
           <div className="max-w-6xl mx-auto mt-8">
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
               <p className="text-gray-600">No transactions found for this wallet.</p>
