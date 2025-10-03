@@ -1,36 +1,58 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import WalletInput from '@/components/WalletInput';
 import TransactionList from '@/components/TransactionList';
 import SummaryView from '@/components/SummaryView';
 import PaperedPlays from '@/components/PaperedPlays';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorMessage from '@/components/ErrorMessage';
-import { getWalletTrades, Trade } from '@/lib/solana-tracker';
+import { Trade } from '@/lib/solana-tracker';
 
 type ViewMode = 'transactions' | 'summary' | 'papered';
 
 export default function Home() {
+  const { data: session, status } = useSession();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentWallet, setCurrentWallet] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('transactions');
+  const [cacheInfo, setCacheInfo] = useState<{ cached: boolean; cachedAt?: Date } | null>(null);
 
-  const handleSearch = async (address: string) => {
+  const handleSearch = async (address: string, forceRefresh = false) => {
     setIsLoading(true);
     setError('');
     setTrades([]);
     setCurrentWallet(address);
+    setCacheInfo(null);
 
     try {
-      const fetchedTrades = await getWalletTrades(address, 50);
+      // Use database API endpoint for authenticated users
+      if (status === 'authenticated') {
+        const url = `/api/trades?address=${encodeURIComponent(address)}${forceRefresh ? '&refresh=true' : ''}`;
+        const res = await fetch(url);
 
-      // Sort by timestamp (newest first)
-      const sortedTrades = fetchedTrades.sort((a, b) => b.timestamp - a.timestamp);
+        if (!res.ok) {
+          throw new Error('Failed to fetch trades from database');
+        }
 
-      setTrades(sortedTrades);
+        const data = await res.json();
+        const sortedTrades = data.trades.sort((a: Trade, b: Trade) => b.timestamp - a.timestamp);
+
+        setTrades(sortedTrades);
+        setCacheInfo({
+          cached: data.cached,
+          cachedAt: data.cachedAt ? new Date(data.cachedAt) : undefined,
+        });
+      } else {
+        // Fallback to direct API for unauthenticated users
+        const { getWalletTrades } = await import('@/lib/solana-tracker');
+        const fetchedTrades = await getWalletTrades(address, 50);
+        const sortedTrades = fetchedTrades.sort((a, b) => b.timestamp - a.timestamp);
+        setTrades(sortedTrades);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
@@ -68,10 +90,27 @@ export default function Home() {
         {currentWallet && (
           <div className="max-w-6xl mx-auto mt-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800 mb-4">
-                <span className="font-medium">Viewing transactions for:</span>{' '}
-                <span className="font-mono">{currentWallet}</span>
-              </p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">Viewing transactions for:</span>{' '}
+                  <span className="font-mono">{currentWallet}</span>
+                  {cacheInfo && cacheInfo.cached && (
+                    <span className="ml-2 text-xs bg-blue-200 px-2 py-1 rounded">
+                      Cached {cacheInfo.cachedAt ? `(${new Date(cacheInfo.cachedAt).toLocaleTimeString()})` : ''}
+                    </span>
+                  )}
+                </p>
+                {status === 'authenticated' && (
+                  <button
+                    onClick={() => handleSearch(currentWallet, true)}
+                    disabled={isLoading}
+                    className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                    title="Refresh from API"
+                  >
+                    🔄 Refresh
+                  </button>
+                )}
+              </div>
 
               {/* View Mode Tabs */}
               <div className="flex gap-2">

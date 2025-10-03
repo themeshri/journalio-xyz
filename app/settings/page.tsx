@@ -2,77 +2,140 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSettings, saveSettings, resetSettings, isValidSolanaAddress } from '@/lib/settings';
+import { useSession } from 'next-auth/react';
+import { isValidSolanaAddress } from '@/lib/settings';
 
 export default function Settings() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
-  const [defaultWallet, setDefaultWallet] = useState('');
-  const [transactionLimit, setTransactionLimit] = useState('50');
+  const [transactionLimit, setTransactionLimit] = useState(50);
   const [showUSDValues, setShowUSDValues] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [walletError, setWalletError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load settings on mount
   useEffect(() => {
-    const settings = getSettings();
-    setDisplayName(settings.displayName);
-    setEmail(settings.email);
-    setDefaultWallet(settings.defaultWallet);
-    setTransactionLimit(settings.transactionLimit);
-    setShowUSDValues(settings.showUSDValues);
-    setDarkMode(settings.darkMode);
-  }, []);
+    if (status === 'authenticated') {
+      fetchSettings();
+    } else if (status === 'unauthenticated') {
+      setIsLoading(false);
+    }
+  }, [status]);
 
-  const handleWalletChange = (value: string) => {
-    setDefaultWallet(value);
-    // Validate wallet address if provided
-    if (value && !isValidSolanaAddress(value)) {
-      setWalletError('Invalid Solana wallet address format');
-    } else {
-      setWalletError('');
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setDisplayName(data.displayName || '');
+        setTransactionLimit(data.transactionLimit || 50);
+        setShowUSDValues(data.showUSDValues ?? true);
+        setDarkMode(data.darkMode ?? false);
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSave = () => {
-    // Don't save if wallet is invalid
-    if (defaultWallet && walletError) {
+  const handleSave = async () => {
+    setSaveStatus('saving');
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          displayName,
+          transactionLimit,
+          showUSDValues,
+          darkMode,
+        }),
+      });
+
+      if (res.ok) {
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      } else {
+        alert('Failed to save settings');
+        setSaveStatus('idle');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Failed to save settings');
+      setSaveStatus('idle');
+    }
+  };
+
+  const handleReset = async () => {
+    if (!confirm('Are you sure you want to reset all settings to default?')) {
       return;
     }
 
     setSaveStatus('saving');
 
-    const settings = {
-      displayName,
-      email,
-      defaultWallet,
-      transactionLimit,
-      showUSDValues,
-      darkMode,
-    };
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          displayName: '',
+          transactionLimit: 50,
+          showUSDValues: true,
+          darkMode: false,
+        }),
+      });
 
-    saveSettings(settings);
-
-    setTimeout(() => {
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    }, 500);
-  };
-
-  const handleReset = () => {
-    if (confirm('Are you sure you want to reset all settings to default?')) {
-      resetSettings();
-      setDisplayName('');
-      setEmail('');
-      setDefaultWallet('');
-      setTransactionLimit('50');
-      setShowUSDValues(true);
-      setDarkMode(false);
-      setWalletError('');
+      if (res.ok) {
+        setDisplayName('');
+        setTransactionLimit(50);
+        setShowUSDValues(true);
+        setDarkMode(false);
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      }
+    } catch (error) {
+      console.error('Error resetting settings:', error);
+      alert('Failed to reset settings');
+    } finally {
+      setSaveStatus('idle');
     }
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth prompt if not authenticated
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+            <p className="text-blue-800 mb-4">Please sign in to access settings</p>
+            <a
+              href="/auth/signin"
+              className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Sign In
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -116,54 +179,27 @@ export default function Settings() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700">
+                  <strong>Email:</strong> {session?.user?.email || 'Not set'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Email is managed through your authentication provider
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Wallet Preferences */}
+          {/* Preferences */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
               </svg>
-              Wallet Preferences
+              Preferences
             </h2>
 
             <div className="space-y-4">
-              <div>
-                <label htmlFor="defaultWallet" className="block text-sm font-medium text-gray-700 mb-1">
-                  Default Wallet Address
-                </label>
-                <input
-                  type="text"
-                  id="defaultWallet"
-                  value={defaultWallet}
-                  onChange={(e) => handleWalletChange(e.target.value)}
-                  placeholder="Enter Solana wallet address"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm ${
-                    walletError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                />
-                {walletError ? (
-                  <p className="mt-1 text-xs text-red-600">{walletError}</p>
-                ) : (
-                  <p className="mt-1 text-xs text-gray-500">
-                    This wallet will be automatically loaded when you open the app
-                  </p>
-                )}
-              </div>
 
               <div>
                 <label htmlFor="transactionLimit" className="block text-sm font-medium text-gray-700 mb-1">
@@ -172,13 +208,13 @@ export default function Settings() {
                 <select
                   id="transactionLimit"
                   value={transactionLimit}
-                  onChange={(e) => setTransactionLimit(e.target.value)}
+                  onChange={(e) => setTransactionLimit(parseInt(e.target.value))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="25">25 transactions</option>
-                  <option value="50">50 transactions</option>
-                  <option value="100">100 transactions</option>
-                  <option value="200">200 transactions</option>
+                  <option value={25}>25 transactions</option>
+                  <option value={50}>50 transactions</option>
+                  <option value={100}>100 transactions</option>
+                  <option value={200}>200 transactions</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
                   Number of recent transactions to fetch per wallet

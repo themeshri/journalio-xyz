@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 
 interface PaperedPlay {
   id: string;
@@ -8,18 +9,44 @@ interface PaperedPlay {
   mcWhenSaw: string;
   ath: string;
   reasonMissed: string;
-  timestamp: number;
+  createdAt: string;
 }
 
 export default function PaperedPlays() {
+  const { data: session, status } = useSession();
   const [plays, setPlays] = useState<PaperedPlay[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [coinName, setCoinName] = useState('');
   const [mcWhenSaw, setMcWhenSaw] = useState('');
   const [ath, setAth] = useState('');
   const [reasonMissed, setReasonMissed] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch plays on mount
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchPlays();
+    } else if (status === 'unauthenticated') {
+      setIsLoading(false);
+    }
+  }, [status]);
+
+  const fetchPlays = async () => {
+    try {
+      const res = await fetch('/api/papered-plays');
+      if (res.ok) {
+        const data = await res.json();
+        setPlays(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch papered plays:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!coinName.trim() || !mcWhenSaw.trim() || !ath.trim() || !reasonMissed.trim()) {
@@ -27,30 +54,89 @@ export default function PaperedPlays() {
       return;
     }
 
-    const newPlay: PaperedPlay = {
-      id: Date.now().toString(),
-      coinName: coinName.trim(),
-      mcWhenSaw: mcWhenSaw.trim(),
-      ath: ath.trim(),
-      reasonMissed: reasonMissed.trim(),
-      timestamp: Date.now(),
-    };
+    setIsSaving(true);
 
-    setPlays([newPlay, ...plays]);
+    try {
+      const res = await fetch('/api/papered-plays', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coinName: coinName.trim(),
+          mcWhenSaw: mcWhenSaw.trim(),
+          ath: ath.trim(),
+          reasonMissed: reasonMissed.trim(),
+        }),
+      });
 
-    // Reset form
-    setCoinName('');
-    setMcWhenSaw('');
-    setAth('');
-    setReasonMissed('');
-    setShowForm(false);
-  };
+      if (res.ok) {
+        const newPlay = await res.json();
+        setPlays([newPlay, ...plays]);
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this entry?')) {
-      setPlays(plays.filter(play => play.id !== id));
+        // Reset form
+        setCoinName('');
+        setMcWhenSaw('');
+        setAth('');
+        setReasonMissed('');
+        setShowForm(false);
+      } else {
+        alert('Failed to save papered play');
+      }
+    } catch (error) {
+      console.error('Error saving papered play:', error);
+      alert('Failed to save papered play');
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this entry?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/papered-plays/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setPlays(plays.filter(play => play.id !== id));
+      } else {
+        alert('Failed to delete entry');
+      }
+    } catch (error) {
+      console.error('Error deleting papered play:', error);
+      alert('Failed to delete entry');
+    }
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto mt-8">
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth prompt if not authenticated
+  if (status === 'unauthenticated') {
+    return (
+      <div className="max-w-6xl mx-auto mt-8">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+          <p className="text-blue-800 mb-4">Please sign in to track papered plays</p>
+          <a
+            href="/auth/signin"
+            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Sign In
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto mt-8">
@@ -127,9 +213,10 @@ export default function PaperedPlays() {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={isSaving}
+                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Entry
+                {isSaving ? 'Saving...' : 'Add Entry'}
               </button>
             </div>
           </form>
@@ -152,7 +239,7 @@ export default function PaperedPlays() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">{play.coinName}</h3>
                   <p className="text-xs text-gray-500 mt-1">
-                    {new Date(play.timestamp).toLocaleDateString('en-US', {
+                    {new Date(play.createdAt).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
