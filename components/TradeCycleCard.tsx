@@ -14,6 +14,7 @@ interface JournalData {
   sellRating: number;
   sellMistakes: string[];
   sellNotes: string;
+  attachment?: string; // Base64 encoded image
 }
 
 export default function TradeCycleCard({ trade: initialTrade }: TradeCycleCardProps) {
@@ -507,6 +508,7 @@ function JournalModal({ trade, initialData, onSave, onClose }: JournalModalProps
   const [sellRating, setSellRating] = useState(initialData?.sellRating || 0);
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
   const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
+  const [attachment, setAttachment] = useState<string | undefined>(initialData?.attachment);
 
   const buyCategories = [
     'Trend Following',
@@ -541,8 +543,36 @@ function JournalModal({ trade, initialData, onSave, onClose }: JournalModalProps
       buyNotes,
       sellRating,
       sellMistakes,
-      sellNotes
+      sellNotes,
+      attachment
     });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check if file is an image
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file');
+        return;
+      }
+
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachment(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeAttachment = () => {
+    setAttachment(undefined);
   };
 
   const toggleMistake = (mistake: string) => {
@@ -694,6 +724,54 @@ function JournalModal({ trade, initialData, onSave, onClose }: JournalModalProps
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
             </div>
+          </div>
+
+          {/* Attachment Section */}
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Attachment</h4>
+
+            {!attachment ? (
+              <div>
+                <label className="block">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    className="flex items-center justify-center w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                  >
+                    <div className="text-center">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="mt-2 text-sm text-gray-600">Click to upload image</p>
+                      <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                    </div>
+                  </label>
+                </label>
+              </div>
+            ) : (
+              <div className="relative">
+                <img
+                  src={attachment}
+                  alt="Trade attachment"
+                  className="w-full rounded-lg border border-gray-200"
+                />
+                <button
+                  onClick={removeAttachment}
+                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                  title="Remove image"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
