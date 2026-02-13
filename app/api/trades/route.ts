@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getWalletTrades } from '@/lib/moralis'
+import { getWalletTrades } from '@/lib/solana-tracker'
 
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {

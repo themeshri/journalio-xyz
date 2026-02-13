@@ -1,10 +1,15 @@
 import axios from 'axios';
 
-// Use internal API proxy endpoints instead of direct API calls
-// This keeps the API key secure on the server-side
+// Configuration for Solana Tracker API
 const USE_PROXY = typeof window !== 'undefined'; // Use proxy in browser
 const API_BASE_URL = USE_PROXY ? '/api/solana' : 'https://data.solanatracker.io';
-const API_KEY = process.env.SOLANA_TRACKER_API_KEY;
+const API_KEY = process.env.SOLANATRACKER_API_KEY;
+
+console.log('Solana Tracker config:', {
+  HAS_API_KEY: !!API_KEY,
+  API_BASE_URL: API_BASE_URL,
+  USE_PROXY: USE_PROXY
+});
 
 export interface TokenInfo {
   address: string;
@@ -64,6 +69,23 @@ export function isValidSolanaAddress(address: string): boolean {
   return base58Regex.test(address);
 }
 
+// Determine trade type based on tokens involved
+function determineTradetype(trade: any): 'buy' | 'sell' | 'swap' {
+  const isNativeSOL = (address: string) => address === 'So11111111111111111111111111111111111111112';
+  const isStablecoin = (symbol: string) => ['USDC', 'USDT', 'USDS', 'DAI'].includes(symbol.toUpperCase());
+  
+  // If selling to SOL or stablecoin, it's a sell
+  if (isNativeSOL(trade.to.address) || isStablecoin(trade.to.token.symbol)) {
+    return 'sell';
+  }
+  // If buying from SOL or stablecoin, it's a buy
+  else if (isNativeSOL(trade.from.address) || isStablecoin(trade.from.token.symbol)) {
+    return 'buy';
+  }
+  
+  return 'swap';
+}
+
 // Fetch latest wallet trades
 export async function getWalletTrades(
   walletAddress: string,
@@ -93,7 +115,7 @@ export async function getWalletTrades(
     return trades.map((trade: any) => ({
       signature: trade.tx,
       timestamp: Math.floor(trade.time / 1000), // Convert ms to seconds
-      type: trade.type || 'swap',
+      type: determineTradetype(trade),
       tokenIn: {
         address: trade.from.address,
         symbol: trade.from.token.symbol,
