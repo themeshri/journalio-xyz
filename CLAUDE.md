@@ -1,4 +1,15 @@
-# Multichain Wallet Tracker - Full Documentation (Powered by Zerion API)
+# Solana Wallet Tracker - Full Documentation (Powered by Moralis API)
+
+## ⚡ Latest Updates
+- **Moralis API Integration (Feb 2024)**: Successfully replaced Zerion API with Moralis API for Solana-specific swap transactions. Moralis perfectly fetches all transactions with complete data including:
+  - Token details (symbols, names, decimals, logos)
+  - USD values for all transactions
+  - DEX/Exchange information
+  - Transaction signatures and timestamps
+  - Buy/sell types with proper token in/out classification
+  - Support for up to 5000 transactions with pagination
+- **Authentication Removed**: App is now publicly accessible without sign-in requirements.
+- **Performance**: Reliable fetching with proper error handling and caching.
 
 ## 📋 Table of Contents
 1. [Project Overview](#project-overview)
@@ -19,25 +30,25 @@
 ## 📖 Project Overview
 
 ### Purpose
-A comprehensive web application for tracking multichain wallet transactions, analyzing trade cycles, and journaling trading opportunities across multiple blockchain networks.
+A comprehensive web application for tracking Solana wallet swap transactions, analyzing trade cycles, and journaling trading opportunities.
 
 ### Key Features
-- 🔐 User authentication with NextAuth.js
+- 🚀 **No authentication required** - Public access for all users
 - 💾 Full database persistence with Prisma ORM
-- 🌐 **Multichain support** (Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche, BSC, Solana)
+- 🌐 **Solana-specific** swap transaction tracking
 - 📊 Real-time transaction tracking with smart caching
 - 📈 Trade cycle analysis and P/L calculation
 - 📝 Trade journaling and missed opportunity tracking
 - ⚡ Optimized performance with 5-minute cache strategy
 - 🔄 Force refresh capability for real-time data
-- 🔗 **Zerion API integration** for comprehensive DeFi data
+- 🔗 **Moralis API integration** for comprehensive Solana swap data
 
 ### Tech Stack
 - **Frontend**: Next.js 15.5, React 19, TailwindCSS 4.1
 - **Backend**: Next.js API Routes, Prisma ORM
 - **Database**: SQLite (dev) / PostgreSQL (production)
 - **Authentication**: NextAuth.js v4 with JWT sessions
-- **External API**: Zerion API (multichain transaction data)
+- **External API**: Moralis API (Solana swap transaction data)
 - **Type Safety**: TypeScript 5.9
 
 ---
