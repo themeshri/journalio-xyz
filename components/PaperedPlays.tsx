@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 
 interface PaperedPlay {
   id: string;
@@ -13,7 +12,6 @@ interface PaperedPlay {
 }
 
 export default function PaperedPlays() {
-  const { data: session, status } = useSession();
   const [plays, setPlays] = useState<PaperedPlay[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [coinName, setCoinName] = useState('');
@@ -25,14 +23,10 @@ export default function PaperedPlays() {
 
   // Fetch plays on mount
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetchPlays();
-    } else if (status === 'unauthenticated') {
-      setIsLoading(false);
-    }
-  }, [status]);
+    fetchPaperedPlays();
+  }, []);
 
-  const fetchPlays = async () => {
+  const fetchPaperedPlays = async () => {
     try {
       const res = await fetch('/api/papered-plays');
       if (res.ok) {
@@ -121,22 +115,6 @@ export default function PaperedPlays() {
     );
   }
 
-  // Show auth prompt if not authenticated
-  if (status === 'unauthenticated') {
-    return (
-      <div className="max-w-6xl mx-auto mt-8">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
-          <p className="text-blue-800 mb-4">Please sign in to track papered plays</p>
-          <a
-            href="/auth/signin"
-            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Sign In
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-6xl mx-auto mt-8">

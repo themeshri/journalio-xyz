@@ -2,16 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getWalletTrades } from '@/lib/zerion'
+import { getWalletTrades } from '@/lib/moralis'
 
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Authentication removed - app works without sign-in
+    // const session = await getServerSession(authOptions)
+    // if (!session?.user?.id) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
+    
+    // Use a default user ID for all requests
+    const defaultUserId = 'default-user'
 
     const { searchParams } = new URL(request.url)
     const walletAddress = searchParams.get('address')
@@ -39,21 +42,30 @@ export async function GET(request: NextRequest) {
     console.log('Processing request for wallet:', walletAddress, 'chain:', chain)
 
     // Find or create wallet (with chain support)
-    let wallet = await prisma.wallet.findUnique({
+    let wallet = await prisma.wallet.findFirst({
       where: {
-        userId_address_chain: {
-          userId: session.user.id,
-          address: walletAddress,
-          chain: chain,
-        },
+        userId: defaultUserId,
+        address: walletAddress,
+        chain: chain,
       },
     })
 
     if (!wallet) {
+      // First ensure the default user exists
+      await prisma.user.upsert({
+        where: { id: defaultUserId },
+        create: { 
+          id: defaultUserId,
+          email: 'default@example.com',
+          name: 'Default User'
+        },
+        update: {},
+      })
+      
       // Auto-create wallet if it doesn't exist
       wallet = await prisma.wallet.create({
         data: {
-          userId: session.user.id,
+          userId: defaultUserId,
           address: walletAddress,
           chain: chain,
         },
@@ -98,11 +110,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fetch fresh data from Zerion API
+    // Fetch fresh data from Moralis API
     try {
       console.log('Fetching trades for:', walletAddress, 'chain:', chain);
       const apiTrades = await getWalletTrades(walletAddress, 50);
-      console.log('Retrieved', apiTrades?.length || 0, 'trades from Zerion');
+      console.log('Retrieved', apiTrades?.length || 0, 'trades from Moralis');
 
       // Cache new trades (upsert to avoid duplicates)
       for (const trade of apiTrades) {
@@ -140,7 +152,7 @@ export async function GET(request: NextRequest) {
         fetchedAt: new Date()
       })
     } catch (apiError) {
-      console.error('Zerion API error:', apiError);
+      console.error('Moralis API error:', apiError);
       
       // If API fails, return cached data even if stale
       if (cachedTrades.length > 0) {
@@ -169,7 +181,7 @@ export async function GET(request: NextRequest) {
 
       // Return more specific error
       const errorMessage = apiError instanceof Error ? apiError.message : 'Unknown API error';
-      throw new Error(`Zerion API failed: ${errorMessage}`)
+      throw new Error(`Moralis API failed: ${errorMessage}`)
     }
   } catch (error) {
     console.error('Error fetching trades:', error)

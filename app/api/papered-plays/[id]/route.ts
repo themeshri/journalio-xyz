@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // DELETE - Delete a papered play
@@ -9,15 +7,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const defaultUserId = 'default-user'
 
     const { id } = await params
 
-    // Verify ownership before deleting
+    // Verify play exists and belongs to default user
     const play = await prisma.paperedPlay.findUnique({
       where: { id },
     })
@@ -26,7 +20,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Papered play not found' }, { status: 404 })
     }
 
-    if (play.userId !== session.user.id) {
+    if (play.userId !== defaultUserId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -47,17 +41,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const defaultUserId = 'default-user'
 
     const { id } = await params
     const body = await request.json()
     const { coinName, mcWhenSaw, ath, reasonMissed } = body
 
-    // Verify ownership before updating
+    // Verify play exists and belongs to default user
     const play = await prisma.paperedPlay.findUnique({
       where: { id },
     })
@@ -66,7 +56,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Papered play not found' }, { status: 404 })
     }
 
-    if (play.userId !== session.user.id) {
+    if (play.userId !== defaultUserId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // GET - List all papered plays for the current user
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Use default user for all requests
+    const defaultUserId = 'default-user'
 
     const plays = await prisma.paperedPlay.findMany({
       where: {
-        userId: session.user.id,
+        userId: defaultUserId,
       },
       orderBy: {
         createdAt: 'desc',
@@ -31,11 +26,8 @@ export async function GET(request: NextRequest) {
 // POST - Create a new papered play
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Use default user for all requests
+    const defaultUserId = 'default-user'
 
     const body = await request.json()
     const { coinName, mcWhenSaw, ath, reasonMissed } = body
@@ -44,9 +36,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Ensure default user exists
+    await prisma.user.upsert({
+      where: { id: defaultUserId },
+      create: {
+        id: defaultUserId,
+        email: 'default@example.com',
+        name: 'Default User'
+      },
+      update: {},
+    })
+
     const play = await prisma.paperedPlay.create({
       data: {
-        userId: session.user.id,
+        userId: defaultUserId,
         coinName: coinName.trim(),
         mcWhenSaw: mcWhenSaw.trim(),
         ath: ath.trim(),

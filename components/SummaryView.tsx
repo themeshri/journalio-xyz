@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react';
-import { getWalletTokens } from '@/lib/zerion';
+import { getWalletTokens } from '@/lib/moralis';
 import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles';
 import TradeCycleCard from './TradeCycleCard';
 

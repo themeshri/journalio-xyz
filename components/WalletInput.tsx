@@ -10,7 +10,7 @@ interface WalletInputProps {
 
 export default function WalletInput({ onSearch, isLoading }: WalletInputProps) {
   const [address, setAddress] = useState('');
-  const [chain, setChain] = useState('ethereum');
+  const [chain, setChain] = useState('solana');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -47,14 +47,7 @@ export default function WalletInput({ onSearch, isLoading }: WalletInputProps) {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             disabled={isLoading}
           >
-            <option value="ethereum">Ethereum</option>
-            <option value="polygon">Polygon</option>
-            <option value="arbitrum">Arbitrum</option>
-            <option value="optimism">Optimism</option>
-            <option value="base">Base</option>
-            <option value="avalanche">Avalanche</option>
-            <option value="bsc">Binance Smart Chain</option>
-            <option value="solana">Solana</option>
+            <option value="solana">Solana (Moralis Swaps API)</option>
           </select>
         </div>
         <div>
@@ -70,13 +63,7 @@ export default function WalletInput({ onSearch, isLoading }: WalletInputProps) {
                 setAddress(e.target.value);
                 setError('');
               }}
-              placeholder={
-                chain === 'ethereum' ? 
-                  "Enter wallet address (e.g., 0x742d35Cc6C7672C0...)" :
-                  chain === 'solana' ?
-                    "Enter wallet address (e.g., 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU)" :
-                    "Enter wallet address"
-              }
+              placeholder="Enter Solana wallet address (e.g., 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU)"
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               disabled={isLoading}
             />

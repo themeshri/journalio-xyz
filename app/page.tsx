@@ -1,19 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
 import WalletInput from '@/components/WalletInput';
 import TransactionList from '@/components/TransactionList';
 import SummaryView from '@/components/SummaryView';
 import PaperedPlays from '@/components/PaperedPlays';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorMessage from '@/components/ErrorMessage';
-import { ZerionTransaction } from '@/lib/zerion';
+// Using generic transaction type for flexibility
 
 type ViewMode = 'transactions' | 'summary' | 'papered';
 
 export default function Home() {
-  const { data: session, status } = useSession();
   const [trades, setTrades] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -31,27 +29,22 @@ export default function Home() {
     setCacheInfo(null);
 
     try {
-      // Use database API endpoint for authenticated users
-      if (status === 'authenticated') {
-        const url = `/api/trades?address=${encodeURIComponent(address)}&chain=${encodeURIComponent(chain)}${forceRefresh ? '&refresh=true' : ''}`;
-        const res = await fetch(url);
+      // Always use database API endpoint (no auth required)
+      const url = `/api/trades?address=${encodeURIComponent(address)}&chain=${encodeURIComponent(chain)}${forceRefresh ? '&refresh=true' : ''}`;
+      const res = await fetch(url);
 
-        if (!res.ok) {
-          throw new Error('Failed to fetch trades from database');
-        }
-
-        const data = await res.json();
-        const sortedTrades = data.trades.sort((a: any, b: any) => b.timestamp - a.timestamp);
-
-        setTrades(sortedTrades);
-        setCacheInfo({
-          cached: data.cached,
-          cachedAt: data.cachedAt ? new Date(data.cachedAt) : undefined,
-        });
-      } else {
-        // Direct API for unauthenticated users (requires CORS setup in production)
-        throw new Error('Please sign in to view wallet transactions');
+      if (!res.ok) {
+        throw new Error('Failed to fetch trades from database');
       }
+
+      const data = await res.json();
+      const sortedTrades = data.trades.sort((a: any, b: any) => b.timestamp - a.timestamp);
+
+      setTrades(sortedTrades);
+      setCacheInfo({
+        cached: data.cached,
+        cachedAt: data.cachedAt ? new Date(data.cachedAt) : undefined,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
@@ -62,23 +55,13 @@ export default function Home() {
   return (
     <main className="min-h-screen py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header with Settings Button */}
-        <div className="relative text-center mb-12">
-          <a
-            href="/settings"
-            className="absolute top-0 right-0 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Settings"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </a>
+        {/* Header */}
+        <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Multichain Wallet Tracker
+            Solana Wallet Tracker
           </h1>
           <p className="text-lg text-gray-600">
-            Track wallet transactions and token balances across multiple blockchains
+            Track Solana wallet swaps and analyze your trading history
           </p>
         </div>
 
@@ -104,16 +87,14 @@ export default function Home() {
                     </span>
                   )}
                 </p>
-                {status === 'authenticated' && (
-                  <button
-                    onClick={() => handleSearch(currentWallet, currentChain, true)}
-                    disabled={isLoading}
-                    className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                    title="Refresh from API"
-                  >
-                    🔄 Refresh
-                  </button>
-                )}
+                <button
+                  onClick={() => handleSearch(currentWallet, currentChain, true)}
+                  disabled={isLoading}
+                  className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                  title="Refresh from API"
+                >
+                  🔄 Refresh
+                </button>
               </div>
 
               {/* View Mode Tabs */}
@@ -183,15 +164,14 @@ export default function Home() {
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">How to use:</h3>
               <ol className="list-decimal list-inside space-y-2 text-gray-700">
-                <li>Select a blockchain network (Ethereum, Polygon, Arbitrum, Solana, etc.)</li>
-                <li>Enter a valid wallet address for the selected network</li>
-                <li>Click "Search" to fetch the latest transactions</li>
+                <li>Enter a Solana wallet address</li>
+                <li>Click "Search" to fetch the latest swap transactions</li>
                 <li>View detailed transaction information including:
                   <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-sm">
-                    <li>Token transfers and trades (send, receive, swap)</li>
+                    <li>Token swaps with buy/sell information</li>
                     <li>Transaction amounts and USD values</li>
-                    <li>Timestamp and protocol/DEX used</li>
-                    <li>Transaction hash with link to blockchain explorer</li>
+                    <li>Timestamp and DEX used</li>
+                    <li>Transaction hash with link to Solana explorer</li>
                   </ul>
                 </li>
               </ol>
