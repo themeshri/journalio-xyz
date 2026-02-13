@@ -83,15 +83,15 @@ const TransactionCard = memo(function TransactionCard({ trade }: { trade: Trade 
           {/* Token swap details */}
           <div className="flex items-center gap-2 text-lg">
             <div className="flex items-center gap-2">
-              {trade.tokenIn.logoURI && (
+              {trade.tokenIn?.logoURI && (
                 <img
                   src={trade.tokenIn.logoURI}
-                  alt={trade.tokenIn.symbol}
+                  alt={trade.tokenIn?.symbol || 'Token'}
                   className="w-6 h-6 rounded-full"
                 />
               )}
               <span className="font-medium">{formatNumber(trade.amountIn, 4)}</span>
-              <span className="text-gray-700">{trade.tokenIn.symbol}</span>
+              <span className="text-gray-700">{trade.tokenIn?.symbol || 'Unknown'}</span>
             </div>
 
             <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -99,15 +99,15 @@ const TransactionCard = memo(function TransactionCard({ trade }: { trade: Trade 
             </svg>
 
             <div className="flex items-center gap-2">
-              {trade.tokenOut.logoURI && (
+              {trade.tokenOut?.logoURI && (
                 <img
                   src={trade.tokenOut.logoURI}
-                  alt={trade.tokenOut.symbol}
+                  alt={trade.tokenOut?.symbol || 'Token'}
                   className="w-6 h-6 rounded-full"
                 />
               )}
               <span className="font-medium">{formatNumber(trade.amountOut, 4)}</span>
-              <span className="text-gray-700">{trade.tokenOut.symbol}</span>
+              <span className="text-gray-700">{trade.tokenOut?.symbol || 'Unknown'}</span>
             </div>
           </div>
 

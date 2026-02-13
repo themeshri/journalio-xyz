@@ -1,4 +1,4 @@
-# Solana Wallet Tracker - Full Documentation
+# Multichain Wallet Tracker - Full Documentation (Powered by Zerion API)
 
 ## 📋 Table of Contents
 1. [Project Overview](#project-overview)
@@ -19,23 +19,25 @@
 ## 📖 Project Overview
 
 ### Purpose
-A comprehensive web application for tracking Solana wallet transactions, analyzing trade cycles, and journaling trading opportunities.
+A comprehensive web application for tracking multichain wallet transactions, analyzing trade cycles, and journaling trading opportunities across multiple blockchain networks.
 
 ### Key Features
 - 🔐 User authentication with NextAuth.js
 - 💾 Full database persistence with Prisma ORM
+- 🌐 **Multichain support** (Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche, BSC, Solana)
 - 📊 Real-time transaction tracking with smart caching
 - 📈 Trade cycle analysis and P/L calculation
 - 📝 Trade journaling and missed opportunity tracking
 - ⚡ Optimized performance with 5-minute cache strategy
 - 🔄 Force refresh capability for real-time data
+- 🔗 **Zerion API integration** for comprehensive DeFi data
 
 ### Tech Stack
 - **Frontend**: Next.js 15.5, React 19, TailwindCSS 4.1
 - **Backend**: Next.js API Routes, Prisma ORM
 - **Database**: SQLite (dev) / PostgreSQL (production)
 - **Authentication**: NextAuth.js v4 with JWT sessions
-- **External API**: Solana Tracker API
+- **External API**: Zerion API (multichain transaction data)
 - **Type Safety**: TypeScript 5.9
 
 ---

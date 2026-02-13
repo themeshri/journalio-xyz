@@ -1,4 +1,4 @@
-import { Trade } from './solana-tracker';
+// Using any[] instead of specific Trade type for flexibility with Zerion API
 
 /**
  * Constants used in trade cycle calculations
@@ -30,8 +30,8 @@ export interface TradeGroup {
   tradeNumber: number;        // Cycle number for this token
   token: string;             // Token symbol
   tokenMint: string;         // Token address
-  buys: Trade[];             // All buy transactions
-  sells: Trade[];            // All sell transactions
+  buys: any[];             // All buy transactions
+  sells: any[];            // All sell transactions
   totalBuyAmount: number;    // Total tokens bought
   totalSellAmount: number;   // Total tokens sold
   totalBuyValue: number;     // Total USD spent
@@ -75,9 +75,9 @@ type TradeDirection = 'buy' | 'sell' | null;
  * - Sell: We give away the token (it's in tokenIn / "from" field)
  * - Null: Token not involved or appears in both sides (shouldn't happen)
  */
-function determineTradeDirection(trade: Trade, tokenMint: string): TradeDirection {
-  const isTokenOut = trade.tokenOut.address === tokenMint;
-  const isTokenIn = trade.tokenIn.address === tokenMint;
+function determineTradeDirection(trade: any, tokenMint: string): TradeDirection {
+  const isTokenOut = trade.tokenOut?.address === tokenMint;
+  const isTokenIn = trade.tokenIn?.address === tokenMint;
 
   // If token appears in both (shouldn't happen), skip
   if (isTokenOut && isTokenIn) return null;
@@ -117,9 +117,9 @@ function isEffectivelyZero(balance: number): boolean {
  * @returns Updated map (functional approach)
  */
 function addTradeToTokenMap(
-  tokenMap: Map<string, Trade[]>,
+  tokenMap: Map<string, any[]>,
   tokenMint: string,
-  trade: Trade
+  trade: any
 ): void {
   const existingTrades = tokenMap.get(tokenMint);
   if (existingTrades) {
@@ -136,12 +136,15 @@ function addTradeToTokenMap(
  * @param trades - Array of all trades
  * @returns Map of token addresses to their associated trades
  */
-function groupTradesByToken(trades: Trade[]): Map<string, Trade[]> {
-  const tokenMap = new Map<string, Trade[]>();
+function groupTradesByToken(trades: any[]): Map<string, any[]> {
+  const tokenMap = new Map<string, any[]>();
 
   trades.forEach(trade => {
-    const tokenOutMint = trade.tokenOut.address;
-    const tokenInMint = trade.tokenIn.address;
+    const tokenOutMint = trade.tokenOut?.address;
+    const tokenInMint = trade.tokenIn?.address;
+
+    // Skip trades without proper token data
+    if (!tokenOutMint || !tokenInMint) return;
 
     // Add to tokenOut group (potential buy)
     addTradeToTokenMap(tokenMap, tokenOutMint, trade);
@@ -163,12 +166,12 @@ function groupTradesByToken(trades: Trade[]): Map<string, Trade[]> {
  * @param tokenMint - The token address to find
  * @returns The token symbol, or empty string if not found
  */
-function extractTokenSymbol(trade: Trade, tokenMint: string): string {
-  if (trade.tokenOut.address === tokenMint) {
-    return trade.tokenOut.symbol;
+function extractTokenSymbol(trade: any, tokenMint: string): string {
+  if (trade.tokenOut?.address === tokenMint) {
+    return trade.tokenOut.symbol || '';
   }
-  if (trade.tokenIn.address === tokenMint) {
-    return trade.tokenIn.symbol;
+  if (trade.tokenIn?.address === tokenMint) {
+    return trade.tokenIn.symbol || '';
   }
   return '';
 }
@@ -206,7 +209,7 @@ function shouldStartNewGroup(
  */
 function processTradeIntoGroup(
   group: TradeGroup,
-  trade: Trade,
+  trade: any,
   tradeDirection: TradeDirection,
   currentBalance: number
 ): number {
@@ -234,7 +237,7 @@ function processTradeIntoGroup(
   if (isEffectivelyZero(newBalance)) {
     group.isComplete = true;
     group.endDate = trade.timestamp;
-    group.duration = (group.endDate - group.startDate) * MS_TO_SECONDS;
+    group.duration = (trade.timestamp - group.startDate) * MS_TO_SECONDS;
   }
 
   return newBalance;
@@ -248,7 +251,7 @@ function processTradeIntoGroup(
  * @param tokenTrades - All trades involving this token
  * @returns Array of trade groups representing distinct trading cycles
  */
-function createTradeGroupsForToken(tokenMint: string, tokenTrades: Trade[]): TradeGroup[] {
+function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[]): TradeGroup[] {
   // Validate input
   if (tokenTrades.length === 0) {
     return [];
@@ -276,12 +279,12 @@ function createTradeGroupsForToken(tokenMint: string, tokenTrades: Trade[]): Tra
         currentGroup.isComplete = isEffectivelyZero(runningBalance);
         if (currentGroup.isComplete) {
           currentGroup.endDate = trade.timestamp;
-          currentGroup.duration = (currentGroup.endDate - currentGroup.startDate) * MS_TO_SECONDS;
+          currentGroup.duration = (trade.timestamp - currentGroup.startDate) * MS_TO_SECONDS;
         }
       }
 
       // Create new group
-      const tokenSymbol = tradeDirection === 'buy' ? trade.tokenOut.symbol : trade.tokenIn.symbol;
+      const tokenSymbol = tradeDirection === 'buy' ? trade.tokenOut?.symbol || '' : trade.tokenIn?.symbol || '';
       currentGroup = {
         tradeNumber: tradeCounter++,
         token: tokenSymbol,
@@ -324,7 +327,7 @@ function createTradeGroupsForToken(tokenMint: string, tokenTrades: Trade[]): Tra
  * 4. A new cycle starts when balance returns to ~0 and a new buy occurs
  * 5. Track buys, sells, P/L, and completion status for each cycle
  */
-export function calculateTradeCycles(trades: Trade[]): TradeCycle[] {
+export function calculateTradeCycles(trades: any[]): TradeCycle[] {
   // Handle empty input
   if (!trades || trades.length === 0) {
     return [];

@@ -43,24 +43,43 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { address, nickname, isDefault } = body
+    const { address, nickname, isDefault, chain = 'ethereum' } = body
 
     if (!address) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
     }
 
-    // Validate Solana address format
-    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/
-    if (!base58Regex.test(address)) {
-      return NextResponse.json({ error: 'Invalid Solana wallet address' }, { status: 400 })
+    // Validate wallet address format based on chain
+    const isValidAddress = (addr: string, chainType: string): boolean => {
+      switch (chainType.toLowerCase()) {
+        case 'ethereum':
+        case 'polygon':
+        case 'arbitrum':
+        case 'optimism':
+        case 'base':
+        case 'avalanche':
+        case 'bsc':
+          return /^0x[a-fA-F0-9]{40}$/.test(addr)
+        case 'solana':
+          return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr)
+        case 'bitcoin':
+          return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(addr)
+        default:
+          return /^0x[a-fA-F0-9]{40}$/.test(addr) // Default to Ethereum format
+      }
+    }
+
+    if (!isValidAddress(address, chain)) {
+      return NextResponse.json({ error: `Invalid ${chain} wallet address` }, { status: 400 })
     }
 
     // Check if wallet already exists for this user
     const existing = await prisma.wallet.findUnique({
       where: {
-        userId_address: {
+        userId_address_chain: {
           userId: session.user.id,
           address,
+          chain,
         },
       },
     })
@@ -86,6 +105,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         address,
+        chain,
         nickname: nickname || null,
         isDefault: isDefault || false,
       },

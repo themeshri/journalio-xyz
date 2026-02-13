@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getWalletTrades } from '@/lib/solana-tracker'
+import { getWalletTrades } from '@/lib/zerion'
 
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {
@@ -16,17 +16,35 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const walletAddress = searchParams.get('address')
     const forceRefresh = searchParams.get('refresh') === 'true'
+    
+    // Auto-detect chain if not provided
+    let chain = searchParams.get('chain')
+    if (!chain && walletAddress) {
+      // Auto-detect chain based on address format
+      if (/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+        chain = 'ethereum'
+      } else if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(walletAddress)) {
+        chain = 'solana'
+      } else {
+        chain = 'ethereum' // Default fallback
+      }
+    } else if (!chain) {
+      chain = 'ethereum' // Default to Ethereum
+    }
 
     if (!walletAddress) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
     }
 
-    // Find or create wallet
+    console.log('Processing request for wallet:', walletAddress, 'chain:', chain)
+
+    // Find or create wallet (with chain support)
     let wallet = await prisma.wallet.findUnique({
       where: {
-        userId_address: {
+        userId_address_chain: {
           userId: session.user.id,
           address: walletAddress,
+          chain: chain,
         },
       },
     })
@@ -37,6 +55,7 @@ export async function GET(request: NextRequest) {
         data: {
           userId: session.user.id,
           address: walletAddress,
+          chain: chain,
         },
       })
     }
@@ -62,8 +81,8 @@ export async function GET(request: NextRequest) {
         signature: trade.signature,
         timestamp: trade.timestamp,
         type: trade.type,
-        tokenIn: JSON.parse(trade.tokenInData),
-        tokenOut: JSON.parse(trade.tokenOutData),
+        tokenIn: trade.tokenInData ? JSON.parse(trade.tokenInData) : null,
+        tokenOut: trade.tokenOutData ? JSON.parse(trade.tokenOutData) : null,
         amountIn: trade.amountIn,
         amountOut: trade.amountOut,
         priceUSD: trade.priceUSD,
@@ -79,9 +98,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fetch fresh data from API
+    // Fetch fresh data from Zerion API
     try {
-      const apiTrades = await getWalletTrades(walletAddress, 50)
+      console.log('Fetching trades for:', walletAddress, 'chain:', chain);
+      const apiTrades = await getWalletTrades(walletAddress, 50);
+      console.log('Retrieved', apiTrades?.length || 0, 'trades from Zerion');
 
       // Cache new trades (upsert to avoid duplicates)
       for (const trade of apiTrades) {
@@ -94,13 +115,17 @@ export async function GET(request: NextRequest) {
             signature: trade.signature,
             timestamp: trade.timestamp,
             type: trade.type,
-            tokenInData: JSON.stringify(trade.tokenIn),
-            tokenOutData: JSON.stringify(trade.tokenOut),
+            status: "confirmed",
+            direction: trade.type === 'buy' ? 'in' : 'out',
+            chain: chain,
+            tokenInData: trade.tokenIn ? JSON.stringify(trade.tokenIn) : null,
+            tokenOutData: trade.tokenOut ? JSON.stringify(trade.tokenOut) : null,
             amountIn: trade.amountIn,
             amountOut: trade.amountOut,
             priceUSD: trade.priceUSD,
             valueUSD: trade.valueUSD,
             dex: trade.dex,
+            protocol: trade.dex,
           },
           update: {
             // Update indexed time
@@ -115,14 +140,16 @@ export async function GET(request: NextRequest) {
         fetchedAt: new Date()
       })
     } catch (apiError) {
+      console.error('Zerion API error:', apiError);
+      
       // If API fails, return cached data even if stale
       if (cachedTrades.length > 0) {
         const trades = cachedTrades.map(trade => ({
           signature: trade.signature,
           timestamp: trade.timestamp,
           type: trade.type,
-          tokenIn: JSON.parse(trade.tokenInData),
-          tokenOut: JSON.parse(trade.tokenOutData),
+          tokenIn: trade.tokenInData ? JSON.parse(trade.tokenInData) : null,
+          tokenOut: trade.tokenOutData ? JSON.parse(trade.tokenOutData) : null,
           amountIn: trade.amountIn,
           amountOut: trade.amountOut,
           priceUSD: trade.priceUSD,
@@ -140,10 +167,13 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      throw apiError
+      // Return more specific error
+      const errorMessage = apiError instanceof Error ? apiError.message : 'Unknown API error';
+      throw new Error(`Zerion API failed: ${errorMessage}`)
     }
   } catch (error) {
     console.error('Error fetching trades:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     const message = error instanceof Error ? error.message : 'Failed to fetch trades'
     return NextResponse.json({ error: message }, { status: 500 })
   }

@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef, memo } from 'react';
-import { Trade, getWalletTokens, WalletToken } from '@/lib/solana-tracker';
+import { getWalletTokens } from '@/lib/zerion';
 import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles';
 import TradeCycleCard from './TradeCycleCard';
 
 interface SummaryViewProps {
-  trades: Trade[];
+  trades: any[]; // Using any[] to match Zerion API format
   walletAddress: string;
 }
 
 // Cache to store wallet balances and avoid rate limiting
-const balanceCache = new Map<string, { tokens: WalletToken[], timestamp: number }>();
+const balanceCache = new Map<string, { tokens: any[], timestamp: number }>();
 const CACHE_DURATION = 60000; // 1 minute cache
 
 const SummaryView = memo(function SummaryView({ trades, walletAddress }: SummaryViewProps) {
-  const [walletTokens, setWalletTokens] = useState<WalletToken[]>([]);
+  const [walletTokens, setWalletTokens] = useState<any[]>([]);
   const [loadingBalances, setLoadingBalances] = useState(false);
   const [balancesFetched, setBalancesFetched] = useState(false);
   const [error, setError] = useState('');
@@ -129,7 +129,7 @@ const SummaryView = memo(function SummaryView({ trades, walletAddress }: Summary
       const walletToken = walletTokens.find(t => t.address === trade.tokenMint);
 
       // If token doesn't exist in wallet or balance < 100, mark as complete
-      if (!walletToken || walletToken.balance < 100) {
+      if (!walletToken || (walletToken.balance || 0) < 100) {
         return {
           ...trade,
           isComplete: true,
@@ -142,7 +142,7 @@ const SummaryView = memo(function SummaryView({ trades, walletAddress }: Summary
       // Update with actual balance from wallet
       return {
         ...trade,
-        endBalance: walletToken.balance,
+        endBalance: walletToken.balance || 0,
       };
     });
   }

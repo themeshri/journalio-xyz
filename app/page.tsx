@@ -8,30 +8,32 @@ import SummaryView from '@/components/SummaryView';
 import PaperedPlays from '@/components/PaperedPlays';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorMessage from '@/components/ErrorMessage';
-import { Trade } from '@/lib/solana-tracker';
+import { ZerionTransaction } from '@/lib/zerion';
 
 type ViewMode = 'transactions' | 'summary' | 'papered';
 
 export default function Home() {
   const { data: session, status } = useSession();
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const [trades, setTrades] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentWallet, setCurrentWallet] = useState('');
+  const [currentChain, setCurrentChain] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('transactions');
   const [cacheInfo, setCacheInfo] = useState<{ cached: boolean; cachedAt?: Date } | null>(null);
 
-  const handleSearch = async (address: string, forceRefresh = false) => {
+  const handleSearch = async (address: string, chain: string = 'ethereum', forceRefresh = false) => {
     setIsLoading(true);
     setError('');
     setTrades([]);
     setCurrentWallet(address);
+    setCurrentChain(chain);
     setCacheInfo(null);
 
     try {
       // Use database API endpoint for authenticated users
       if (status === 'authenticated') {
-        const url = `/api/trades?address=${encodeURIComponent(address)}${forceRefresh ? '&refresh=true' : ''}`;
+        const url = `/api/trades?address=${encodeURIComponent(address)}&chain=${encodeURIComponent(chain)}${forceRefresh ? '&refresh=true' : ''}`;
         const res = await fetch(url);
 
         if (!res.ok) {
@@ -39,7 +41,7 @@ export default function Home() {
         }
 
         const data = await res.json();
-        const sortedTrades = data.trades.sort((a: Trade, b: Trade) => b.timestamp - a.timestamp);
+        const sortedTrades = data.trades.sort((a: any, b: any) => b.timestamp - a.timestamp);
 
         setTrades(sortedTrades);
         setCacheInfo({
@@ -47,11 +49,8 @@ export default function Home() {
           cachedAt: data.cachedAt ? new Date(data.cachedAt) : undefined,
         });
       } else {
-        // Fallback to direct API for unauthenticated users
-        const { getWalletTrades } = await import('@/lib/solana-tracker');
-        const fetchedTrades = await getWalletTrades(address, 50);
-        const sortedTrades = fetchedTrades.sort((a, b) => b.timestamp - a.timestamp);
-        setTrades(sortedTrades);
+        // Direct API for unauthenticated users (requires CORS setup in production)
+        throw new Error('Please sign in to view wallet transactions');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -76,10 +75,10 @@ export default function Home() {
             </svg>
           </a>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Solana Wallet Tracker
+            Multichain Wallet Tracker
           </h1>
           <p className="text-lg text-gray-600">
-            Track wallet transactions and token balances on Solana
+            Track wallet transactions and token balances across multiple blockchains
           </p>
         </div>
 
@@ -94,6 +93,11 @@ export default function Home() {
                 <p className="text-sm text-blue-800">
                   <span className="font-medium">Viewing transactions for:</span>{' '}
                   <span className="font-mono">{currentWallet}</span>
+                  {currentChain && (
+                    <span className="ml-2 text-xs bg-green-200 px-2 py-1 rounded capitalize">
+                      {currentChain}
+                    </span>
+                  )}
                   {cacheInfo && cacheInfo.cached && (
                     <span className="ml-2 text-xs bg-blue-200 px-2 py-1 rounded">
                       Cached {cacheInfo.cachedAt ? `(${new Date(cacheInfo.cachedAt).toLocaleTimeString()})` : ''}
@@ -102,7 +106,7 @@ export default function Home() {
                 </p>
                 {status === 'authenticated' && (
                   <button
-                    onClick={() => handleSearch(currentWallet, true)}
+                    onClick={() => handleSearch(currentWallet, currentChain, true)}
                     disabled={isLoading}
                     className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                     title="Refresh from API"
@@ -179,14 +183,15 @@ export default function Home() {
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">How to use:</h3>
               <ol className="list-decimal list-inside space-y-2 text-gray-700">
-                <li>Enter a valid Solana wallet address in the input field above</li>
+                <li>Select a blockchain network (Ethereum, Polygon, Arbitrum, Solana, etc.)</li>
+                <li>Enter a valid wallet address for the selected network</li>
                 <li>Click "Search" to fetch the latest transactions</li>
                 <li>View detailed transaction information including:
                   <ul className="list-disc list-inside ml-6 mt-2 space-y-1 text-sm">
-                    <li>Token swap details (from token → to token)</li>
+                    <li>Token transfers and trades (send, receive, swap)</li>
                     <li>Transaction amounts and USD values</li>
-                    <li>Timestamp and DEX used</li>
-                    <li>Transaction signature with link to Solana Explorer</li>
+                    <li>Timestamp and protocol/DEX used</li>
+                    <li>Transaction hash with link to blockchain explorer</li>
                   </ul>
                 </li>
               </ol>

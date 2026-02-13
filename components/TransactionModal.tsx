@@ -138,17 +138,17 @@ const TransactionModal = memo(function TransactionModal({
                     {/* Token swap details */}
                     <div className="flex items-center gap-2 text-base mb-3">
                       <div className="flex items-center gap-2">
-                        {trade.tokenIn.logoURI && (
+                        {trade.tokenIn?.logoURI && (
                           <img
                             src={trade.tokenIn.logoURI}
-                            alt={`${trade.tokenIn.symbol} logo`}
+                            alt={`${trade.tokenIn?.symbol || 'Token'} logo`}
                             className="w-5 h-5 rounded-full"
                           />
                         )}
                         <span className="font-medium" aria-label="Amount in">
                           {formatNumber(trade.amountIn, 4)}
                         </span>
-                        <span className="text-gray-700">{trade.tokenIn.symbol}</span>
+                        <span className="text-gray-700">{trade.tokenIn?.symbol || 'Unknown'}</span>
                       </div>
 
                       <svg
@@ -162,17 +162,17 @@ const TransactionModal = memo(function TransactionModal({
                       </svg>
 
                       <div className="flex items-center gap-2">
-                        {trade.tokenOut.logoURI && (
+                        {trade.tokenOut?.logoURI && (
                           <img
                             src={trade.tokenOut.logoURI}
-                            alt={`${trade.tokenOut.symbol} logo`}
+                            alt={`${trade.tokenOut?.symbol || 'Token'} logo`}
                             className="w-5 h-5 rounded-full"
                           />
                         )}
                         <span className="font-medium" aria-label="Amount out">
                           {formatNumber(trade.amountOut, 4)}
                         </span>
-                        <span className="text-gray-700">{trade.tokenOut.symbol}</span>
+                        <span className="text-gray-700">{trade.tokenOut?.symbol || 'Unknown'}</span>
                       </div>
                     </div>
 

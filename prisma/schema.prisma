@@ -63,12 +63,13 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// User's wallets
+// User's wallets - now supports multiple chains
 model Wallet {
   id        String   @id @default(cuid())
   userId    String
   address   String
   nickname  String?
+  chain     String   @default("ethereum") // ethereum, polygon, arbitrum, solana, etc.
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -76,28 +77,39 @@ model Wallet {
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   trades Trade[]
 
-  @@unique([userId, address])
+  @@unique([userId, address, chain])
   @@index([address])
   @@index([userId])
+  @@index([chain])
 }
 
-// Cached trades from Solana Tracker API
+// Cached transactions from Zerion API - multichain support
 model Trade {
   id         String   @id @default(cuid())
   walletId   String
-  signature  String   @unique
+  signature  String   @unique // Transaction hash/signature
   timestamp  Int
-  type       String // buy, sell, swap
+  type       String @default("trade") // send, receive, trade, approve, cancel, deposit, withdraw
+  status     String @default("confirmed") // confirmed, pending, failed
+  direction  String @default("out") // in, out, self
+  chain      String @default("solana") // ethereum, polygon, arbitrum, solana, etc.
 
   // Token data stored as JSON
-  tokenInData  String // JSON string
-  tokenOutData String // JSON string
+  tokenInData  String? // JSON string (optional for non-trade transactions)
+  tokenOutData String? // JSON string (optional for non-trade transactions)
 
-  amountIn   Float
-  amountOut  Float
-  priceUSD   Float
-  valueUSD   Float
-  dex        String
+  amountIn   Float?
+  amountOut  Float?
+  priceUSD   Float?
+  valueUSD   Float @default(0)
+  
+  // Protocol/application information (replaces dex field)
+  dex        String @default("Unknown") // For backward compatibility
+  protocol   String?
+  application String?
+  
+  // Fee information (JSON)
+  feeData    String? // JSON string for fee details
 
   createdAt  DateTime @default(now())
   indexedAt  DateTime @default(now())
@@ -108,6 +120,8 @@ model Trade {
   @@index([walletId])
   @@index([timestamp])
   @@index([signature])
+  @@index([chain])
+  @@index([type])
 }
 
 // Trade edits - manual adjustments to trades
