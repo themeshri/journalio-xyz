@@ -110,11 +110,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fetch fresh data from Moralis API
+    // Fetch fresh data from Solana Tracker API
     try {
       console.log('Fetching trades for:', walletAddress, 'chain:', chain);
       const apiTrades = await getWalletTrades(walletAddress, 50);
-      console.log('Retrieved', apiTrades?.length || 0, 'trades from Moralis');
+      console.log('Retrieved', apiTrades?.length || 0, 'trades from Solana Tracker');
 
       // Cache new trades (upsert to avoid duplicates)
       for (const trade of apiTrades) {
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
         fetchedAt: new Date()
       })
     } catch (apiError) {
-      console.error('Moralis API error:', apiError);
+      console.error('Solana Tracker API error:', apiError);
       
       // If API fails, return cached data even if stale
       if (cachedTrades.length > 0) {
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
 
       // Return more specific error
       const errorMessage = apiError instanceof Error ? apiError.message : 'Unknown API error';
-      throw new Error(`Moralis API failed: ${errorMessage}`)
+      throw new Error(`Solana Tracker API failed: ${errorMessage}`)
     }
   } catch (error) {
     console.error('Error fetching trades:', error)
