@@ -50,7 +50,7 @@ export function formatValue(amount: number): string {
 // Format token amount with appropriate decimal places
 export function formatTokenAmount(amount: number, decimals: number = 2): string {
   if (amount === 0) return '0';
-  if (amount < 0.01) return amount.toExponential(2);
+  if (Math.abs(amount) < 0.01) return '0';  // Round very small values to 0
 
   return amount.toLocaleString('en-US', {
     minimumFractionDigits: decimals,

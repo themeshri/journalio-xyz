@@ -128,12 +128,17 @@ const SummaryView = memo(function SummaryView({ trades, walletAddress }: Summary
       // Find if this token exists in wallet
       const walletToken = walletTokens.find(t => t.address === trade.tokenMint);
 
+      // Calculate final balance (0 if USD value < $1)
+      const actualBalance = walletToken?.balance || 0;
+      const usdValue = walletToken?.valueUSD || 0;
+      const finalBalance = usdValue < 1 ? 0 : actualBalance;
+
       // If token doesn't exist in wallet or balance < 100, mark as complete
       if (!walletToken || (walletToken.balance || 0) < 100) {
         return {
           ...trade,
           isComplete: true,
-          endBalance: walletToken?.balance || 0,
+          endBalance: finalBalance,
           endDate: trade.endDate || trade.startDate,
           duration: trade.duration || 0,
         };
@@ -142,7 +147,7 @@ const SummaryView = memo(function SummaryView({ trades, walletAddress }: Summary
       // Update with actual balance from wallet
       return {
         ...trade,
-        endBalance: walletToken.balance || 0,
+        endBalance: finalBalance,
       };
     });
   }

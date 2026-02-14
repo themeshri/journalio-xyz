@@ -113,37 +113,40 @@ export async function GET(request: NextRequest) {
     // Fetch fresh data from Solana Tracker API
     try {
       console.log('Fetching trades for:', walletAddress, 'chain:', chain);
-      const apiTrades = await getWalletTrades(walletAddress, 50);
+      const apiTrades = await getWalletTrades(walletAddress, 1000);
       console.log('Retrieved', apiTrades?.length || 0, 'trades from Solana Tracker');
 
-      // Cache new trades (upsert to avoid duplicates)
-      for (const trade of apiTrades) {
-        await prisma.trade.upsert({
-          where: {
-            signature: trade.signature,
-          },
-          create: {
-            walletId: wallet.id,
-            signature: trade.signature,
-            timestamp: trade.timestamp,
-            type: trade.type,
-            status: "confirmed",
-            direction: trade.type === 'buy' ? 'in' : 'out',
-            chain: chain,
-            tokenInData: trade.tokenIn ? JSON.stringify(trade.tokenIn) : null,
-            tokenOutData: trade.tokenOut ? JSON.stringify(trade.tokenOut) : null,
-            amountIn: trade.amountIn,
-            amountOut: trade.amountOut,
-            priceUSD: trade.priceUSD,
-            valueUSD: trade.valueUSD,
-            dex: trade.dex,
-            protocol: trade.dex,
-          },
-          update: {
-            // Update indexed time
-            indexedAt: new Date(),
-          },
-        })
+      // Find existing trade signatures to only process new ones
+      const existingSignatures = new Set(cachedTrades.map(t => t.signature));
+      const newTrades = apiTrades.filter(trade => !existingSignatures.has(trade.signature));
+      
+      console.log(`Found ${newTrades.length} new trades out of ${apiTrades.length} total trades`);
+
+      // Cache only new trades
+      if (newTrades.length > 0) {
+        for (const trade of newTrades) {
+          await prisma.trade.create({
+            data: {
+              walletId: wallet.id,
+              signature: trade.signature,
+              timestamp: trade.timestamp,
+              type: trade.type,
+              status: "confirmed",
+              direction: trade.type === 'buy' ? 'in' : 'out',
+              chain: chain,
+              tokenInData: trade.tokenIn ? JSON.stringify(trade.tokenIn) : null,
+              tokenOutData: trade.tokenOut ? JSON.stringify(trade.tokenOut) : null,
+              amountIn: trade.amountIn,
+              amountOut: trade.amountOut,
+              priceUSD: trade.priceUSD,
+              valueUSD: trade.valueUSD,
+              dex: trade.dex,
+              protocol: trade.dex,
+              indexedAt: new Date(),
+            },
+          });
+        }
+        console.log(`Successfully cached ${newTrades.length} new trades`);
       }
 
       return NextResponse.json({
