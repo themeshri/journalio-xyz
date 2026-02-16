@@ -1,20 +1,19 @@
 'use client'
 
-import { useState } from 'react'
 import { useWallet } from '@/lib/wallet-context'
 import { TradesTable } from '@/components/TradesTable'
 import { Button } from '@/components/ui/button'
 
-export default function TradesPage() {
+export default function HistoryPage() {
   const { currentWallet, trades, isLoading, error, searchWallet, cacheInfo } =
     useWallet()
 
   if (!currentWallet) {
     return (
       <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Trades</h1>
+        <h1 className="text-xl font-semibold mb-2">History</h1>
         <p className="text-sm text-muted-foreground">
-          Enter a wallet address in the sidebar to view trades.
+          Enter a wallet address in the sidebar to view trade history.
         </p>
       </div>
     )
@@ -40,7 +39,7 @@ export default function TradesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">
-          Trades
+          History
           <span className="ml-2 text-sm font-normal text-muted-foreground">
             {trades.length} total
           </span>

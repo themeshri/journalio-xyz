@@ -23,7 +23,7 @@ interface PaperedPlay {
   createdAt: string
 }
 
-export default function JournalPage() {
+export default function MissedTradesPage() {
   const [plays, setPlays] = useState<PaperedPlay[]>([])
   const [showForm, setShowForm] = useState(false)
   const [coinName, setCoinName] = useState('')
@@ -119,9 +119,9 @@ export default function JournalPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold">Journal</h1>
+          <h1 className="text-xl font-semibold">Missed Trades</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Track the trades you missed
+            Trades you saw but didn't take
           </p>
         </div>
         <Button
@@ -133,7 +133,6 @@ export default function JournalPage() {
         </Button>
       </div>
 
-      {/* Add form */}
       {showForm && (
         <form
           onSubmit={handleSubmit}
@@ -209,7 +208,6 @@ export default function JournalPage() {
         </form>
       )}
 
-      {/* Plays table */}
       {plays.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No entries yet. Add one to start tracking missed opportunities.

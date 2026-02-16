@@ -1,85 +1,85 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useMemo } from 'react'
 import { useWallet } from '@/lib/wallet-context'
-import { getWalletTokens } from '@/lib/solana-tracker'
 import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
-import { formatValue } from '@/lib/formatters'
-import TradeCycleCard from '@/components/TradeCycleCard'
+import { formatValue, formatDuration } from '@/lib/formatters'
+import {
+  computeDurationBuckets,
+  computeCumulativePL,
+  computeTradingHours,
+  computeAvgDuration,
+} from '@/lib/analytics'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Cell,
+} from 'recharts'
+import { Separator } from '@/components/ui/separator'
 
-const balanceCache = new Map<string, { tokens: any[]; timestamp: number }>()
-const CACHE_DURATION = 60000
+const durationConfig = {
+  count: { label: 'Trades', color: 'var(--chart-1)' },
+} satisfies ChartConfig
+
+const plConfig = {
+  cumulativePL: { label: 'Cumulative P/L', color: 'var(--chart-1)' },
+} satisfies ChartConfig
+
+const hoursConfig = {
+  count: { label: 'Trades', color: 'var(--chart-1)' },
+} satisfies ChartConfig
 
 export default function AnalyticsPage() {
   const { currentWallet, trades, isLoading, error } = useWallet()
-  const [walletTokens, setWalletTokens] = useState<any[]>([])
-  const [loadingBalances, setLoadingBalances] = useState(false)
-  const [balancesFetched, setBalancesFetched] = useState(false)
-  const [balanceError, setBalanceError] = useState('')
-  const abortControllerRef = useRef<AbortController | null>(null)
 
-  useEffect(() => {
-    if (!currentWallet || trades.length === 0) return
+  const flattenedTrades = useMemo(() => {
+    if (trades.length === 0) return []
+    const cycles = calculateTradeCycles(trades)
+    return flattenTradeCycles(cycles)
+  }, [trades])
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
+  const completedTrades = useMemo(
+    () => flattenedTrades.filter((t) => t.isComplete),
+    [flattenedTrades]
+  )
 
-    const controller = new AbortController()
-    abortControllerRef.current = controller
+  const durationData = useMemo(
+    () => computeDurationBuckets(flattenedTrades),
+    [flattenedTrades]
+  )
 
-    const timer = setTimeout(() => {
-      fetchBalances(controller.signal)
-    }, 1000)
+  const plData = useMemo(
+    () => computeCumulativePL(flattenedTrades),
+    [flattenedTrades]
+  )
 
-    return () => {
-      clearTimeout(timer)
-      controller.abort()
-    }
-  }, [currentWallet, trades])
+  const hoursData = useMemo(
+    () => computeTradingHours(flattenedTrades),
+    [flattenedTrades]
+  )
 
-  async function fetchBalances(signal: AbortSignal) {
-    setLoadingBalances(true)
-    setBalanceError('')
-    try {
-      const cached = balanceCache.get(currentWallet)
-      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        if (!signal.aborted) {
-          setWalletTokens(cached.tokens)
-          setBalancesFetched(true)
-          setLoadingBalances(false)
-        }
-        return
-      }
-      if (signal.aborted) return
-      const tokens = await getWalletTokens(currentWallet)
-      if (signal.aborted) return
-      setWalletTokens(tokens)
-      setBalancesFetched(true)
-      balanceCache.set(currentWallet, { tokens, timestamp: Date.now() })
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return
-      if (!signal.aborted) {
-        setBalanceError(
-          err instanceof Error ? err.message : 'Failed to fetch balances'
-        )
-        const cached = balanceCache.get(currentWallet)
-        if (cached) {
-          setWalletTokens(cached.tokens)
-          setBalancesFetched(true)
-        }
-      }
-    } finally {
-      if (!signal.aborted) setLoadingBalances(false)
-    }
-  }
+  const avgDuration = useMemo(
+    () => computeAvgDuration(flattenedTrades),
+    [flattenedTrades]
+  )
 
   if (!currentWallet) {
     return (
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Analytics</h1>
         <p className="text-sm text-muted-foreground">
-          Enter a wallet address in the sidebar to view trade cycle analytics.
+          Enter a wallet address in the sidebar to view trading analytics.
         </p>
       </div>
     )
@@ -101,86 +101,32 @@ export default function AnalyticsPage() {
     )
   }
 
-  if (trades.length === 0) {
-    return (
-      <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Analytics</h1>
-        <p className="text-sm text-muted-foreground">No trade cycles to display.</p>
-      </div>
-    )
-  }
-
-  const tradeCycles = calculateTradeCycles(trades)
-  let flattenedTrades = flattenTradeCycles(tradeCycles)
-
-  // Update cycle completion based on actual wallet balances
-  if (balancesFetched && !loadingBalances) {
-    flattenedTrades = flattenedTrades.map((trade) => {
-      const walletToken = walletTokens.find(
-        (t) => t.address === trade.tokenMint
-      )
-      const actualBalance = walletToken?.balance || 0
-      const usdValue = walletToken?.valueUSD || 0
-      const finalBalance = usdValue < 1 ? 0 : actualBalance
-
-      if (!walletToken || (walletToken.balance || 0) < 100) {
-        return {
-          ...trade,
-          isComplete: true,
-          endBalance: finalBalance,
-          endDate: trade.endDate || trade.startDate,
-          duration: trade.duration || 0,
-        }
-      }
-
-      return { ...trade, endBalance: finalBalance }
-    })
-  }
-
   if (flattenedTrades.length === 0) {
     return (
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Analytics</h1>
         <p className="text-sm text-muted-foreground">
-          No complete trade cycles found.
+          No trade cycles found. Make some trades to see analytics.
         </p>
       </div>
     )
   }
 
   const totalTrades = flattenedTrades.length
-  const completedTrades = flattenedTrades.filter((t) => t.isComplete).length
-  const activeTrades = totalTrades - completedTrades
-  const totalProfitLoss = flattenedTrades.reduce(
-    (sum, t) => sum + t.profitLoss,
-    0
-  )
-  const profitableTrades = flattenedTrades.filter(
-    (t) => t.profitLoss > 0
-  ).length
+  const profitableTrades = flattenedTrades.filter((t) => t.profitLoss > 0).length
+  const totalPL = flattenedTrades.reduce((s, t) => s + t.profitLoss, 0)
+  const avgPLPerTrade = totalTrades > 0 ? totalPL / totalTrades : 0
 
   return (
-    <div>
+    <div className="max-w-4xl">
       <h1 className="text-xl font-semibold mb-6">Analytics</h1>
 
-      {/* Stats as a single line of spaced data points */}
-      <div className="flex flex-wrap gap-x-10 gap-y-2 mb-8 text-sm">
-        <div>
-          <span className="text-muted-foreground">Total Cycles</span>
-          <span className="ml-2 font-mono tabular-nums font-semibold">
-            {totalTrades}
-          </span>
-        </div>
+      {/* Stats row */}
+      <div className="flex flex-wrap gap-x-10 gap-y-2 mb-10 text-sm">
         <div>
           <span className="text-muted-foreground">Completed</span>
           <span className="ml-2 font-mono tabular-nums font-semibold">
-            {completedTrades}
-          </span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Active</span>
-          <span className="ml-2 font-mono tabular-nums font-semibold">
-            {activeTrades}
+            {completedTrades.length}
           </span>
         </div>
         <div>
@@ -193,32 +139,185 @@ export default function AnalyticsPage() {
           </span>
         </div>
         <div>
+          <span className="text-muted-foreground">Avg Duration</span>
+          <span className="ml-2 font-mono tabular-nums font-semibold">
+            {avgDuration > 0 ? formatDuration(avgDuration) : '-'}
+          </span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Avg P/L</span>
+          <span
+            className={`ml-2 font-mono tabular-nums font-semibold ${
+              avgPLPerTrade >= 0 ? 'text-emerald-600' : 'text-red-600'
+            }`}
+          >
+            {avgPLPerTrade >= 0 ? '+' : ''}
+            {formatValue(avgPLPerTrade)}
+          </span>
+        </div>
+        <div>
           <span className="text-muted-foreground">Total P/L</span>
           <span
             className={`ml-2 font-mono tabular-nums font-semibold ${
-              totalProfitLoss >= 0 ? 'text-emerald-600' : 'text-red-600'
+              totalPL >= 0 ? 'text-emerald-600' : 'text-red-600'
             }`}
           >
-            {totalProfitLoss >= 0 ? '+' : ''}
-            {formatValue(totalProfitLoss)}
+            {totalPL >= 0 ? '+' : ''}
+            {formatValue(totalPL)}
           </span>
         </div>
       </div>
 
-      {balanceError && (
-        <p className="text-xs text-destructive mb-4">{balanceError}</p>
+      {/* Cumulative P/L */}
+      {plData.length >= 2 && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Cumulative P/L</h2>
+          <ChartContainer config={plConfig} className="h-[250px] w-full">
+            <LineChart data={plData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `$${v}`}
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, name) => [
+                      `$${Number(value).toFixed(2)}`,
+                      name === 'cumulativePL' ? 'Cumulative' : String(name),
+                    ]}
+                  />
+                }
+              />
+              <Line
+                type="monotone"
+                dataKey="cumulativePL"
+                stroke="var(--color-cumulativePL)"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ChartContainer>
+        </section>
       )}
 
-      {/* Trade Cycles */}
-      <h2 className="text-sm font-semibold mb-4">Trade Cycles</h2>
-      <div className="space-y-4">
-        {flattenedTrades.map((trade) => (
-          <TradeCycleCard
-            key={`${trade.tokenMint}-${trade.tradeNumber}`}
-            trade={trade}
-          />
-        ))}
-      </div>
+      {/* Duration Distribution */}
+      {durationData.some((d) => d.count > 0) && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Trade Duration Distribution</h2>
+          <ChartContainer config={durationConfig} className="h-[220px] w-full">
+            <BarChart data={durationData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis
+                dataKey="bucket"
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="count" fill="var(--color-count)" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
+        </section>
+      )}
+
+      {/* Trading Hours */}
+      {hoursData.some((d) => d.count > 0) && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Trading Hours</h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            When your trades start, colored by average profitability
+          </p>
+          <ChartContainer config={hoursConfig} className="h-[220px] w-full">
+            <BarChart data={hoursData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis
+                dataKey="hour"
+                tick={{ fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                interval={2}
+              />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, name) => [
+                      name === 'count' ? `${value} trades` : `$${Number(value).toFixed(2)}`,
+                      name === 'count' ? 'Count' : 'Avg P/L',
+                    ]}
+                  />
+                }
+              />
+              <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+                {hoursData.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={
+                      entry.count === 0
+                        ? 'var(--color-count)'
+                        : entry.avgPL >= 0
+                          ? 'oklch(0.527 0.154 163.225)'
+                          : 'oklch(0.577 0.245 27.325)'
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        </section>
+      )}
+
+      <Separator className="my-8" />
+
+      {/* Journal Analytics - Placeholders */}
+      <section>
+        <h2 className="text-sm font-semibold mb-4">Journal Analytics</h2>
+        <p className="text-xs text-muted-foreground mb-6">
+          These require journal entries on your trade cycles. Rate and review your trades
+          in the Trade Journal to unlock these insights.
+        </p>
+
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-sm text-muted-foreground mb-1">Sell Rating Trend</h3>
+            <p className="text-xs text-muted-foreground/70">
+              Rate your trades in the Trade Journal to see how your ratings change over time.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm text-muted-foreground mb-1">Common Mistakes</h3>
+            <p className="text-xs text-muted-foreground/70">
+              Select mistakes when journaling sells to see which patterns repeat most often.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm text-muted-foreground mb-1">Buy Categories</h3>
+            <p className="text-xs text-muted-foreground/70">
+              Categorize your buys in the Trade Journal to see which strategies you use most.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
