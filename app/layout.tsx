@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Solana Wallet Tracker',
-  description: 'Track Solana wallet transactions and token balances',
+  title: 'Journalio',
+  description: 'Your Solana trading journal and wallet tracker',
 }
 
 export default function RootLayout({

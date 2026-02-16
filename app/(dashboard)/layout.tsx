@@ -19,7 +19,7 @@ export default function DashboardLayout({
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="h-4" />
               <span className="text-sm text-muted-foreground">
-                Solana Wallet Tracker
+                Journalio
               </span>
             </header>
             <div className="flex-1 overflow-auto px-6 py-6">

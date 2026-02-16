@@ -43,7 +43,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="px-4 py-5">
         <div className="text-base font-semibold tracking-tight">
-          Solana Tracker
+          Journalio
         </div>
         <SidebarSeparator className="my-3" />
         <SidebarWalletInput />
@@ -65,7 +65,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="px-4 py-3">
         <p className="text-xs text-muted-foreground">
-          Solana Wallet Tracker v1.0
+          Journalio v1.0
         </p>
       </SidebarFooter>
     </Sidebar>
