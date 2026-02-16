@@ -2,6 +2,7 @@
 
 import React, { memo } from 'react';
 import { formatTokenAmount } from '@/lib/formatters';
+import { Button } from '@/components/ui/button';
 import { JournalData } from '../JournalModal';
 
 interface TradeBalanceColumnProps {
@@ -20,13 +21,13 @@ const TradeBalanceColumn = memo(function TradeBalanceColumn({
   onJournalClick,
 }: TradeBalanceColumnProps) {
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+    <div className="rounded-md border border-border p-4">
       <div className="space-y-2">
         <div>
-          <div className="text-xs text-gray-700">
+          <div className="text-xs text-muted-foreground">
             {isComplete ? 'Final Balance' : 'Current Balance'}
           </div>
-          <div className="text-lg font-semibold text-gray-900">
+          <div className="font-mono tabular-nums text-sm font-medium">
             {formatTokenAmount(endBalance)} {token}
           </div>
         </div>
@@ -34,43 +35,37 @@ const TradeBalanceColumn = memo(function TradeBalanceColumn({
         {journalData && (
           <>
             {journalData.buyCategory && (
-              <div className="pt-2 border-t border-gray-300">
-                <div className="text-xs text-gray-700">Category</div>
-                <div className="text-sm font-medium text-gray-900">{journalData.buyCategory}</div>
+              <div className="pt-2 border-t border-border">
+                <div className="text-xs text-muted-foreground">Category</div>
+                <div className="text-sm">{journalData.buyCategory}</div>
               </div>
             )}
             {journalData.sellMistakes.length > 0 && (
               <div>
-                <div className="text-xs text-gray-700">Mistakes</div>
-                <div className="text-xs text-gray-800">{journalData.sellMistakes.join(', ')}</div>
+                <div className="text-xs text-muted-foreground">Mistakes</div>
+                <div className="text-xs">{journalData.sellMistakes.join(', ')}</div>
               </div>
             )}
             {journalData.sellRating > 0 && (
               <div>
-                <div className="text-xs text-gray-700">Rating</div>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: journalData.sellRating }).map((_, i) => (
-                    <span key={i} className="text-yellow-400 text-sm" aria-hidden="true">
-                      ★
-                    </span>
-                  ))}
-                  <span className="text-xs text-gray-600 ml-1">
-                    {journalData.sellRating}/10
-                  </span>
+                <div className="text-xs text-muted-foreground">Rating</div>
+                <div className="text-xs font-mono tabular-nums">
+                  {journalData.sellRating}/10
                 </div>
               </div>
             )}
           </>
         )}
 
-        <div className="mt-3 pt-3 border-t border-gray-300">
-          <button
+        <div className="pt-3 border-t border-border">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
             onClick={onJournalClick}
-            className="w-full px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
-            aria-label={journalData ? 'Edit journal' : 'Add journal'}
           >
             {journalData ? 'Edit Journal' : 'Journal'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,6 +1,9 @@
 'use client';
 
 import React, { memo } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 
 interface TradeEditFormProps {
   editedBuyAmount: string;
@@ -24,73 +27,56 @@ const TradeEditForm = memo(function TradeEditForm({
   onCancel,
 }: TradeEditFormProps) {
   return (
-    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <div className="mb-6 p-4 rounded-md border border-border bg-muted/30">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-blue-900">Edit Trade Amounts</h4>
+        <h4 className="text-sm font-medium">Edit Amounts</h4>
         <div className="flex gap-2">
-          <button
-            onClick={onSave}
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label="Save changes"
-          >
+          <Button size="sm" onClick={onSave}>
             Save
-          </button>
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
-            aria-label="Cancel editing"
-          >
+          </Button>
+          <Button variant="outline" size="sm" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label htmlFor="buy-amount" className="text-xs text-blue-700 block mb-1">
+          <Label htmlFor="buy-amount" className="text-xs mb-1.5">
             Total Buy Amount
-          </label>
-          <input
+          </Label>
+          <Input
             id="buy-amount"
             type="number"
             min="0"
             step="any"
             value={editedBuyAmount}
             onChange={(e) => onBuyAmountChange(e.target.value)}
-            className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            aria-label="Total buy amount"
-            required
           />
         </div>
         <div>
-          <label htmlFor="sell-amount" className="text-xs text-blue-700 block mb-1">
+          <Label htmlFor="sell-amount" className="text-xs mb-1.5">
             Total Sell Amount
-          </label>
-          <input
+          </Label>
+          <Input
             id="sell-amount"
             type="number"
             min="0"
             step="any"
             value={editedSellAmount}
             onChange={(e) => onSellAmountChange(e.target.value)}
-            className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            aria-label="Total sell amount"
-            required
           />
         </div>
         <div>
-          <label htmlFor="final-balance" className="text-xs text-blue-700 block mb-1">
+          <Label htmlFor="final-balance" className="text-xs mb-1.5">
             Final Balance
-          </label>
-          <input
+          </Label>
+          <Input
             id="final-balance"
             type="number"
             min="0"
             step="any"
             value={editedBalance}
             onChange={(e) => onBalanceChange(e.target.value)}
-            className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            aria-label="Final balance"
-            required
           />
         </div>
       </div>

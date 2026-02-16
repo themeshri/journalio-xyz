@@ -29,7 +29,6 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
   const avgBuyPrice = trade.totalBuyAmount > 0 ? trade.totalBuyValue / trade.totalBuyAmount : 0;
   const avgSellPrice = trade.totalSellAmount > 0 ? trade.totalSellValue / trade.totalSellAmount : 0;
 
-  // Check if there's a mismatch between buy and sell amounts (potential issue)
   const amountDifference = Math.abs(trade.totalBuyAmount - trade.totalSellAmount);
   const hasMismatch = trade.isComplete && amountDifference > 100;
 
@@ -38,12 +37,10 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
   }, []);
 
   const handleSave = useCallback(() => {
-    // Trim whitespace before parsing
     const newBuyAmount = parseFloat(editedBuyAmount.trim());
     const newSellAmount = parseFloat(editedSellAmount.trim());
     const newBalance = parseFloat(editedBalance.trim());
 
-    // Validation - allow 0 as valid
     if (isNaN(newBuyAmount) || newBuyAmount < 0) {
       alert(`Invalid buy amount: "${editedBuyAmount}". Please enter a valid number (0 or greater).`);
       return;
@@ -57,7 +54,6 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
       return;
     }
 
-    // Update the trade data
     setTrade({
       ...trade,
       totalBuyAmount: newBuyAmount,
@@ -81,7 +77,6 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
   }, [initialTrade]);
 
   const handleCancel = useCallback(() => {
-    // Reset to current values
     setEditedBuyAmount(trade.totalBuyAmount.toString());
     setEditedSellAmount(trade.totalSellAmount.toString());
     setEditedBalance(trade.endBalance.toString());
@@ -94,9 +89,9 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
   }, []);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-      {/* Header Row */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="rounded-md border border-border p-5">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
         <TradeCardHeader
           token={trade.token}
           globalTradeNumber={trade.globalTradeNumber}
@@ -107,21 +102,20 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
           onReset={handleReset}
         />
 
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <div
-              className={`text-lg font-bold ${trade.profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}
-              aria-label={`Profit/Loss: ${trade.profitLoss >= 0 ? '+' : ''}${formatValue(trade.profitLoss)}`}
-            >
-              {trade.profitLoss >= 0 ? '+' : ''}
-              {formatValue(trade.profitLoss)}
-            </div>
-            {trade.duration && (
-              <div className="text-xs text-gray-500" aria-label={`Duration: ${formatDuration(trade.duration)}`}>
-                {formatDuration(trade.duration)}
-              </div>
-            )}
+        <div className="text-right">
+          <div
+            className={`font-mono tabular-nums text-base font-semibold ${
+              trade.profitLoss >= 0 ? 'text-emerald-600' : 'text-red-600'
+            }`}
+          >
+            {trade.profitLoss >= 0 ? '+' : ''}
+            {formatValue(trade.profitLoss)}
           </div>
+          {trade.duration && (
+            <div className="text-xs text-muted-foreground font-mono tabular-nums">
+              {formatDuration(trade.duration)}
+            </div>
+          )}
         </div>
       </div>
 
@@ -140,8 +134,7 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
       )}
 
       {/* Three-Column Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Buys Column */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <TradeStatsColumn
           type="buy"
           count={trade.buys.length}
@@ -152,7 +145,6 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
           onClick={() => setShowBuysModal(true)}
         />
 
-        {/* Sells Column */}
         <TradeStatsColumn
           type="sell"
           count={trade.sells.length}
@@ -163,7 +155,6 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
           onClick={() => setShowSellsModal(true)}
         />
 
-        {/* Balance/Journal Column */}
         <TradeBalanceColumn
           isComplete={trade.isComplete}
           endBalance={trade.endBalance}
@@ -173,7 +164,7 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
         />
       </div>
 
-      {/* Buys Modal */}
+      {/* Modals */}
       {showBuysModal && (
         <TransactionModal
           trades={trade.buys}
@@ -182,7 +173,6 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
         />
       )}
 
-      {/* Sells Modal */}
       {showSellsModal && (
         <TransactionModal
           trades={trade.sells}
@@ -191,7 +181,6 @@ const TradeCycleCard = memo(function TradeCycleCard({ trade: initialTrade }: Tra
         />
       )}
 
-      {/* Journal Modal */}
       {showJournalModal && (
         <JournalModal
           trade={trade}
