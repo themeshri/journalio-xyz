@@ -26,6 +26,7 @@ import { Separator } from '@/components/ui/separator';
 export interface JournalData {
   buyCategory: string;
   buyNotes: string;
+  buyRating: number;
   sellRating: number;
   sellMistakes: string[];
   sellNotes: string;
@@ -35,6 +36,7 @@ export interface JournalData {
 interface JournalModalProps {
   trade: FlattenedTrade;
   initialData: JournalData | null;
+  tokenLogo?: string | null;
   onSave: (data: JournalData) => void;
   onClose: () => void;
 }
@@ -69,11 +71,13 @@ const mistakeOptions = [
 const JournalModal = memo(function JournalModal({
   trade,
   initialData,
+  tokenLogo,
   onSave,
   onClose,
 }: JournalModalProps) {
   const [buyCategory, setBuyCategory] = useState(initialData?.buyCategory || '');
   const [buyNotes, setBuyNotes] = useState(initialData?.buyNotes || '');
+  const [buyRating, setBuyRating] = useState(initialData?.buyRating || 0);
   const [sellRating, setSellRating] = useState(initialData?.sellRating || 0);
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
   const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
@@ -83,12 +87,13 @@ const JournalModal = memo(function JournalModal({
     onSave({
       buyCategory,
       buyNotes,
+      buyRating,
       sellRating,
       sellMistakes,
       sellNotes,
       attachment,
     });
-  }, [buyCategory, buyNotes, sellRating, sellMistakes, sellNotes, attachment, onSave]);
+  }, [buyCategory, buyNotes, buyRating, sellRating, sellMistakes, sellNotes, attachment, onSave]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,7 +130,21 @@ const JournalModal = memo(function JournalModal({
     <Dialog open onOpenChange={() => onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-base">{trade.token} - Trade Journal</DialogTitle>
+          <DialogTitle className="text-base flex items-center gap-2">
+            {tokenLogo ? (
+              <img
+                src={tokenLogo}
+                alt={trade.token}
+                className="w-6 h-6 rounded-full"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                {trade.token.charAt(0)}
+              </div>
+            )}
+            {trade.token} - Trade Journal
+          </DialogTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
             <span>Start: {formatTime(trade.startDate)}</span>
             {trade.endDate && <span>End: {formatTime(trade.endDate)}</span>}
@@ -183,6 +202,32 @@ const JournalModal = memo(function JournalModal({
                   rows={3}
                 />
               </div>
+
+              <div>
+                <Label className="text-xs mb-1.5">Rate the entry</Label>
+                <div className="flex gap-0.5 mt-1" role="group" aria-label="Entry rating">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setBuyRating(n)}
+                      className={`w-7 h-7 text-sm rounded transition-colors ${
+                        n <= buyRating
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                      aria-label={`Rate entry ${n} out of 10`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  {buyRating > 0 && (
+                    <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
+                      {buyRating}/10
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
 
@@ -195,8 +240,8 @@ const JournalModal = memo(function JournalModal({
             <div className="space-y-4">
               {/* Rating */}
               <div>
-                <Label className="text-xs mb-1.5">Rate this trade</Label>
-                <div className="flex gap-0.5 mt-1" role="group" aria-label="Trade rating">
+                <Label className="text-xs mb-1.5">Rate the exit</Label>
+                <div className="flex gap-0.5 mt-1" role="group" aria-label="Exit rating">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
                     <button
                       key={star}

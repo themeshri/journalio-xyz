@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const defaultUserId = 'default-user'
 
     const body = await request.json()
-    const { coinName, mcWhenSaw, ath, reasonMissed } = body
+    const { coinName, contractAddr, mcWhenSaw, ath, reasonMissed, howToNotMiss, attachment } = body
 
     if (!coinName || !mcWhenSaw || !ath || !reasonMissed) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -51,9 +51,12 @@ export async function POST(request: NextRequest) {
       data: {
         userId: defaultUserId,
         coinName: coinName.trim(),
+        contractAddr: contractAddr?.trim() || null,
         mcWhenSaw: mcWhenSaw.trim(),
         ath: ath.trim(),
         reasonMissed: reasonMissed.trim(),
+        howToNotMiss: howToNotMiss?.trim() || null,
+        attachment: attachment || null,
       },
     })
 

@@ -17,9 +17,12 @@ import {
 interface PaperedPlay {
   id: string
   coinName: string
+  contractAddr: string | null
   mcWhenSaw: string
   ath: string
   reasonMissed: string
+  howToNotMiss: string | null
+  attachment: string | null
   createdAt: string
 }
 
@@ -27,9 +30,12 @@ export default function MissedTradesPage() {
   const [plays, setPlays] = useState<PaperedPlay[]>([])
   const [showForm, setShowForm] = useState(false)
   const [coinName, setCoinName] = useState('')
+  const [contractAddr, setContractAddr] = useState('')
   const [mcWhenSaw, setMcWhenSaw] = useState('')
   const [ath, setAth] = useState('')
   const [reasonMissed, setReasonMissed] = useState('')
+  const [howToNotMiss, setHowToNotMiss] = useState('')
+  const [attachment, setAttachment] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -70,18 +76,24 @@ export default function MissedTradesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coinName: coinName.trim(),
+          contractAddr: contractAddr.trim() || null,
           mcWhenSaw: mcWhenSaw.trim(),
           ath: ath.trim(),
           reasonMissed: reasonMissed.trim(),
+          howToNotMiss: howToNotMiss.trim() || null,
+          attachment,
         }),
       })
       if (res.ok) {
         const newPlay = await res.json()
         setPlays([newPlay, ...plays])
         setCoinName('')
+        setContractAddr('')
         setMcWhenSaw('')
         setAth('')
         setReasonMissed('')
+        setHowToNotMiss('')
+        setAttachment(null)
         setShowForm(false)
       } else {
         alert('Failed to save')
@@ -152,6 +164,21 @@ export default function MissedTradesPage() {
                 required
               />
             </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="contractAddr" className="text-xs mb-1.5">
+                Contract Address (optional)
+              </Label>
+              <Input
+                id="contractAddr"
+                value={contractAddr}
+                onChange={(e) => setContractAddr(e.target.value)}
+                placeholder="e.g., DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+                className="font-mono text-xs"
+                maxLength={100}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="mcWhenSaw" className="text-xs mb-1.5">
                 MC When Saw
@@ -191,6 +218,73 @@ export default function MissedTradesPage() {
               maxLength={500}
               rows={3}
             />
+          </div>
+          <div>
+            <Label htmlFor="howToNotMiss" className="text-xs mb-1.5">
+              How to not miss it next time?
+            </Label>
+            <Textarea
+              id="howToNotMiss"
+              value={howToNotMiss}
+              onChange={(e) => setHowToNotMiss(e.target.value)}
+              placeholder="What would you do differently? What signals should you watch for?"
+              maxLength={500}
+              rows={3}
+            />
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5">Image</Label>
+            {!attachment ? (
+              <div>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    if (!file.type.startsWith('image/')) {
+                      alert('Please upload an image file')
+                      return
+                    }
+                    if (file.size > 5 * 1024 * 1024) {
+                      alert('Image size should be less than 5MB')
+                      return
+                    }
+                    const reader = new FileReader()
+                    reader.onloadend = () => setAttachment(reader.result as string)
+                    reader.readAsDataURL(file)
+                  }}
+                  className="hidden"
+                  id="missed-image-upload"
+                />
+                <label
+                  htmlFor="missed-image-upload"
+                  className="flex items-center justify-center w-full px-4 py-4 border border-dashed border-border rounded-md cursor-pointer hover:border-primary hover:bg-muted/30 transition-colors"
+                >
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Click to upload image</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, GIF up to 5MB</p>
+                  </div>
+                </label>
+              </div>
+            ) : (
+              <div className="relative">
+                <img
+                  src={attachment}
+                  alt="Missed trade attachment"
+                  className="w-full max-h-48 object-contain rounded-md border border-border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2 text-xs h-7"
+                  onClick={() => setAttachment(null)}
+                >
+                  Remove
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2">
             <Button

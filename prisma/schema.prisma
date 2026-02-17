@@ -150,14 +150,17 @@ model TradeEdit {
 
 // Papered plays - missed opportunities
 model PaperedPlay {
-  id           String   @id @default(cuid())
-  userId       String
-  coinName     String
-  mcWhenSaw    String
-  ath          String
-  reasonMissed String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  coinName      String
+  contractAddr  String?
+  mcWhenSaw     String
+  ath           String
+  reasonMissed  String
+  howToNotMiss  String?
+  attachment    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
