@@ -34,13 +34,13 @@ function getStorageKey() {
 }
 
 function getEnergyDescription(level: number): { text: string; className: string } | null {
-  if (level >= 1 && level <= 3)
+  if (level >= 8)
     return { text: 'Fully Charged — Sharp, alert, capable of complex analysis', className: 'text-emerald-600' }
-  if (level >= 4 && level <= 6)
+  if (level >= 5 && level <= 7)
     return { text: 'Partially Drained — Functional but distractible; stick to simpler setups', className: 'text-yellow-600' }
-  if (level >= 7 && level <= 8)
+  if (level >= 3 && level <= 4)
     return { text: 'High Fatigue — High risk of impairment; heavy eyes or muscle tension', className: 'text-orange-600' }
-  if (level >= 9)
+  if (level >= 1 && level <= 2)
     return { text: 'Tapped Out — Brain scattered; high probability of irrational decisions', className: 'text-red-600' }
   return null
 }
@@ -79,10 +79,10 @@ export default function PreSessionPage() {
   const energyDesc = getEnergyDescription(energyLevel)
 
   function getEnergyColor(): string {
-    if (energyLevel >= 1 && energyLevel <= 3) return 'bg-emerald-500 text-white'
-    if (energyLevel >= 4 && energyLevel <= 6) return 'bg-yellow-500 text-white'
-    if (energyLevel >= 7 && energyLevel <= 8) return 'bg-orange-500 text-white'
-    if (energyLevel >= 9) return 'bg-red-500 text-white'
+    if (energyLevel >= 8) return 'bg-emerald-500 text-white'
+    if (energyLevel >= 5 && energyLevel <= 7) return 'bg-yellow-500 text-white'
+    if (energyLevel >= 3 && energyLevel <= 4) return 'bg-orange-500 text-white'
+    if (energyLevel >= 1 && energyLevel <= 2) return 'bg-red-500 text-white'
     return 'bg-emerald-500 text-white'
   }
 
@@ -108,7 +108,7 @@ export default function PreSessionPage() {
         <section>
           <Label className="text-sm font-medium mb-2 block">Energy Meter</Label>
           <p className="text-xs text-muted-foreground mb-2">
-            Rate your "starting battery" before the session begins
+            Rate your "starting battery" before the session begins (1 = empty, 10 = fully charged)
           </p>
           <div className="flex gap-0.5" role="group" aria-label="Energy level">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
@@ -137,7 +137,7 @@ export default function PreSessionPage() {
             <p className={`text-xs mt-2 ${energyDesc.className}`}>{energyDesc.text}</p>
           )}
 
-          {energyLevel >= 9 && (
+          {energyLevel >= 1 && energyLevel <= 2 && (
             <div className="mt-3 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-md">
               <p className="text-sm font-medium text-red-600">
                 Recommendation: Do not trade today.
@@ -147,7 +147,7 @@ export default function PreSessionPage() {
         </section>
 
         {/* Decision Fatigue Checklist — only when energy >= 7 */}
-        {energyLevel >= 7 && (
+        {energyLevel >= 1 && energyLevel <= 4 && (
           <>
             <Separator />
             <section>

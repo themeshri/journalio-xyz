@@ -270,13 +270,13 @@ const JournalModal = memo(function JournalModal({
 
               <div>
                 <Label className="text-xs mb-1.5">Energy Level</Label>
-                <p className="text-[10px] text-muted-foreground mb-1">1-3 Charged · 4-6 Partial · 7-8 Fatigued · 9-10 Tapped Out</p>
+                <p className="text-[10px] text-muted-foreground mb-1">1-2 Tapped Out · 3-4 Fatigued · 5-7 Partial · 8-10 Fully Charged</p>
                 <div className="flex gap-0.5" role="group" aria-label="Energy level">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
-                    let activeColor = 'bg-emerald-500 text-white';
-                    if (energyLevel >= 4 && energyLevel <= 6) activeColor = 'bg-yellow-500 text-white';
-                    else if (energyLevel >= 7 && energyLevel <= 8) activeColor = 'bg-orange-500 text-white';
-                    else if (energyLevel >= 9) activeColor = 'bg-red-500 text-white';
+                    let activeColor = 'bg-red-500 text-white';
+                    if (energyLevel >= 3 && energyLevel <= 4) activeColor = 'bg-orange-500 text-white';
+                    else if (energyLevel >= 5 && energyLevel <= 7) activeColor = 'bg-yellow-500 text-white';
+                    else if (energyLevel >= 8) activeColor = 'bg-emerald-500 text-white';
                     return (
                       <button
                         key={n}
