@@ -1,11 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+
+interface Rule {
+  id: string
+  text: string
+}
+
+function loadGlobalRules(): Rule[] {
+  try {
+    const raw = localStorage.getItem('journalio_rules')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
 
 interface PreSessionData {
   energyLevel: number
@@ -33,13 +48,6 @@ const emotionalOptions = [
   'Euphoric',
 ]
 
-const ruleItems = [
-  { id: 'no-chase', label: "I will not chase pumps that already 5x'd" },
-  { id: 'stop-loss', label: 'I will set a stop loss on every trade' },
-  { id: 'no-size-up', label: 'I will not increase position size after a loss' },
-  { id: 'walk-away', label: 'I will walk away after hitting my max loss' },
-  { id: 'research-first', label: "I will not trade tokens I haven't researched" },
-]
 
 function getStorageKey() {
   const today = new Date().toISOString().slice(0, 10)
@@ -79,6 +87,7 @@ export default function PreSessionPage() {
   const [data, setData] = useState<PreSessionData>(defaultData)
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [globalRules, setGlobalRules] = useState<Rule[]>([])
 
   useEffect(() => {
     try {
@@ -88,6 +97,7 @@ export default function PreSessionPage() {
         setData({ ...defaultData, ...parsed })
       }
     } catch {}
+    setGlobalRules(loadGlobalRules())
     setLoaded(true)
   }, [])
 
@@ -450,26 +460,38 @@ export default function PreSessionPage() {
           <p className="text-xs text-muted-foreground mb-3">
             Acknowledge your rules before you start
           </p>
-          <div className="space-y-2">
-            {ruleItems.map((item) => (
-              <label
-                key={item.id}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors ${
-                  data.rulesChecked.includes(item.id)
-                    ? 'border-emerald-500 bg-emerald-500/5 text-foreground'
-                    : 'border-border text-muted-foreground hover:bg-muted/50'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={data.rulesChecked.includes(item.id)}
-                  onChange={() => toggleArrayItem('rulesChecked', item.id)}
-                  className="sr-only"
-                />
-                <span className="text-sm">{item.label}</span>
-              </label>
-            ))}
-          </div>
+          {globalRules.length === 0 ? (
+            <div className="border border-dashed rounded-md px-4 py-3">
+              <p className="text-sm text-muted-foreground">
+                No rules defined yet.{' '}
+                <Link href="/strategies" className="text-emerald-600 hover:underline">
+                  Add rules on the Strategies page
+                </Link>{' '}
+                to see your checklist here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {globalRules.map((rule) => (
+                <label
+                  key={rule.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors ${
+                    data.rulesChecked.includes(rule.id)
+                      ? 'border-emerald-500 bg-emerald-500/5 text-foreground'
+                      : 'border-border text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={data.rulesChecked.includes(rule.id)}
+                    onChange={() => toggleArrayItem('rulesChecked', rule.id)}
+                    className="sr-only"
+                  />
+                  <span className="text-sm">{rule.text}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </section>
 
         <Separator />
