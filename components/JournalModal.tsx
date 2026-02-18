@@ -27,7 +27,11 @@ export interface JournalData {
   buyCategory: string;
   buyNotes: string;
   buyRating: number;
+  fomoLevel: number;
+  energyLevel: number;
+  exitPlan: string;
   sellRating: number;
+  followedExitRule: boolean | null;
   sellMistakes: string[];
   sellNotes: string;
   attachment?: string;
@@ -78,7 +82,11 @@ const JournalModal = memo(function JournalModal({
   const [buyCategory, setBuyCategory] = useState(initialData?.buyCategory || '');
   const [buyNotes, setBuyNotes] = useState(initialData?.buyNotes || '');
   const [buyRating, setBuyRating] = useState(initialData?.buyRating || 0);
+  const [fomoLevel, setFomoLevel] = useState(initialData?.fomoLevel || 0);
+  const [energyLevel, setEnergyLevel] = useState(initialData?.energyLevel || 0);
+  const [exitPlan, setExitPlan] = useState(initialData?.exitPlan || '');
   const [sellRating, setSellRating] = useState(initialData?.sellRating || 0);
+  const [followedExitRule, setFollowedExitRule] = useState<boolean | null>(initialData?.followedExitRule ?? null);
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
   const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
   const [attachment, setAttachment] = useState<string | undefined>(initialData?.attachment);
@@ -88,12 +96,16 @@ const JournalModal = memo(function JournalModal({
       buyCategory,
       buyNotes,
       buyRating,
+      fomoLevel,
+      energyLevel,
+      exitPlan,
       sellRating,
+      followedExitRule,
       sellMistakes,
       sellNotes,
       attachment,
     });
-  }, [buyCategory, buyNotes, buyRating, sellRating, sellMistakes, sellNotes, attachment, onSave]);
+  }, [buyCategory, buyNotes, buyRating, fomoLevel, energyLevel, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachment, onSave]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -228,6 +240,79 @@ const JournalModal = memo(function JournalModal({
                   )}
                 </div>
               </div>
+
+              <div>
+                <Label className="text-xs mb-1.5">FOMO Level</Label>
+                <p className="text-[10px] text-muted-foreground mb-1">1 = No FOMO · 10 = Pure FOMO</p>
+                <div className="flex gap-0.5" role="group" aria-label="FOMO level">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setFomoLevel(n)}
+                      className={`w-7 h-7 text-sm rounded transition-colors ${
+                        n <= fomoLevel
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                      aria-label={`FOMO level ${n} out of 10`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  {fomoLevel > 0 && (
+                    <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
+                      {fomoLevel}/10
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs mb-1.5">Energy Level</Label>
+                <p className="text-[10px] text-muted-foreground mb-1">1-3 Charged · 4-6 Partial · 7-8 Fatigued · 9-10 Tapped Out</p>
+                <div className="flex gap-0.5" role="group" aria-label="Energy level">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+                    let activeColor = 'bg-emerald-500 text-white';
+                    if (energyLevel >= 4 && energyLevel <= 6) activeColor = 'bg-yellow-500 text-white';
+                    else if (energyLevel >= 7 && energyLevel <= 8) activeColor = 'bg-orange-500 text-white';
+                    else if (energyLevel >= 9) activeColor = 'bg-red-500 text-white';
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setEnergyLevel(n)}
+                        className={`w-7 h-7 text-sm rounded transition-colors ${
+                          n <= energyLevel
+                            ? activeColor
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                        aria-label={`Energy level ${n} out of 10`}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                  {energyLevel > 0 && (
+                    <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
+                      {energyLevel}/10
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="exit-plan" className="text-xs mb-1.5">
+                  Your exit plan
+                </Label>
+                <Textarea
+                  id="exit-plan"
+                  value={exitPlan}
+                  onChange={(e) => setExitPlan(e.target.value)}
+                  placeholder="What's your target? When will you sell? What's your stop loss?"
+                  rows={3}
+                />
+              </div>
             </div>
           </section>
 
@@ -262,6 +347,35 @@ const JournalModal = memo(function JournalModal({
                       {sellRating}/10
                     </span>
                   )}
+                </div>
+              </div>
+
+              {/* Followed Exit Rule */}
+              <div>
+                <Label className="text-xs mb-1.5">Did you follow your exit rule?</Label>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setFollowedExitRule(true)}
+                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
+                      followedExitRule === true
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
+                    }`}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFollowedExitRule(false)}
+                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
+                      followedExitRule === false
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
+                    }`}
+                  >
+                    No
+                  </button>
                 </div>
               </div>
 
