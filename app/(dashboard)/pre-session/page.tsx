@@ -22,6 +22,15 @@ function loadGlobalRules(): Rule[] {
   }
 }
 
+interface MarketSnapshot {
+  btcPrice: number | null
+  ethPrice: number | null
+  solPrice: number | null
+  bnbPrice: number | null
+  fearGreedIndex: number | null
+  onchainVolume24h: number | null
+}
+
 interface PreSessionData {
   energyLevel: number
   emotionalState: string
@@ -37,6 +46,19 @@ interface PreSessionData {
   majorNewsNote: string
   normalVolume: boolean | null
   rulesChecked: string[]
+  date: string
+  time: string
+  savedAt: string
+  marketSnapshot: MarketSnapshot
+}
+
+interface PreSessionSummary {
+  date: string
+  savedAt: string
+  energyLevel: number
+  emotionalState: string
+  marketSentiment: string
+  marketSnapshot: MarketSnapshot
 }
 
 const emotionalOptions = [
@@ -66,6 +88,15 @@ function getEnergyDescription(level: number): { text: string; className: string 
   return null
 }
 
+const defaultMarketSnapshot: MarketSnapshot = {
+  btcPrice: null,
+  ethPrice: null,
+  solPrice: null,
+  bnbPrice: null,
+  fearGreedIndex: null,
+  onchainVolume24h: null,
+}
+
 const defaultData: PreSessionData = {
   energyLevel: 0,
   emotionalState: '',
@@ -81,6 +112,50 @@ const defaultData: PreSessionData = {
   majorNewsNote: '',
   normalVolume: null,
   rulesChecked: [],
+  date: '',
+  time: '',
+  savedAt: '',
+  marketSnapshot: defaultMarketSnapshot,
+}
+
+function getTodayDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function formatDisplayDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function formatDisplayTime(date: Date): string {
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
+function loadSessionsIndex(): PreSessionSummary[] {
+  try {
+    const raw = localStorage.getItem('journalio_pre_sessions')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function upsertSessionsIndex(summary: PreSessionSummary) {
+  const sessions = loadSessionsIndex()
+  const idx = sessions.findIndex((s) => s.date === summary.date)
+  if (idx >= 0) {
+    sessions[idx] = summary
+  } else {
+    sessions.push(summary)
+  }
+  localStorage.setItem('journalio_pre_sessions', JSON.stringify(sessions))
 }
 
 export default function PreSessionPage() {
@@ -88,13 +163,23 @@ export default function PreSessionPage() {
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [globalRules, setGlobalRules] = useState<Rule[]>([])
+  const [isCompletedToday, setIsCompletedToday] = useState(false)
+  const [displayDate, setDisplayDate] = useState('')
+  const [displayTime, setDisplayTime] = useState('')
 
   useEffect(() => {
+    const now = new Date()
+    setDisplayDate(formatDisplayDate(now))
+    setDisplayTime(formatDisplayTime(now))
+
     try {
       const raw = localStorage.getItem(getStorageKey())
       if (raw) {
         const parsed = JSON.parse(raw)
         setData({ ...defaultData, ...parsed })
+        if (parsed.savedAt) {
+          setIsCompletedToday(true)
+        }
       }
     } catch {}
     setGlobalRules(loadGlobalRules())
@@ -106,7 +191,29 @@ export default function PreSessionPage() {
   }
 
   function handleSave() {
-    localStorage.setItem(getStorageKey(), JSON.stringify(data))
+    const now = new Date()
+    const todayDate = getTodayDate()
+    const savedData: PreSessionData = {
+      ...data,
+      date: todayDate,
+      time: now.toTimeString().slice(0, 5),
+      savedAt: now.toISOString(),
+      marketSnapshot: data.marketSnapshot || defaultMarketSnapshot,
+    }
+
+    localStorage.setItem(getStorageKey(), JSON.stringify(savedData))
+    setData(savedData)
+    setIsCompletedToday(true)
+
+    upsertSessionsIndex({
+      date: todayDate,
+      savedAt: savedData.savedAt,
+      energyLevel: savedData.energyLevel,
+      emotionalState: savedData.emotionalState,
+      marketSentiment: savedData.marketSentiment,
+      marketSnapshot: savedData.marketSnapshot,
+    })
+
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -141,13 +248,60 @@ export default function PreSessionPage() {
   return (
     <div className="max-w-xl">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold">Pre Session</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">Pre Session</h1>
+          {isCompletedToday ? (
+            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/30">
+              Completed
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground border border-border">
+              Not completed
+            </span>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground mt-0.5">
           Check in before you start trading
         </p>
       </div>
 
       <div className="space-y-6">
+        {/* Market Snapshot */}
+        <section>
+          <Label className="text-sm font-medium mb-1 block">Market Snapshot</Label>
+          <p className="text-xs text-muted-foreground mb-3">
+            Auto-captured when you save (coming soon)
+          </p>
+
+          <div className="border border-border rounded-lg p-4 space-y-3">
+            <p className="text-sm text-foreground font-medium">
+              {displayDate} &middot; {displayTime}
+            </p>
+
+            <div className="grid grid-cols-4 gap-3">
+              {(['BTC', 'ETH', 'SOL', 'BNB'] as const).map((symbol) => (
+                <div key={symbol}>
+                  <p className="text-xs text-muted-foreground">{symbol}</p>
+                  <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Fear & Greed</p>
+                <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">24h Volume</p>
+                <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
         {/* Section 1: Energy Meter */}
         <section>
           <Label className="text-sm font-medium mb-2 block">Energy Meter</Label>

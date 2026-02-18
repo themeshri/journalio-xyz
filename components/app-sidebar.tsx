@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -16,20 +17,29 @@ import {
 } from '@/components/ui/sidebar'
 import { useWallet } from '@/lib/wallet-context'
 
+function isPreSessionCompletedToday(): boolean {
+  try {
+    const raw = localStorage.getItem('journalio_pre_sessions')
+    if (!raw) return false
+    const sessions: { date: string }[] = JSON.parse(raw)
+    const today = new Date().toISOString().slice(0, 10)
+    return sessions.some((s) => s.date === today)
+  } catch {
+    return false
+  }
+}
+
 const primaryNav = [
   { label: 'Overview', href: '/' },
+  { label: 'Pre Session', href: '/pre-session' },
   { label: 'Trade Journal', href: '/trade-journal' },
   { label: 'History', href: '/history' },
   { label: 'Analytics', href: '/analytics' },
-]
-
-const toolsNav = [
   { label: 'Missed Trades', href: '/missed-trades' },
-  { label: 'Pre Session', href: '/pre-session' },
-  { label: 'Strategies', href: '/strategies' },
 ]
 
 const managementNav = [
+  { label: 'Strategies', href: '/strategies' },
   { label: 'Wallet Management', href: '/wallet-management' },
   { label: 'Settings', href: '/settings' },
 ]
@@ -39,6 +49,19 @@ export function AppSidebar() {
   const searchParams = useSearchParams()
   const walletParam = searchParams.get('wallet')
   const { currentWallet } = useWallet()
+  const [preSessionDone, setPreSessionDone] = useState(false)
+
+  useEffect(() => {
+    setPreSessionDone(isPreSessionCompletedToday())
+
+    function onStorage(e: StorageEvent) {
+      if (e.key === 'journalio_pre_sessions') {
+        setPreSessionDone(isPreSessionCompletedToday())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   function buildHref(base: string) {
     if (walletParam) {
@@ -62,7 +85,17 @@ export function AppSidebar() {
               isActive={isActive(item.href)}
               className="text-sm"
             >
-              <Link href={buildHref(item.href)}>{item.label}</Link>
+              <Link href={buildHref(item.href)}>
+                {item.label}
+                {item.href === '/pre-session' && (
+                  <span
+                    className={`ml-auto inline-block h-2 w-2 rounded-full ${
+                      preSessionDone ? 'bg-emerald-500' : 'bg-zinc-400'
+                    }`}
+                    title={preSessionDone ? 'Completed today' : 'Not completed today'}
+                  />
+                )}
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}
@@ -89,11 +122,6 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           {renderNavGroup(primaryNav)}
-        </SidebarGroup>
-        <SidebarSeparator />
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs text-muted-foreground">Tools</SidebarGroupLabel>
-          {renderNavGroup(toolsNav)}
         </SidebarGroup>
         <SidebarSeparator />
         <SidebarGroup>
