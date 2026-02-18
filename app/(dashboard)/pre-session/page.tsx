@@ -2,30 +2,43 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
 
 interface PreSessionData {
   energyLevel: number
-  fatigueChecks: string[]
+  emotionalState: string
+  sessionIntent: string
+  maxTrades: string
+  maxLoss: string
+  timeLimit: string
+  defaultPositionSize: string
+  hasOpenPositions: boolean | null
+  marketSentiment: string
+  solTrend: string
+  majorNews: boolean | null
+  majorNewsNote: string
+  normalVolume: boolean | null
+  rulesChecked: string[]
 }
 
-const fatigueItems = [
-  {
-    id: 'lazy-analysis',
-    label: 'Lazy Analysis',
-    description: "Skipping your full checklist because it 'looks close enough'?",
-  },
-  {
-    id: 'impulse-reflex',
-    label: 'Impulse Reflex',
-    description: "Clicking 'Buy' just to end the tension of watching a move?",
-  },
-  {
-    id: 'rule-avoidance',
-    label: 'Rule Avoidance',
-    description: "Ignoring stop-loss placement because you don't want to think about the risk?",
-  },
+const emotionalOptions = [
+  'Calm',
+  'Anxious',
+  'Excited',
+  'Frustrated',
+  'Revenge-minded',
+  'Euphoric',
+]
+
+const ruleItems = [
+  { id: 'no-chase', label: "I will not chase pumps that already 5x'd" },
+  { id: 'stop-loss', label: 'I will set a stop loss on every trade' },
+  { id: 'no-size-up', label: 'I will not increase position size after a loss' },
+  { id: 'walk-away', label: 'I will walk away after hitting my max loss' },
+  { id: 'research-first', label: "I will not trade tokens I haven't researched" },
 ]
 
 function getStorageKey() {
@@ -45,9 +58,25 @@ function getEnergyDescription(level: number): { text: string; className: string 
   return null
 }
 
+const defaultData: PreSessionData = {
+  energyLevel: 0,
+  emotionalState: '',
+  sessionIntent: '',
+  maxTrades: '',
+  maxLoss: '',
+  timeLimit: '',
+  defaultPositionSize: '',
+  hasOpenPositions: null,
+  marketSentiment: '',
+  solTrend: '',
+  majorNews: null,
+  majorNewsNote: '',
+  normalVolume: null,
+  rulesChecked: [],
+}
+
 export default function PreSessionPage() {
-  const [energyLevel, setEnergyLevel] = useState(0)
-  const [fatigueChecks, setFatigueChecks] = useState<string[]>([])
+  const [data, setData] = useState<PreSessionData>(defaultData)
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
@@ -55,34 +84,39 @@ export default function PreSessionPage() {
     try {
       const raw = localStorage.getItem(getStorageKey())
       if (raw) {
-        const data: PreSessionData = JSON.parse(raw)
-        setEnergyLevel(data.energyLevel || 0)
-        setFatigueChecks(data.fatigueChecks || [])
+        const parsed = JSON.parse(raw)
+        setData({ ...defaultData, ...parsed })
       }
     } catch {}
     setLoaded(true)
   }, [])
 
+  function update<K extends keyof PreSessionData>(key: K, value: PreSessionData[K]) {
+    setData((prev) => ({ ...prev, [key]: value }))
+  }
+
   function handleSave() {
-    const data: PreSessionData = { energyLevel, fatigueChecks }
     localStorage.setItem(getStorageKey(), JSON.stringify(data))
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  function toggleFatigueCheck(id: string) {
-    setFatigueChecks((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-    )
+  function toggleArrayItem(key: 'rulesChecked', id: string) {
+    setData((prev) => ({
+      ...prev,
+      [key]: prev[key].includes(id)
+        ? prev[key].filter((c) => c !== id)
+        : [...prev[key], id],
+    }))
   }
 
-  const energyDesc = getEnergyDescription(energyLevel)
+  const energyDesc = getEnergyDescription(data.energyLevel)
 
   function getEnergyColor(): string {
-    if (energyLevel >= 8) return 'bg-emerald-500 text-white'
-    if (energyLevel >= 5 && energyLevel <= 7) return 'bg-yellow-500 text-white'
-    if (energyLevel >= 3 && energyLevel <= 4) return 'bg-orange-500 text-white'
-    if (energyLevel >= 1 && energyLevel <= 2) return 'bg-red-500 text-white'
+    if (data.energyLevel >= 8) return 'bg-emerald-500 text-white'
+    if (data.energyLevel >= 5 && data.energyLevel <= 7) return 'bg-yellow-500 text-white'
+    if (data.energyLevel >= 3 && data.energyLevel <= 4) return 'bg-orange-500 text-white'
+    if (data.energyLevel >= 1 && data.energyLevel <= 2) return 'bg-red-500 text-white'
     return 'bg-emerald-500 text-white'
   }
 
@@ -104,7 +138,7 @@ export default function PreSessionPage() {
       </div>
 
       <div className="space-y-6">
-        {/* Energy Meter */}
+        {/* Section 1: Energy Meter */}
         <section>
           <Label className="text-sm font-medium mb-2 block">Energy Meter</Label>
           <p className="text-xs text-muted-foreground mb-2">
@@ -115,9 +149,9 @@ export default function PreSessionPage() {
               <button
                 key={n}
                 type="button"
-                onClick={() => setEnergyLevel(n)}
+                onClick={() => update('energyLevel', n)}
                 className={`w-8 h-8 text-sm rounded transition-colors ${
-                  n <= energyLevel
+                  n <= data.energyLevel
                     ? getEnergyColor()
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
                 }`}
@@ -126,9 +160,9 @@ export default function PreSessionPage() {
                 {n}
               </button>
             ))}
-            {energyLevel > 0 && (
+            {data.energyLevel > 0 && (
               <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
-                {energyLevel}/10
+                {data.energyLevel}/10
               </span>
             )}
           </div>
@@ -137,7 +171,7 @@ export default function PreSessionPage() {
             <p className={`text-xs mt-2 ${energyDesc.className}`}>{energyDesc.text}</p>
           )}
 
-          {energyLevel >= 1 && energyLevel <= 2 && (
+          {data.energyLevel >= 1 && data.energyLevel <= 2 && (
             <div className="mt-3 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-md">
               <p className="text-sm font-medium text-red-600">
                 Recommendation: Do not trade today.
@@ -146,45 +180,297 @@ export default function PreSessionPage() {
           )}
         </section>
 
-        {/* Decision Fatigue Checklist — only when energy >= 7 */}
-        {energyLevel >= 1 && energyLevel <= 4 && (
-          <>
-            <Separator />
-            <section>
-              <Label className="text-sm font-medium mb-1 block">
-                Decision Fatigue Checklist
-              </Label>
-              <p className="text-xs text-muted-foreground mb-3">
-                Your fatigue score is high. Check for these behavioral leaks:
-              </p>
-              <div className="space-y-2">
-                {fatigueItems.map((item) => (
-                  <label
-                    key={item.id}
-                    className={`flex items-start gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors ${
-                      fatigueChecks.includes(item.id)
-                        ? 'border-orange-500 bg-orange-500/5 text-foreground'
+        <Separator />
+
+        {/* Section 3: Mindset & State */}
+        <section>
+          <Label className="text-sm font-medium mb-1 block">Mindset & State</Label>
+          <p className="text-xs text-muted-foreground mb-3">
+            How are you feeling right now?
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Emotional State</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {emotionalOptions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => update('emotionalState', data.emotionalState === option ? '' : option)}
+                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                      data.emotionalState === option
+                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
                         : 'border-border text-muted-foreground hover:bg-muted/50'
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={fatigueChecks.includes(item.id)}
-                      onChange={() => toggleFatigueCheck(item.id)}
-                      className="sr-only"
-                    />
-                    <div>
-                      <p className="text-sm font-medium">{item.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {item.description}
-                      </p>
-                    </div>
-                  </label>
+                    {option}
+                  </button>
                 ))}
               </div>
-            </section>
-          </>
-        )}
+            </div>
+
+            <div>
+              <Label htmlFor="session-intent" className="text-xs text-muted-foreground mb-2 block">
+                Session Intent
+              </Label>
+              <Textarea
+                id="session-intent"
+                value={data.sessionIntent}
+                onChange={(e) => update('sessionIntent', e.target.value)}
+                placeholder="e.g., scalp 2 setups max, research only, manage open positions"
+                rows={2}
+                className="resize-none"
+              />
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Section 4: Session Limits */}
+        <section>
+          <Label className="text-sm font-medium mb-1 block">Session Limits</Label>
+          <p className="text-xs text-muted-foreground mb-3">
+            Set boundaries before you start
+          </p>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="max-trades" className="text-xs text-muted-foreground mb-1.5 block">
+                  Max Trades
+                </Label>
+                <Input
+                  id="max-trades"
+                  type="number"
+                  value={data.maxTrades}
+                  onChange={(e) => update('maxTrades', e.target.value)}
+                  placeholder="e.g., 3"
+                />
+              </div>
+              <div>
+                <Label htmlFor="max-loss" className="text-xs text-muted-foreground mb-1.5 block">
+                  Max Loss
+                </Label>
+                <Input
+                  id="max-loss"
+                  value={data.maxLoss}
+                  onChange={(e) => update('maxLoss', e.target.value)}
+                  placeholder="e.g., $50"
+                />
+              </div>
+              <div>
+                <Label htmlFor="time-limit" className="text-xs text-muted-foreground mb-1.5 block">
+                  Time Limit
+                </Label>
+                <Input
+                  id="time-limit"
+                  value={data.timeLimit}
+                  onChange={(e) => update('timeLimit', e.target.value)}
+                  placeholder="e.g., 2 hours"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="position-size" className="text-xs text-muted-foreground mb-1.5 block">
+                Default Position Size
+              </Label>
+              <Input
+                id="position-size"
+                value={data.defaultPositionSize}
+                onChange={(e) => update('defaultPositionSize', e.target.value)}
+                placeholder="e.g., 0.5 SOL"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Do you have open positions to manage first?
+              </Label>
+              <div className="flex gap-2">
+                {([true, false] as const).map((val) => (
+                  <button
+                    key={String(val)}
+                    type="button"
+                    onClick={() => update('hasOpenPositions', data.hasOpenPositions === val ? null : val)}
+                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
+                      data.hasOpenPositions === val
+                        ? val
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
+                          : 'border-zinc-500 bg-zinc-500/10 text-zinc-600 font-medium'
+                        : 'border-border text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    {val ? 'Yes' : 'No'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Section 5: Market Context */}
+        <section>
+          <Label className="text-sm font-medium mb-1 block">Market Context</Label>
+          <p className="text-xs text-muted-foreground mb-3">
+            What does the market look like right now?
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Market Sentiment</Label>
+              <div className="flex gap-2">
+                {(['Bullish', 'Neutral', 'Bearish'] as const).map((option) => {
+                  const colorMap = {
+                    Bullish: 'border-emerald-500 bg-emerald-500/10 text-emerald-600',
+                    Neutral: 'border-zinc-500 bg-zinc-500/10 text-zinc-600',
+                    Bearish: 'border-red-500 bg-red-500/10 text-red-600',
+                  }
+                  const val = option.toLowerCase()
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => update('marketSentiment', data.marketSentiment === val ? '' : val)}
+                      className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
+                        data.marketSentiment === val
+                          ? `${colorMap[option]} font-medium`
+                          : 'border-border text-muted-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">SOL Trend</Label>
+              <div className="flex gap-2">
+                {(['Up', 'Sideways', 'Down'] as const).map((option) => {
+                  const colorMap = {
+                    Up: 'border-emerald-500 bg-emerald-500/10 text-emerald-600',
+                    Sideways: 'border-zinc-500 bg-zinc-500/10 text-zinc-600',
+                    Down: 'border-red-500 bg-red-500/10 text-red-600',
+                  }
+                  const val = option.toLowerCase()
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => update('solTrend', data.solTrend === val ? '' : val)}
+                      className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
+                        data.solTrend === val
+                          ? `${colorMap[option]} font-medium`
+                          : 'border-border text-muted-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Any major news or events today?
+              </Label>
+              <div className="flex gap-2">
+                {([true, false] as const).map((val) => (
+                  <button
+                    key={String(val)}
+                    type="button"
+                    onClick={() => {
+                      const newVal = data.majorNews === val ? null : val
+                      setData((prev) => ({
+                        ...prev,
+                        majorNews: newVal,
+                        majorNewsNote: newVal === false ? '' : prev.majorNewsNote,
+                      }))
+                    }}
+                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
+                      data.majorNews === val
+                        ? val
+                          ? 'border-yellow-500 bg-yellow-500/10 text-yellow-600 font-medium'
+                          : 'border-zinc-500 bg-zinc-500/10 text-zinc-600 font-medium'
+                        : 'border-border text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    {val ? 'Yes' : 'No'}
+                  </button>
+                ))}
+              </div>
+              {data.majorNews === true && (
+                <Input
+                  value={data.majorNewsNote}
+                  onChange={(e) => update('majorNewsNote', e.target.value)}
+                  placeholder="What's happening?"
+                  className="mt-2"
+                />
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Normal volume today?
+              </Label>
+              <div className="flex gap-2">
+                {([true, false] as const).map((val) => (
+                  <button
+                    key={String(val)}
+                    type="button"
+                    onClick={() => update('normalVolume', data.normalVolume === val ? null : val)}
+                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
+                      data.normalVolume === val
+                        ? val
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
+                          : 'border-yellow-500 bg-yellow-500/10 text-yellow-600 font-medium'
+                        : 'border-border text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    {val ? 'Yes' : 'No'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Section 6: Rules Reminder */}
+        <section>
+          <Label className="text-sm font-medium mb-1 block">Rules Reminder</Label>
+          <p className="text-xs text-muted-foreground mb-3">
+            Acknowledge your rules before you start
+          </p>
+          <div className="space-y-2">
+            {ruleItems.map((item) => (
+              <label
+                key={item.id}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors ${
+                  data.rulesChecked.includes(item.id)
+                    ? 'border-emerald-500 bg-emerald-500/5 text-foreground'
+                    : 'border-border text-muted-foreground hover:bg-muted/50'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={data.rulesChecked.includes(item.id)}
+                  onChange={() => toggleArrayItem('rulesChecked', item.id)}
+                  className="sr-only"
+                />
+                <span className="text-sm">{item.label}</span>
+              </label>
+            ))}
+          </div>
+        </section>
 
         <Separator />
 
