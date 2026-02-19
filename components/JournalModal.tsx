@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, useEffect, memo } from 'react';
 import { FlattenedTrade } from '@/lib/tradeCycles';
 import { formatDuration, formatTime, formatValue, formatMarketCap } from '@/lib/formatters';
 import {
@@ -22,19 +22,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 
 export interface JournalData {
-  buyCategory: string;
+  strategy: string;
+  emotionalState: string;
   buyNotes: string;
   buyRating: number;
-  fomoLevel: number;
-  energyLevel: number;
   exitPlan: string;
   sellRating: number;
   followedExitRule: boolean | null;
   sellMistakes: string[];
   sellNotes: string;
   attachment?: string;
+  // Legacy fields preserved for backward compat when reading old data
+  buyCategory?: string;
+  fomoLevel?: number;
+  energyLevel?: number;
 }
 
 interface JournalModalProps {
@@ -42,18 +46,16 @@ interface JournalModalProps {
   initialData: JournalData | null;
   tokenLogo?: string | null;
   onSave: (data: JournalData) => void;
+  onSaveAndNext?: (data: JournalData) => void;
   onClose: () => void;
 }
 
-const buyCategories = [
-  'Trend Following',
-  'Breakout',
-  'Dip Buy',
-  'News/Event',
-  'Technical Setup',
-  'Fundamental Analysis',
+const emotionalStates = [
+  'Confident',
+  'Anxious',
   'FOMO',
-  'Other',
+  'Revenge',
+  'Neutral',
 ];
 
 const mistakeOptions = [
@@ -72,50 +74,74 @@ const mistakeOptions = [
   'Other',
 ];
 
+interface SavedStrategy {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+function loadStrategies(): SavedStrategy[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('journalio_strategies');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
 const JournalModal = memo(function JournalModal({
   trade,
   initialData,
   tokenLogo,
   onSave,
+  onSaveAndNext,
   onClose,
 }: JournalModalProps) {
-  const [buyCategory, setBuyCategory] = useState(initialData?.buyCategory || '');
+  // Migrate old buyCategory → strategy if needed
+  const initialStrategy = initialData?.strategy || initialData?.buyCategory || '';
+  const [strategy, setStrategy] = useState(initialStrategy);
+  const [emotionalState, setEmotionalState] = useState(initialData?.emotionalState || '');
   const [buyNotes, setBuyNotes] = useState(initialData?.buyNotes || '');
   const [buyRating, setBuyRating] = useState(initialData?.buyRating || 0);
-  const [fomoLevel, setFomoLevel] = useState(initialData?.fomoLevel || 0);
-  const [energyLevel, setEnergyLevel] = useState(initialData?.energyLevel || 0);
   const [exitPlan, setExitPlan] = useState(initialData?.exitPlan || '');
   const [sellRating, setSellRating] = useState(initialData?.sellRating || 0);
   const [followedExitRule, setFollowedExitRule] = useState<boolean | null>(initialData?.followedExitRule ?? null);
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
   const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
   const [attachment, setAttachment] = useState<string | undefined>(initialData?.attachment);
+  const [strategies, setStrategies] = useState<SavedStrategy[]>([]);
+
+  useEffect(() => {
+    setStrategies(loadStrategies());
+  }, []);
+
+  const buildData = useCallback((): JournalData => ({
+    strategy,
+    emotionalState,
+    buyNotes,
+    buyRating,
+    exitPlan,
+    sellRating,
+    followedExitRule,
+    sellMistakes,
+    sellNotes,
+    attachment,
+  }), [strategy, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachment]);
 
   const handleSave = useCallback(() => {
-    onSave({
-      buyCategory,
-      buyNotes,
-      buyRating,
-      fomoLevel,
-      energyLevel,
-      exitPlan,
-      sellRating,
-      followedExitRule,
-      sellMistakes,
-      sellNotes,
-      attachment,
-    });
-  }, [buyCategory, buyNotes, buyRating, fomoLevel, energyLevel, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachment, onSave]);
+    onSave(buildData());
+  }, [buildData, onSave]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file');
+        toast.error('Please upload an image file');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size should be less than 5MB');
+        toast.error('Image size should be less than 5MB');
         return;
       }
       const reader = new FileReader();
@@ -123,7 +149,7 @@ const JournalModal = memo(function JournalModal({
         setAttachment(reader.result as string);
       };
       reader.onerror = () => {
-        alert('Failed to read image file');
+        toast.error('Failed to read image file');
       };
       reader.readAsDataURL(file);
     }
@@ -137,6 +163,8 @@ const JournalModal = memo(function JournalModal({
 
   const avgBuyPrice = trade.totalBuyAmount > 0 ? trade.totalBuyValue / trade.totalBuyAmount : 0;
   const avgSellPrice = trade.totalSellAmount > 0 ? trade.totalSellValue / trade.totalSellAmount : 0;
+
+  const activeStrategies = strategies.filter((s) => s.active);
 
   return (
     <Dialog open onOpenChange={() => onClose()}>
@@ -185,17 +213,45 @@ const JournalModal = memo(function JournalModal({
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="buy-category" className="text-xs mb-1.5">
-                  Category
+                <Label className="text-xs mb-1.5">
+                  Strategy
                 </Label>
-                <Select value={buyCategory} onValueChange={setBuyCategory}>
+                <Select value={strategy} onValueChange={(val) => {
+                  if (val === '__add_new') {
+                    window.open('/strategies', '_blank');
+                    return;
+                  }
+                  setStrategy(val);
+                }}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a category..." />
+                    <SelectValue placeholder="Select a strategy..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {buyCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                    {activeStrategies.map((s) => (
+                      <SelectItem key={s.id} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                    {activeStrategies.length > 0 && <Separator className="my-1" />}
+                    <SelectItem value="__add_new" className="text-muted-foreground">
+                      + Add new strategy...
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs mb-1.5">
+                  Emotional State
+                </Label>
+                <Select value={emotionalState} onValueChange={setEmotionalState}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="How are you feeling?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {emotionalStates.map((state) => (
+                      <SelectItem key={state} value={state}>
+                        {state}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -216,7 +272,7 @@ const JournalModal = memo(function JournalModal({
               </div>
 
               <div>
-                <Label className="text-xs mb-1.5">Rate the entry</Label>
+                <Label className="text-xs mb-1.5">Rate the entry execution</Label>
                 <div className="flex gap-0.5 mt-1" role="group" aria-label="Entry rating">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                     <button
@@ -236,66 +292,6 @@ const JournalModal = memo(function JournalModal({
                   {buyRating > 0 && (
                     <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
                       {buyRating}/10
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs mb-1.5">FOMO Level</Label>
-                <p className="text-[10px] text-muted-foreground mb-1">1 = No FOMO · 10 = Pure FOMO</p>
-                <div className="flex gap-0.5" role="group" aria-label="FOMO level">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setFomoLevel(n)}
-                      className={`w-7 h-7 text-sm rounded transition-colors ${
-                        n <= fomoLevel
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
-                      aria-label={`FOMO level ${n} out of 10`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  {fomoLevel > 0 && (
-                    <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
-                      {fomoLevel}/10
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs mb-1.5">Energy Level</Label>
-                <p className="text-[10px] text-muted-foreground mb-1">1-2 Tapped Out · 3-4 Fatigued · 5-7 Partial · 8-10 Fully Charged</p>
-                <div className="flex gap-0.5" role="group" aria-label="Energy level">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
-                    let activeColor = 'bg-red-500 text-white';
-                    if (energyLevel >= 3 && energyLevel <= 4) activeColor = 'bg-orange-500 text-white';
-                    else if (energyLevel >= 5 && energyLevel <= 7) activeColor = 'bg-yellow-500 text-white';
-                    else if (energyLevel >= 8) activeColor = 'bg-emerald-500 text-white';
-                    return (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setEnergyLevel(n)}
-                        className={`w-7 h-7 text-sm rounded transition-colors ${
-                          n <= energyLevel
-                            ? activeColor
-                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                        }`}
-                        aria-label={`Energy level ${n} out of 10`}
-                      >
-                        {n}
-                      </button>
-                    );
-                  })}
-                  {energyLevel > 0 && (
-                    <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
-                      {energyLevel}/10
                     </span>
                   )}
                 </div>
@@ -469,6 +465,11 @@ const JournalModal = memo(function JournalModal({
           <Button variant="outline" size="sm" onClick={onClose}>
             Cancel
           </Button>
+          {onSaveAndNext && (
+            <Button variant="outline" size="sm" onClick={() => onSaveAndNext(buildData())}>
+              Save & Next
+            </Button>
+          )}
           <Button size="sm" onClick={handleSave}>
             Save Journal
           </Button>
