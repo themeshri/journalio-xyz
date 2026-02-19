@@ -118,7 +118,7 @@ function addTradeToTokenMap(
 ): void {
   const existingTrades = tokenMap.get(tokenMint);
   if (existingTrades) {
-    tokenMap.set(tokenMint, [...existingTrades, trade]);
+    existingTrades.push(trade);
   } else {
     tokenMap.set(tokenMint, [trade]);
   }
@@ -214,13 +214,13 @@ function processTradeIntoGroup(
 
   if (tradeDirection === 'buy') {
     // BUY: We receive the token (tokenOut), spend USD (valueUSD)
-    group.buys = [...group.buys, trade];
+    group.buys.push(trade);
     group.totalBuyAmount += trade.amountOut;
     group.totalBuyValue += trade.valueUSD;
     newBalance += trade.amountOut;
   } else if (tradeDirection === 'sell') {
     // SELL: We give away the token (tokenIn), receive USD (valueUSD)
-    group.sells = [...group.sells, trade];
+    group.sells.push(trade);
     group.totalSellAmount += trade.amountIn;
     group.totalSellValue += trade.valueUSD;
     newBalance -= trade.amountIn;

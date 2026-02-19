@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useWallet, makeWalletKey } from '@/lib/wallet-context'
+import { useWallet } from '@/lib/wallet-context'
 import { getWalletTokens } from '@/lib/solana-tracker'
-import { calculateTradeCycles, flattenTradeCycles, FlattenedTrade } from '@/lib/tradeCycles'
+import { type FlattenedTrade } from '@/lib/tradeCycles'
 import { formatValue, formatDuration, formatPrice, formatPercentage } from '@/lib/formatters'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,7 +19,6 @@ import JournalModal, { JournalData } from '@/components/JournalModal'
 import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
 import { toast } from 'sonner'
 import { TokenWithBadge } from '@/components/chain-badge'
-import { type Chain } from '@/lib/chains'
 
 const balanceCache = new Map<string, { tokens: any[]; timestamp: number }>()
 const CACHE_DURATION = 60000
@@ -65,7 +64,7 @@ function journalKey(trade: FlattenedTrade) {
 }
 
 export default function TradeJournalPage() {
-  const { activeWallets, walletSlots, isAnyLoading, hasActiveWallets, allTrades } = useWallet()
+  const { activeWallets, flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades } = useWallet()
   const [walletTokens, setWalletTokens] = useState<Map<string, any[]>>(new Map())
   const [loadingBalances, setLoadingBalances] = useState(false)
   const [balancesFetched, setBalancesFetched] = useState(false)
@@ -158,44 +157,31 @@ export default function TradeJournalPage() {
     }
   }
 
+  // Enrich with balance data separately — baseTrades come from context (no recomputation)
   const flattenedTrades = useMemo(() => {
-    if (!hasActiveWallets) return []
+    if (!balancesFetched || loadingBalances) return baseTrades
 
-    let allFlattened = activeWallets.flatMap((w) => {
-      const key = makeWalletKey(w.address, w.chain)
-      const slot = walletSlots[key]
-      if (!slot?.trades?.length) return []
-      const cycles = calculateTradeCycles(slot.trades, w.chain as Chain, w.address)
-      return flattenTradeCycles(cycles)
-    })
+    return baseTrades.map((trade) => {
+      const balanceKey = `${trade.chain}:${trade.walletAddress}`
+      const tokens = walletTokens.get(balanceKey) || []
+      const walletToken = tokens.find((t: any) => t.address === trade.tokenMint)
+      const actualBalance = walletToken?.balance || 0
+      const usdValue = walletToken?.valueUSD || 0
+      const finalBalance = usdValue < 1 ? 0 : actualBalance
 
-    allFlattened.sort((a, b) => b.startDate - a.startDate)
-
-    if (balancesFetched && !loadingBalances) {
-      allFlattened = allFlattened.map((trade) => {
-        const balanceKey = `${trade.chain}:${trade.walletAddress}`
-        const tokens = walletTokens.get(balanceKey) || []
-        const walletToken = tokens.find((t) => t.address === trade.tokenMint)
-        const actualBalance = walletToken?.balance || 0
-        const usdValue = walletToken?.valueUSD || 0
-        const finalBalance = usdValue < 1 ? 0 : actualBalance
-
-        if (!walletToken || (walletToken.balance || 0) < 100) {
-          return {
-            ...trade,
-            isComplete: true,
-            endBalance: finalBalance,
-            endDate: trade.endDate || trade.startDate,
-            duration: trade.duration || 0,
-          }
+      if (!walletToken || (walletToken.balance || 0) < 100) {
+        return {
+          ...trade,
+          isComplete: true,
+          endBalance: finalBalance,
+          endDate: trade.endDate || trade.startDate,
+          duration: trade.duration || 0,
         }
+      }
 
-        return { ...trade, endBalance: finalBalance }
-      })
-    }
-
-    return allFlattened
-  }, [activeWallets, walletSlots, hasActiveWallets, balancesFetched, loadingBalances, walletTokens])
+      return { ...trade, endBalance: finalBalance }
+    })
+  }, [baseTrades, balancesFetched, loadingBalances, walletTokens])
 
   // Load journals when trades change
   useEffect(() => {

@@ -1,8 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
 import { useWallet } from '@/lib/wallet-context'
-import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
 import { formatValue } from '@/lib/formatters'
 import {
   Table,
@@ -15,22 +13,9 @@ import {
 import { format } from 'date-fns'
 import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
 import { ChainIcon } from '@/components/chain-badge'
-import { type Chain } from '@/lib/chains'
 
 export default function OverviewPage() {
-  const { allTrades, activeWallets, isAnyLoading, hasActiveWallets, walletSlots } = useWallet()
-
-  const flattenedTrades = useMemo(() => {
-    if (!hasActiveWallets) return []
-    const allFlattened = activeWallets.flatMap((w) => {
-      const key = `${w.chain}:${w.address}`
-      const slot = walletSlots[key]
-      if (!slot?.trades?.length) return []
-      const cycles = calculateTradeCycles(slot.trades, w.chain as Chain, w.address)
-      return flattenTradeCycles(cycles)
-    })
-    return allFlattened.sort((a, b) => b.startDate - a.startDate)
-  }, [activeWallets, walletSlots, hasActiveWallets])
+  const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets } = useWallet()
 
   if (!hasActiveWallets) {
     return (

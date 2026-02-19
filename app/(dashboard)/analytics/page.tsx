@@ -1,8 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useWallet, makeWalletKey } from '@/lib/wallet-context'
-import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
+import { useWallet } from '@/lib/wallet-context'
 import { formatValue, formatDuration } from '@/lib/formatters'
 import {
   computeDurationBuckets,
@@ -28,7 +27,6 @@ import {
 } from 'recharts'
 import { Separator } from '@/components/ui/separator'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
-import { type Chain } from '@/lib/chains'
 
 const durationConfig = {
   count: { label: 'Trades', color: 'var(--chart-1)' },
@@ -43,19 +41,7 @@ const hoursConfig = {
 } satisfies ChartConfig
 
 export default function AnalyticsPage() {
-  const { activeWallets, walletSlots, isAnyLoading, hasActiveWallets, allTrades } = useWallet()
-
-  const flattenedTrades = useMemo(() => {
-    if (!hasActiveWallets) return []
-    const allFlattened = activeWallets.flatMap((w) => {
-      const key = makeWalletKey(w.address, w.chain)
-      const slot = walletSlots[key]
-      if (!slot?.trades?.length) return []
-      const cycles = calculateTradeCycles(slot.trades, w.chain as Chain, w.address)
-      return flattenTradeCycles(cycles)
-    })
-    return allFlattened.sort((a, b) => b.startDate - a.startDate)
-  }, [activeWallets, walletSlots, hasActiveWallets])
+  const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades } = useWallet()
 
   const completedTrades = useMemo(
     () => flattenedTrades.filter((t) => t.isComplete),

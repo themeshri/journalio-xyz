@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { type Chain } from './chains'
+import { calculateTradeCycles, flattenTradeCycles, type FlattenedTrade } from './tradeCycles'
 
 interface CacheInfo {
   cached: boolean
@@ -51,6 +52,7 @@ interface WalletContextValue {
 
   // Aggregated convenience values
   allTrades: any[]
+  flattenedTrades: FlattenedTrade[]
   activeWallets: SavedWallet[]
   isAnyLoading: boolean
   hasActiveWallets: boolean
@@ -301,6 +303,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return merged.sort((a, b) => b.timestamp - a.timestamp)
   }, [activeWallets, walletSlots])
 
+  const flattenedTrades = useMemo(() => {
+    const allFlattened = activeWallets.flatMap((w) => {
+      const key = makeWalletKey(w.address, w.chain)
+      const slot = walletSlots[key]
+      if (!slot?.trades?.length) return []
+      const cycles = calculateTradeCycles(slot.trades, w.chain, w.address)
+      return flattenTradeCycles(cycles)
+    })
+    return allFlattened.sort((a, b) => b.startDate - a.startDate)
+  }, [activeWallets, walletSlots])
+
   const isAnyLoading = useMemo(() => {
     return activeWallets.some((w) => {
       const key = makeWalletKey(w.address, w.chain)
@@ -315,6 +328,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       value={{
         walletSlots,
         allTrades,
+        flattenedTrades,
         activeWallets,
         isAnyLoading,
         hasActiveWallets,
