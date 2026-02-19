@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getWalletTrades } from '@/lib/solana-tracker'
+import { getWalletTrades as getSolanaWalletTrades } from '@/lib/solana-tracker'
+import { getWalletTrades as getEvmWalletTrades } from '@/lib/zerion'
+import { type Chain, isEvmChain } from '@/lib/chains'
 
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {
@@ -20,20 +22,8 @@ export async function GET(request: NextRequest) {
     const walletAddress = searchParams.get('address')
     const forceRefresh = searchParams.get('refresh') === 'true'
     
-    // Auto-detect chain if not provided
-    let chain = searchParams.get('chain')
-    if (!chain && walletAddress) {
-      // Auto-detect chain based on address format
-      if (/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
-        chain = 'ethereum'
-      } else if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(walletAddress)) {
-        chain = 'solana'
-      } else {
-        chain = 'ethereum' // Default fallback
-      }
-    } else if (!chain) {
-      chain = 'ethereum' // Default to Ethereum
-    }
+    // Read chain from query param (default to solana for backward compat)
+    const chain = (searchParams.get('chain') || 'solana') as Chain
 
     if (!walletAddress) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
@@ -110,11 +100,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fetch fresh data from Solana Tracker API
+    // Fetch fresh data from appropriate API
     try {
       console.log('Fetching trades for:', walletAddress, 'chain:', chain);
-      const apiTrades = await getWalletTrades(walletAddress, 1000);
-      console.log('Retrieved', apiTrades?.length || 0, 'trades from Solana Tracker');
+      const apiTrades = isEvmChain(chain)
+        ? await getEvmWalletTrades(walletAddress, 1000, chain)
+        : await getSolanaWalletTrades(walletAddress, 1000);
+      console.log('Retrieved', apiTrades?.length || 0, `trades from ${isEvmChain(chain) ? 'Zerion' : 'Solana Tracker'}`);
 
       // Find existing trade signatures to only process new ones
       const existingSignatures = new Set(cachedTrades.map(t => t.signature));
@@ -155,7 +147,7 @@ export async function GET(request: NextRequest) {
         fetchedAt: new Date()
       })
     } catch (apiError) {
-      console.error('Solana Tracker API error:', apiError);
+      console.error(`${isEvmChain(chain) ? 'Zerion' : 'Solana Tracker'} API error:`, apiError);
       
       // If API fails, return cached data even if stale
       if (cachedTrades.length > 0) {
@@ -184,7 +176,8 @@ export async function GET(request: NextRequest) {
 
       // Return more specific error
       const errorMessage = apiError instanceof Error ? apiError.message : 'Unknown API error';
-      throw new Error(`Solana Tracker API failed: ${errorMessage}`)
+      const apiName = isEvmChain(chain) ? 'Zerion' : 'Solana Tracker';
+      throw new Error(`${apiName} API failed: ${errorMessage}`)
     }
   } catch (error) {
     console.error('Error fetching trades:', error)

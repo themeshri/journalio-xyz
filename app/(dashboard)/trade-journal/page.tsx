@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/table'
 import TransactionModal from '@/components/TransactionModal'
 import JournalModal, { JournalData } from '@/components/JournalModal'
+import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
+import { toast } from 'sonner'
 
 const balanceCache = new Map<string, { tokens: any[]; timestamp: number }>()
 const CACHE_DURATION = 60000
@@ -57,7 +59,7 @@ function truncateAddress(addr: string) {
 }
 
 export default function TradeJournalPage() {
-  const { currentWallet, trades, isLoading, error } = useWallet()
+  const { currentWallet, currentChain, trades, isLoading, error } = useWallet()
   const [walletTokens, setWalletTokens] = useState<any[]>([])
   const [loadingBalances, setLoadingBalances] = useState(false)
   const [balancesFetched, setBalancesFetched] = useState(false)
@@ -134,7 +136,7 @@ export default function TradeJournalPage() {
 
   const flattenedTrades = useMemo(() => {
     if (trades.length === 0) return []
-    const tradeCycles = calculateTradeCycles(trades)
+    const tradeCycles = calculateTradeCycles(trades, currentChain)
     let flattened = flattenTradeCycles(tradeCycles)
 
     if (balancesFetched && !loadingBalances) {
@@ -184,6 +186,30 @@ export default function TradeJournalPage() {
     setJournalMap((prev) => ({ ...prev, [key]: data }))
     setJournalModalTrade(null)
   }, [journalModalTrade, currentWallet])
+
+  const handleJournalSaveAndNext = useCallback((data: JournalData) => {
+    if (!journalModalTrade) return
+    const key = `${journalModalTrade.tokenMint}-${journalModalTrade.tradeNumber}`
+    localStorage.setItem(
+      jKey(currentWallet, journalModalTrade.tokenMint, journalModalTrade.tradeNumber),
+      JSON.stringify(data)
+    )
+    const updatedMap = { ...journalMap, [key]: data }
+    setJournalMap(updatedMap)
+
+    // Find next un-journaled trade
+    const currentIdx = flattenedTrades.indexOf(journalModalTrade)
+    const nextTrade = flattenedTrades.find(
+      (t, i) => i > currentIdx && !updatedMap[`${t.tokenMint}-${t.tradeNumber}`]
+    )
+
+    if (nextTrade) {
+      setJournalModalTrade(nextTrade)
+    } else {
+      setJournalModalTrade(null)
+      toast.success('All trades journaled!')
+    }
+  }, [journalModalTrade, currentWallet, journalMap, flattenedTrades])
 
   // Apply filters and sorting
   const displayTrades = useMemo(() => {
@@ -241,7 +267,9 @@ export default function TradeJournalPage() {
   if (isLoading) {
     return (
       <div className="pt-8">
-        <p className="text-sm text-muted-foreground">Loading trades...</p>
+        <h1 className="text-xl font-semibold mb-6">Trade Journal</h1>
+        <StatStripSkeleton count={6} />
+        <TableRowsSkeleton rows={5} cols={8} />
       </div>
     )
   }
@@ -527,15 +555,22 @@ export default function TradeJournalPage() {
           onClose={() => setSellsModalTrade(null)}
         />
       )}
-      {journalModalTrade && (
-        <JournalModal
-          trade={journalModalTrade}
-          initialData={getJournal(journalModalTrade)}
-          tokenLogo={journalModalTrade.buys[0]?.tokenOut?.logoURI || journalModalTrade.sells[0]?.tokenIn?.logoURI || null}
-          onSave={handleJournalSave}
-          onClose={() => setJournalModalTrade(null)}
-        />
-      )}
+      {journalModalTrade && (() => {
+        const hasNextUnjournaled = flattenedTrades.some(
+          (t) => t !== journalModalTrade && !journalMap[`${t.tokenMint}-${t.tradeNumber}`]
+        )
+        return (
+          <JournalModal
+            key={`${journalModalTrade.tokenMint}-${journalModalTrade.tradeNumber}`}
+            trade={journalModalTrade}
+            initialData={getJournal(journalModalTrade)}
+            tokenLogo={journalModalTrade.buys[0]?.tokenOut?.logoURI || journalModalTrade.sells[0]?.tokenIn?.logoURI || null}
+            onSave={handleJournalSave}
+            onSaveAndNext={hasNextUnjournaled ? handleJournalSaveAndNext : undefined}
+            onClose={() => setJournalModalTrade(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

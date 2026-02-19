@@ -12,16 +12,17 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { format } from 'date-fns'
+import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
 
 export default function OverviewPage() {
-  const { currentWallet, trades, isLoading, error } = useWallet()
+  const { currentWallet, currentChain, trades, isLoading, error } = useWallet()
 
   if (!currentWallet) {
     return (
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Overview</h1>
         <p className="text-sm text-muted-foreground">
-          Enter a Solana wallet address in the sidebar to start tracking trades.
+          Add a wallet in Wallet Management to start tracking trades.
         </p>
       </div>
     )
@@ -30,7 +31,10 @@ export default function OverviewPage() {
   if (isLoading) {
     return (
       <div className="pt-8">
-        <p className="text-sm text-muted-foreground">Loading trades...</p>
+        <h1 className="text-xl font-semibold mb-6">Overview</h1>
+        <StatStripSkeleton count={4} />
+        <h2 className="text-sm font-semibold mb-3">Recent Trades</h2>
+        <TableRowsSkeleton rows={5} cols={6} />
       </div>
     )
   }
@@ -54,7 +58,7 @@ export default function OverviewPage() {
     )
   }
 
-  const tradeCycles = calculateTradeCycles(trades)
+  const tradeCycles = calculateTradeCycles(trades, currentChain)
   const flattenedTrades = flattenTradeCycles(tradeCycles)
   const totalTrades = flattenedTrades.length
   const profitableTrades = flattenedTrades.filter((t) => t.profitLoss > 0).length

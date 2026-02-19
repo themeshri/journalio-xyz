@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useWallet } from '@/lib/wallet-context'
-import { isValidSolanaAddress } from '@/lib/solana-tracker'
+import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 
 interface SavedWallet {
   address: string
-  chain: 'solana' | 'base' | 'bnb'
+  chain: Chain
   nickname: string
 }
 
@@ -29,11 +29,18 @@ function saveWallets(wallets: SavedWallet[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets))
 }
 
+const CHAIN_LABELS: Record<Chain, string> = {
+  solana: 'SOL',
+  base: 'BASE',
+  bnb: 'BNB',
+}
+
 export default function WalletManagementPage() {
-  const { currentWallet, searchWallet, clearWallet, isLoading } = useWallet()
+  const { currentWallet, currentChain, searchWallet, clearWallet, isLoading } = useWallet()
   const [wallets, setWallets] = useState<SavedWallet[]>([])
   const [address, setAddress] = useState('')
   const [nickname, setNickname] = useState('')
+  const [selectedChain, setSelectedChain] = useState<Chain>('solana')
   const [error, setError] = useState('')
   const [mounted, setMounted] = useState(false)
 
@@ -47,6 +54,19 @@ export default function WalletManagementPage() {
     saveWallets(next)
   }, [])
 
+  function handleAddressChange(value: string) {
+    setAddress(value)
+    setError('')
+    const trimmed = value.trim()
+    const detected = detectChainFromAddress(trimmed)
+    if (detected === 'solana') {
+      setSelectedChain('solana')
+    } else if (detected === null && /^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
+      // EVM address — auto-select base if currently on solana
+      if (selectedChain === 'solana') setSelectedChain('base')
+    }
+  }
+
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -55,30 +75,31 @@ export default function WalletManagementPage() {
       setError('Enter an address')
       return
     }
-    if (!isValidSolanaAddress(trimmed)) {
-      setError('Invalid Solana address')
+    if (!isValidAddress(trimmed, selectedChain)) {
+      setError(`Invalid ${CHAIN_CONFIG[selectedChain].label} address`)
       return
     }
-    if (wallets.some((w) => w.address === trimmed)) {
+    if (wallets.some((w) => w.address === trimmed && w.chain === selectedChain)) {
       setError('Wallet already saved')
       return
     }
     const next = [
       ...wallets,
-      { address: trimmed, chain: 'solana' as const, nickname: nickname.trim() },
+      { address: trimmed, chain: selectedChain, nickname: nickname.trim() },
     ]
     persistWallets(next)
     setAddress('')
     setNickname('')
+    setSelectedChain('solana')
 
     // Auto-switch if no active wallet
     if (!currentWallet) {
-      searchWallet(trimmed)
+      searchWallet(trimmed, selectedChain)
     }
   }
 
-  function handleSwitch(addr: string) {
-    searchWallet(addr)
+  function handleSwitch(addr: string, chain: Chain) {
+    searchWallet(addr, chain)
   }
 
   function handleRemove(addr: string) {
@@ -108,7 +129,7 @@ export default function WalletManagementPage() {
           <h2 className="text-sm font-medium">Active Wallet</h2>
           <div className="border border-border rounded-md p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded">SOL</span>
+              <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded">{CHAIN_LABELS[currentChain]}</span>
               <span className="font-mono text-sm truncate">{currentWallet}</span>
             </div>
             <div className="flex gap-2">
@@ -116,7 +137,7 @@ export default function WalletManagementPage() {
                 variant="outline"
                 size="sm"
                 className="text-xs"
-                onClick={() => searchWallet(currentWallet, true)}
+                onClick={() => searchWallet(currentWallet, currentChain, true)}
                 disabled={isLoading}
               >
                 {isLoading ? 'Refreshing...' : 'Refresh'}
@@ -144,11 +165,8 @@ export default function WalletManagementPage() {
             <div className="flex-1 space-y-1.5">
               <Input
                 value={address}
-                onChange={(e) => {
-                  setAddress(e.target.value)
-                  setError('')
-                }}
-                placeholder="Solana wallet address..."
+                onChange={(e) => handleAddressChange(e.target.value)}
+                placeholder="Wallet address (Solana or 0x)..."
                 className="text-sm font-mono"
                 disabled={isLoading}
               />
@@ -164,15 +182,23 @@ export default function WalletManagementPage() {
               />
             </div>
             <div className="flex gap-1.5">
-              <span className="text-xs font-medium bg-muted px-2 py-1.5 rounded border border-border">
-                Solana
-              </span>
-              <span className="text-xs text-muted-foreground px-2 py-1.5 rounded border border-dashed border-border">
-                Base (soon)
-              </span>
-              <span className="text-xs text-muted-foreground px-2 py-1.5 rounded border border-dashed border-border">
-                BNB (soon)
-              </span>
+              {(['solana', 'base', 'bnb'] as Chain[]).map((chain) => {
+                const isSelected = selectedChain === chain
+                return (
+                  <button
+                    key={chain}
+                    type="button"
+                    onClick={() => setSelectedChain(chain)}
+                    className={`text-xs px-2 py-1.5 rounded border transition-colors ${
+                      isSelected
+                        ? 'font-medium bg-muted border-border'
+                        : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
+                    }`}
+                  >
+                    {CHAIN_CONFIG[chain].label}
+                  </button>
+                )
+              })}
             </div>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -192,10 +218,10 @@ export default function WalletManagementPage() {
         )}
         <div className="space-y-2">
           {wallets.map((w) => {
-            const isActive = currentWallet === w.address
+            const isActive = currentWallet === w.address && currentChain === w.chain
             return (
               <div
-                key={w.address}
+                key={`${w.chain}-${w.address}`}
                 className={`border rounded-md p-3 flex items-center justify-between gap-3 ${
                   isActive ? 'border-foreground' : 'border-border'
                 }`}
@@ -203,7 +229,7 @@ export default function WalletManagementPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
-                      SOL
+                      {CHAIN_LABELS[w.chain]}
                     </span>
                     {w.nickname && (
                       <span className="text-sm font-medium">{w.nickname}</span>
@@ -222,7 +248,7 @@ export default function WalletManagementPage() {
                       variant="outline"
                       size="sm"
                       className="text-xs"
-                      onClick={() => handleSwitch(w.address)}
+                      onClick={() => handleSwitch(w.address, w.chain)}
                       disabled={isLoading}
                     >
                       Switch

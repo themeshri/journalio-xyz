@@ -27,6 +27,7 @@ import {
   Cell,
 } from 'recharts'
 import { Separator } from '@/components/ui/separator'
+import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 
 const durationConfig = {
   count: { label: 'Trades', color: 'var(--chart-1)' },
@@ -41,13 +42,13 @@ const hoursConfig = {
 } satisfies ChartConfig
 
 export default function AnalyticsPage() {
-  const { currentWallet, trades, isLoading, error } = useWallet()
+  const { currentWallet, currentChain, trades, isLoading, error } = useWallet()
 
   const flattenedTrades = useMemo(() => {
     if (trades.length === 0) return []
-    const cycles = calculateTradeCycles(trades)
+    const cycles = calculateTradeCycles(trades, currentChain)
     return flattenTradeCycles(cycles)
-  }, [trades])
+  }, [trades, currentChain])
 
   const completedTrades = useMemo(
     () => flattenedTrades.filter((t) => t.isComplete),
@@ -87,8 +88,14 @@ export default function AnalyticsPage() {
 
   if (isLoading) {
     return (
-      <div className="pt-8">
-        <p className="text-sm text-muted-foreground">Loading trades...</p>
+      <div className="max-w-4xl pt-8">
+        <h1 className="text-xl font-semibold mb-6">Analytics</h1>
+        <StatStripSkeleton count={5} />
+        <div className="space-y-10">
+          <ChartSkeleton />
+          <ChartSkeleton />
+          <ChartSkeleton />
+        </div>
       </div>
     )
   }

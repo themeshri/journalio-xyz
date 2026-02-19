@@ -16,6 +16,7 @@ import {
   SidebarGroupLabel,
 } from '@/components/ui/sidebar'
 import { useWallet } from '@/lib/wallet-context'
+import { CHAIN_CONFIG } from '@/lib/chains'
 
 function isPreSessionCompletedToday(): boolean {
   try {
@@ -48,7 +49,8 @@ export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const walletParam = searchParams.get('wallet')
-  const { currentWallet } = useWallet()
+  const chainParam = searchParams.get('chain')
+  const { currentWallet, currentChain } = useWallet()
   const [preSessionDone, setPreSessionDone] = useState(false)
 
   useEffect(() => {
@@ -65,7 +67,10 @@ export function AppSidebar() {
 
   function buildHref(base: string) {
     if (walletParam) {
-      return `${base}?wallet=${encodeURIComponent(walletParam)}`
+      const params = new URLSearchParams()
+      params.set('wallet', walletParam)
+      if (chainParam) params.set('chain', chainParam)
+      return `${base}?${params.toString()}`
     }
     return base
   }
@@ -111,12 +116,21 @@ export function AppSidebar() {
         </div>
         <Link
           href={buildHref('/wallet-management')}
-          className="mt-1 block text-xs text-muted-foreground hover:text-foreground transition-colors font-mono truncate"
+          className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
           title={currentWallet || 'No wallet selected'}
         >
-          {currentWallet
-            ? `${currentWallet.slice(0, 4)}...${currentWallet.slice(-4)}`
-            : 'No wallet selected'}
+          {currentWallet ? (
+            <>
+              <span className="text-[10px] font-medium bg-muted px-1 py-0.5 rounded shrink-0">
+                {CHAIN_CONFIG[currentChain].label.toUpperCase()}
+              </span>
+              <span className="font-mono truncate">
+                {currentWallet.slice(0, 4)}...{currentWallet.slice(-4)}
+              </span>
+            </>
+          ) : (
+            'No wallet selected'
+          )}
         </Link>
       </SidebarHeader>
       <SidebarContent>

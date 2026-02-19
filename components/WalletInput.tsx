@@ -1,7 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { isValidWalletAddress } from '@/lib/zerion';
+import { isValidAddress, type Chain } from '@/lib/chains';
+
+function isValidWalletAddress(address: string, chain?: string): boolean {
+  if (chain && ['solana', 'base', 'bnb'].includes(chain)) {
+    return isValidAddress(address, chain as Chain);
+  }
+  return (['solana', 'base', 'bnb'] as Chain[]).some(c => isValidAddress(address, c));
+}
 
 interface WalletInputProps {
   onSearch: (address: string, chain: string) => void;

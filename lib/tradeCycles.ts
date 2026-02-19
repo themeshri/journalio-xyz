@@ -1,5 +1,7 @@
 // Using any[] instead of specific Trade type for flexibility with Zerion API
 
+import { type Chain, CHAIN_CONFIG } from './chains'
+
 /**
  * Constants used in trade cycle calculations
  */
@@ -7,23 +9,14 @@ const DUST_THRESHOLD = 100; // Tokens below this threshold are considered dust (
 const MS_TO_SECONDS = 1000; // Conversion factor from milliseconds to seconds
 
 /**
- * Common trading pairs and stablecoins to exclude from trade cycles.
- * These tokens are typically used as intermediary trading pairs and
- * don't represent meaningful position tracking.
- */
-const EXCLUDED_TOKENS = new Set([
-  'SOL', 'WSOL', 'Wrapped SOL',
-  'USDC', 'USDT', 'USDS', 'PYUSD', 'DAI',
-  'mSOL', 'stSOL', 'jitoSOL', 'bSOL',
-]);
-
-/**
  * Check if a token should be excluded from trade cycles.
+ * Uses chain-specific exclusion set from CHAIN_CONFIG.
  * @param symbol - The token symbol to check
+ * @param chain - The chain to use for exclusion rules (defaults to solana)
  * @returns true if the token should be excluded from trade cycle tracking
  */
-function isExcludedToken(symbol: string): boolean {
-  return EXCLUDED_TOKENS.has(symbol.toUpperCase());
+function isExcludedToken(symbol: string, chain: Chain = 'solana'): boolean {
+  return CHAIN_CONFIG[chain].excludedSymbols.has(symbol.toUpperCase());
 }
 
 export interface TradeGroup {
@@ -327,7 +320,7 @@ function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[]): Trade
  * 4. A new cycle starts when balance returns to ~0 and a new buy occurs
  * 5. Track buys, sells, P/L, and completion status for each cycle
  */
-export function calculateTradeCycles(trades: any[]): TradeCycle[] {
+export function calculateTradeCycles(trades: any[], chain: Chain = 'solana'): TradeCycle[] {
   // Handle empty input
   if (!trades || trades.length === 0) {
     return [];
@@ -348,8 +341,8 @@ export function calculateTradeCycles(trades: any[]): TradeCycle[] {
 
     const tokenSymbol = extractTokenSymbol(firstTrade, tokenMint);
 
-    // Skip excluded tokens (stablecoins, SOL, wrapped tokens)
-    if (isExcludedToken(tokenSymbol)) {
+    // Skip excluded tokens (stablecoins, native tokens, wrapped tokens)
+    if (isExcludedToken(tokenSymbol, chain)) {
       return;
     }
 
