@@ -88,7 +88,7 @@ export async function getWalletTransactionsWithPagination(
       currency,
       'filter[trash]': 'no_filter',
       ...(limit && { 'page[size]': limit.toString() }),
-      ...(cursor && { 'page[cursor]': cursor }),
+      ...(cursor && { 'page[after]': cursor }),
       ...(zerionChainId && { 'filter[chain_ids]': zerionChainId }),
     })
 
@@ -162,20 +162,67 @@ export async function getWalletTransactionsWithPagination(
           valueUSD += parseFloat(inTransfer.value || '0')
         }
 
+        // Synthesize missing side for single-transfer txs (Relay/Fomo trades)
+        // These come as single `in` (buy) or single `out` (sell) transfers
+        const chainCfg = CHAIN_CONFIG[chain]
+        const nativeTokenInfo: ZerionTokenInfo = {
+          address: '',
+          symbol: chainCfg.nativeToken,
+          name: chainCfg.nativeToken,
+          decimals: 18,
+        }
+        const excludedSymbols = new Set([
+          ...chainCfg.excludedSymbols,
+          ...chainCfg.stablecoins.map(s => s.toUpperCase()),
+        ])
+
+        if (tokenIn && !tokenOut) {
+          // Only `out` transfer (selling token) → synthesize native token as tokenOut
+          tokenOut = nativeTokenInfo
+          amountOut = valueUSD // treat as USD-equivalent
+        } else if (tokenOut && !tokenIn) {
+          // Only `in` transfer (buying token) → synthesize native token as tokenIn
+          tokenIn = nativeTokenInfo
+          amountIn = valueUSD
+        }
+
+        // Check if a token symbol is a non-excluded trading token
+        const isTradableToken = (symbol: string | undefined): boolean =>
+          !!symbol && !excludedSymbols.has(symbol.toUpperCase())
+
         let type: ZerionTransaction['type'] = 'send'
         switch (attributes.operation_type) {
           case 'send': type = 'send'; break
-          case 'receive': type = 'receive'; break
+          case 'receive':
+            // Single-transfer receive of a tradable token → classify as trade
+            if (outTransfers.length === 0 && inTransfers.length > 0 &&
+                isTradableToken(inTransfers[0].fungible_info?.symbol)) {
+              type = 'trade'
+            } else {
+              type = 'receive'
+            }
+            break
           case 'trade':
           case 'swap':
             type = tokenIn && tokenOut ? 'trade' : 'send'
+            break
+          case 'execute':
+            // Single-transfer execute of a tradable token → classify as trade
+            if (inTransfers.length === 0 && outTransfers.length > 0 &&
+                isTradableToken(outTransfers[0].fungible_info?.symbol)) {
+              type = 'trade'
+            } else if (tokenIn && tokenOut) {
+              type = 'trade'
+            } else {
+              type = 'send'
+            }
             break
           case 'approve': type = 'approve'; break
           case 'cancel': type = 'cancel'; break
           case 'deposit': type = 'deposit'; break
           case 'withdraw': type = 'withdraw'; break
           default:
-            if (inTransfers.length > 0 && outTransfers.length > 0 && tokenIn && tokenOut) {
+            if (tokenIn && tokenOut) {
               type = 'trade'
             } else if (inTransfers.length > 0) {
               type = 'receive'
@@ -248,7 +295,7 @@ export async function getWalletTransactionsWithPagination(
     })
 
     const nextCursor = data.links?.next
-      ? new URL(data.links.next).searchParams.get('page[cursor]') || undefined
+      ? new URL(data.links.next).searchParams.get('page[after]') || undefined
       : undefined
 
     return { transactions: transformedTransactions, nextCursor }

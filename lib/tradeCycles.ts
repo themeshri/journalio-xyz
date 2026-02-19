@@ -136,14 +136,16 @@ function groupTradesByToken(trades: any[]): Map<string, any[]> {
     const tokenOutMint = trade.tokenOut?.address;
     const tokenInMint = trade.tokenIn?.address;
 
-    // Skip trades without proper token data
-    if (!tokenOutMint || !tokenInMint) return;
+    // Skip trades without any token data
+    if (!tokenOutMint && !tokenInMint) return;
 
     // Add to tokenOut group (potential buy)
-    addTradeToTokenMap(tokenMap, tokenOutMint, trade);
+    if (tokenOutMint) {
+      addTradeToTokenMap(tokenMap, tokenOutMint, trade);
+    }
 
     // Add to tokenIn group (potential sell) if different token
-    if (tokenInMint !== tokenOutMint) {
+    if (tokenInMint && tokenInMint !== tokenOutMint) {
       addTradeToTokenMap(tokenMap, tokenInMint, trade);
     }
   });
