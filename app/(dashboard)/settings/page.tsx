@@ -13,16 +13,30 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
+import { FormSkeleton } from '@/components/skeletons'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
   const [displayName, setDisplayName] = useState('')
   const [transactionLimit, setTransactionLimit] = useState('50')
   const [showUSDValues, setShowUSDValues] = useState(true)
+  const [journalViewMode, setJournalViewMode] = useState<'merged' | 'grouped'>('merged')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>(
     'idle'
   )
   const [isLoading, setIsLoading] = useState(true)
+  const [resetConfirm, setResetConfirm] = useState(false)
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -31,6 +45,13 @@ export default function SettingsPage() {
       setIsLoading(false)
     }
   }, [status])
+
+  useEffect(() => {
+    try {
+      const mode = localStorage.getItem('journalio_journal_view_mode')
+      if (mode === 'merged' || mode === 'grouped') setJournalViewMode(mode)
+    } catch {}
+  }, [])
 
   async function fetchSettings() {
     try {
@@ -65,17 +86,17 @@ export default function SettingsPage() {
         setSaveStatus('saved')
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
-        alert('Failed to save settings')
+        toast.error('Failed to save settings')
         setSaveStatus('idle')
       }
     } catch {
-      alert('Failed to save settings')
+      toast.error('Failed to save settings')
       setSaveStatus('idle')
     }
   }
 
-  async function handleReset() {
-    if (!confirm('Reset all settings to default?')) return
+  async function executeReset() {
+    setResetConfirm(false)
     setSaveStatus('saving')
     try {
       const res = await fetch('/api/settings', {
@@ -96,7 +117,7 @@ export default function SettingsPage() {
         setTimeout(() => setSaveStatus('idle'), 2000)
       }
     } catch {
-      alert('Failed to reset settings')
+      toast.error('Failed to reset settings')
     } finally {
       setSaveStatus('idle')
     }
@@ -105,7 +126,8 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="pt-8">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <h1 className="text-xl font-semibold mb-8">Settings</h1>
+        <FormSkeleton fields={4} />
       </div>
     )
   }
@@ -190,6 +212,33 @@ export default function SettingsPage() {
               onCheckedChange={setShowUSDValues}
             />
           </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs">Journal View Mode</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                How to display trades from multiple wallets
+              </p>
+            </div>
+            <div className="flex gap-1">
+              {(['merged', 'grouped'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => {
+                    setJournalViewMode(mode)
+                    localStorage.setItem('journalio_journal_view_mode', mode)
+                  }}
+                  className={`text-xs px-2.5 py-1 rounded border transition-colors ${
+                    journalViewMode === mode
+                      ? 'font-medium bg-muted border-border'
+                      : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
+                  }`}
+                >
+                  {mode === 'merged' ? 'Merged List' : 'By Wallet'}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -197,7 +246,7 @@ export default function SettingsPage() {
 
       {/* Actions */}
       <div className="flex gap-2 justify-end">
-        <Button variant="outline" size="sm" onClick={handleReset}>
+        <Button variant="outline" size="sm" onClick={() => setResetConfirm(true)}>
           Reset to Default
         </Button>
         <Button
@@ -212,6 +261,19 @@ export default function SettingsPage() {
               : 'Save Changes'}
         </Button>
       </div>
+
+      <AlertDialog open={resetConfirm} onOpenChange={setResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset all settings to default?</AlertDialogTitle>
+            <AlertDialogDescription>This will revert all preferences to their default values.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeReset}>Reset</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

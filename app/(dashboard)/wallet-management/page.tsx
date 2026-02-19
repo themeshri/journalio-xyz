@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useWallet } from '@/lib/wallet-context'
+import { useWallet, makeWalletKey } from '@/lib/wallet-context'
 import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ interface SavedWallet {
   address: string
   chain: Chain
   nickname: string
-  dex: string // 'fomo' | 'axiom' | 'jupiter' | 'gmgn' | 'other'
+  dex: string
 }
 
 const DEX_OPTIONS = [
@@ -45,7 +45,7 @@ const CHAIN_LABELS: Record<Chain, string> = {
 }
 
 export default function WalletManagementPage() {
-  const { currentWallet, currentChain, currentDex, searchWallet, clearWallet, isLoading } = useWallet()
+  const { activeWallets, walletSlots, setWalletActive, refreshWallet, isAnyLoading } = useWallet()
   const [wallets, setWallets] = useState<SavedWallet[]>([])
   const [address, setAddress] = useState('')
   const [nickname, setNickname] = useState('')
@@ -72,7 +72,6 @@ export default function WalletManagementPage() {
     if (detected === 'solana') {
       setSelectedChain('solana')
     } else if (detected === null && /^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
-      // EVM address — auto-select base if currently on solana
       if (selectedChain === 'solana') setSelectedChain('base')
     }
   }
@@ -103,22 +102,19 @@ export default function WalletManagementPage() {
     setSelectedChain('solana')
     setSelectedDex('other')
 
-    // Auto-switch if no active wallet
-    if (!currentWallet) {
-      searchWallet(trimmed, selectedChain, false, selectedDex)
-    }
-  }
-
-  function handleSwitch(addr: string, chain: Chain, dex: string) {
-    searchWallet(addr, chain, false, dex)
+    // Auto-toggle new wallet active
+    setWalletActive(trimmed, selectedChain, true)
   }
 
   function handleRemove(addr: string, chain: Chain) {
     const next = wallets.filter((w) => !(w.address === addr && w.chain === chain))
     persistWallets(next)
-    if (currentWallet === addr && currentChain === chain) {
-      clearWallet()
-    }
+    // Deactivate if active
+    setWalletActive(addr, chain, false)
+  }
+
+  function isActive(addr: string, chain: Chain) {
+    return activeWallets.some((w) => w.address === addr && w.chain === chain)
   }
 
   function truncate(addr: string) {
@@ -130,41 +126,9 @@ export default function WalletManagementPage() {
       <div>
         <h1 className="text-xl font-semibold mb-1">Wallet Management</h1>
         <p className="text-sm text-muted-foreground">
-          Add wallets, switch between them, and manage your tracking.
+          Add wallets and toggle which ones are active. Active wallets load simultaneously.
         </p>
       </div>
-
-      {/* Active wallet */}
-      {currentWallet && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-medium">Active Wallet</h2>
-          <div className="border border-border rounded-md p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded">{CHAIN_LABELS[currentChain]}</span>
-              <span className="font-mono text-sm truncate">{currentWallet}</span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => searchWallet(currentWallet, currentChain, true, currentDex)}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Refreshing...' : 'Refresh'}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs"
-                onClick={clearWallet}
-              >
-                Disconnect
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Separator />
 
@@ -179,7 +143,6 @@ export default function WalletManagementPage() {
                 onChange={(e) => handleAddressChange(e.target.value)}
                 placeholder="Wallet address (Solana or 0x)..."
                 className="text-sm font-mono"
-                disabled={isLoading}
               />
             </div>
           </div>
@@ -233,7 +196,7 @@ export default function WalletManagementPage() {
             })}
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button type="submit" size="sm" className="text-xs" disabled={isLoading}>
+          <Button type="submit" size="sm" className="text-xs">
             Add Wallet
           </Button>
         </form>
@@ -249,45 +212,59 @@ export default function WalletManagementPage() {
         )}
         <div className="space-y-2">
           {wallets.map((w) => {
-            const isActive = currentWallet === w.address && currentChain === w.chain
+            const active = isActive(w.address, w.chain)
+            const key = makeWalletKey(w.address, w.chain)
+            const slot = walletSlots[key]
             return (
               <div
                 key={`${w.chain}-${w.address}`}
                 className={`border rounded-md p-3 flex items-center justify-between gap-3 ${
-                  isActive ? 'border-foreground' : 'border-border'
+                  active ? 'border-foreground' : 'border-border'
                 }`}
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
-                      {CHAIN_LABELS[w.chain]}
-                    </span>
-                    {w.dex && w.dex !== 'other' && (
-                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                        {DEX_OPTIONS.find((d) => d.value === w.dex)?.label || w.dex}
+                <div className="min-w-0 flex-1 flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={(e) => setWalletActive(w.address, w.chain, e.target.checked)}
+                    className="rounded border-border shrink-0"
+                    title={active ? 'Deactivate wallet' : 'Activate wallet'}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
+                        {CHAIN_LABELS[w.chain]}
                       </span>
-                    )}
-                    {w.nickname && (
-                      <span className="text-sm font-medium">{w.nickname}</span>
-                    )}
-                    {isActive && (
-                      <span className="text-xs text-muted-foreground">(active)</span>
-                    )}
+                      {w.dex && w.dex !== 'other' && (
+                        <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                          {DEX_OPTIONS.find((d) => d.value === w.dex)?.label || w.dex}
+                        </span>
+                      )}
+                      {w.nickname && (
+                        <span className="text-sm font-medium">{w.nickname}</span>
+                      )}
+                      {slot?.isLoading && (
+                        <span className="text-xs text-muted-foreground animate-pulse">loading...</span>
+                      )}
+                      {slot?.error && (
+                        <span className="text-xs text-destructive">error</span>
+                      )}
+                    </div>
+                    <p className="font-mono text-xs text-muted-foreground mt-1 truncate">
+                      {w.address}
+                    </p>
                   </div>
-                  <p className="font-mono text-xs text-muted-foreground mt-1 truncate">
-                    {w.address}
-                  </p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  {!isActive && (
+                  {active && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="text-xs"
-                      onClick={() => handleSwitch(w.address, w.chain, w.dex || 'other')}
-                      disabled={isLoading}
+                      onClick={() => refreshWallet(w.address, w.chain)}
+                      disabled={slot?.isLoading}
                     >
-                      Switch
+                      Refresh
                     </Button>
                   )}
                   <Button

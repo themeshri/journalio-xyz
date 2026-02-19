@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useWallet } from '@/lib/wallet-context'
 import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
 import { formatValue } from '@/lib/formatters'
@@ -14,11 +15,24 @@ import {
 import { format } from 'date-fns'
 import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
 import { ChainIcon } from '@/components/chain-badge'
+import { type Chain } from '@/lib/chains'
 
 export default function OverviewPage() {
-  const { currentWallet, currentChain, trades, isLoading, error } = useWallet()
+  const { allTrades, activeWallets, isAnyLoading, hasActiveWallets, walletSlots } = useWallet()
 
-  if (!currentWallet) {
+  const flattenedTrades = useMemo(() => {
+    if (!hasActiveWallets) return []
+    const allFlattened = activeWallets.flatMap((w) => {
+      const key = `${w.chain}:${w.address}`
+      const slot = walletSlots[key]
+      if (!slot?.trades?.length) return []
+      const cycles = calculateTradeCycles(slot.trades, w.chain as Chain, w.address)
+      return flattenTradeCycles(cycles)
+    })
+    return allFlattened.sort((a, b) => b.startDate - a.startDate)
+  }, [activeWallets, walletSlots, hasActiveWallets])
+
+  if (!hasActiveWallets) {
     return (
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Overview</h1>
@@ -29,7 +43,7 @@ export default function OverviewPage() {
     )
   }
 
-  if (isLoading) {
+  if (isAnyLoading && allTrades.length === 0) {
     return (
       <div className="pt-8">
         <h1 className="text-xl font-semibold mb-6">Overview</h1>
@@ -40,34 +54,38 @@ export default function OverviewPage() {
     )
   }
 
-  if (error) {
+  const errors = activeWallets
+    .map((w) => walletSlots[`${w.chain}:${w.address}`]?.error)
+    .filter(Boolean)
+
+  if (errors.length > 0 && allTrades.length === 0) {
     return (
       <div className="pt-8">
-        <p className="text-sm text-destructive">{error}</p>
+        {errors.map((err, i) => (
+          <p key={i} className="text-sm text-destructive">{err}</p>
+        ))}
       </div>
     )
   }
 
-  if (trades.length === 0) {
+  if (allTrades.length === 0) {
     return (
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Overview</h1>
         <p className="text-sm text-muted-foreground">
-          No transactions found for this wallet.
+          No transactions found for your active wallets.
         </p>
       </div>
     )
   }
 
-  const tradeCycles = calculateTradeCycles(trades, currentChain)
-  const flattenedTrades = flattenTradeCycles(tradeCycles)
   const totalTrades = flattenedTrades.length
   const profitableTrades = flattenedTrades.filter((t) => t.profitLoss > 0).length
   const winRate = totalTrades > 0 ? ((profitableTrades / totalTrades) * 100).toFixed(0) : '0'
   const totalPL = flattenedTrades.reduce((sum, t) => sum + t.profitLoss, 0)
   const activeCycles = flattenedTrades.filter((t) => !t.isComplete).length
 
-  const recentTrades = trades.slice(0, 10)
+  const recentTrades = allTrades.slice(0, 10)
 
   return (
     <div>
@@ -133,7 +151,7 @@ export default function OverviewPage() {
               </TableCell>
               <TableCell className="text-xs">
                 <span className="flex items-center gap-1">
-                  <ChainIcon chain={currentChain} size={10} />
+                  <ChainIcon chain={trade._chain || 'solana'} size={10} />
                   {trade.tokenIn?.symbol || '?'}
                 </span>
               </TableCell>

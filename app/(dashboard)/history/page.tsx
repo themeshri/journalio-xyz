@@ -730,8 +730,7 @@ function JournalHistoryTab() {
 // --- Main page ---
 
 export default function HistoryPage() {
-  const { currentWallet, currentChain, currentDex, trades, isLoading, error, searchWallet, cacheInfo } =
-    useWallet()
+  const { allTrades, isAnyLoading, hasActiveWallets, refreshAll } = useWallet()
 
   return (
     <div>
@@ -755,45 +754,36 @@ export default function HistoryPage() {
         </TabsContent>
 
         <TabsContent value="transactions">
-          {!currentWallet ? (
+          {!hasActiveWallets ? (
             <p className="text-sm text-muted-foreground py-4">
-              Enter a wallet address in the sidebar to view trade history.
+              Activate a wallet in Wallet Management to view trade history.
             </p>
-          ) : isLoading ? (
+          ) : isAnyLoading && allTrades.length === 0 ? (
             <div className="py-4">
               <TableRowsSkeleton rows={5} cols={6} />
             </div>
-          ) : error ? (
-            <p className="text-sm text-destructive py-4">{error}</p>
           ) : (
             <div>
               <div className="flex items-center justify-between mb-4 mt-4">
                 <span className="text-sm text-muted-foreground">
-                  {trades.length} transactions
+                  {allTrades.length} transactions
                 </span>
-                <div className="flex items-center gap-3">
-                  {cacheInfo?.cached && cacheInfo.cachedAt && (
-                    <span className="text-xs text-muted-foreground">
-                      Cached {cacheInfo.cachedAt.toLocaleTimeString()}
-                    </span>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => searchWallet(currentWallet, currentChain, true, currentDex)}
-                    disabled={isLoading}
-                  >
-                    Refresh
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refreshAll()}
+                  disabled={isAnyLoading}
+                >
+                  {isAnyLoading ? 'Refreshing...' : 'Refresh'}
+                </Button>
               </div>
 
-              {trades.length === 0 ? (
+              {allTrades.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No transactions found for this wallet.
+                  No transactions found for your active wallets.
                 </p>
               ) : (
-                <TradesTable trades={trades} chain={currentChain} />
+                <TradesTable trades={allTrades} />
               )}
             </div>
           )}

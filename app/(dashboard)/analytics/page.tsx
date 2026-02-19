@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useWallet } from '@/lib/wallet-context'
+import { useWallet, makeWalletKey } from '@/lib/wallet-context'
 import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
 import { formatValue, formatDuration } from '@/lib/formatters'
 import {
@@ -28,6 +28,7 @@ import {
 } from 'recharts'
 import { Separator } from '@/components/ui/separator'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
+import { type Chain } from '@/lib/chains'
 
 const durationConfig = {
   count: { label: 'Trades', color: 'var(--chart-1)' },
@@ -42,13 +43,19 @@ const hoursConfig = {
 } satisfies ChartConfig
 
 export default function AnalyticsPage() {
-  const { currentWallet, currentChain, trades, isLoading, error } = useWallet()
+  const { activeWallets, walletSlots, isAnyLoading, hasActiveWallets, allTrades } = useWallet()
 
   const flattenedTrades = useMemo(() => {
-    if (trades.length === 0) return []
-    const cycles = calculateTradeCycles(trades, currentChain)
-    return flattenTradeCycles(cycles)
-  }, [trades, currentChain])
+    if (!hasActiveWallets) return []
+    const allFlattened = activeWallets.flatMap((w) => {
+      const key = makeWalletKey(w.address, w.chain)
+      const slot = walletSlots[key]
+      if (!slot?.trades?.length) return []
+      const cycles = calculateTradeCycles(slot.trades, w.chain as Chain, w.address)
+      return flattenTradeCycles(cycles)
+    })
+    return allFlattened.sort((a, b) => b.startDate - a.startDate)
+  }, [activeWallets, walletSlots, hasActiveWallets])
 
   const completedTrades = useMemo(
     () => flattenedTrades.filter((t) => t.isComplete),
@@ -75,18 +82,18 @@ export default function AnalyticsPage() {
     [flattenedTrades]
   )
 
-  if (!currentWallet) {
+  if (!hasActiveWallets) {
     return (
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Analytics</h1>
         <p className="text-sm text-muted-foreground">
-          Enter a wallet address in the sidebar to view trading analytics.
+          Activate a wallet in Wallet Management to view trading analytics.
         </p>
       </div>
     )
   }
 
-  if (isLoading) {
+  if (isAnyLoading && allTrades.length === 0) {
     return (
       <div className="max-w-4xl pt-8">
         <h1 className="text-xl font-semibold mb-6">Analytics</h1>
@@ -96,14 +103,6 @@ export default function AnalyticsPage() {
           <ChartSkeleton />
           <ChartSkeleton />
         </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="pt-8">
-        <p className="text-sm text-destructive">{error}</p>
       </div>
     )
   }

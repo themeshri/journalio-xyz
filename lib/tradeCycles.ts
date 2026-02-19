@@ -23,6 +23,8 @@ export interface TradeGroup {
   tradeNumber: number;        // Cycle number for this token
   token: string;             // Token symbol
   tokenMint: string;         // Token address
+  chain: Chain;              // Which chain this trade is on
+  walletAddress: string;     // Which wallet this trade belongs to
   buys: any[];             // All buy transactions
   sells: any[];            // All sell transactions
   totalBuyAmount: number;    // Total tokens bought
@@ -246,7 +248,7 @@ function processTradeIntoGroup(
  * @param tokenTrades - All trades involving this token
  * @returns Array of trade groups representing distinct trading cycles
  */
-function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[]): TradeGroup[] {
+function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[], chain: Chain, walletAddress: string): TradeGroup[] {
   // Validate input
   if (tokenTrades.length === 0) {
     return [];
@@ -284,6 +286,8 @@ function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[]): Trade
         tradeNumber: tradeCounter++,
         token: tokenSymbol,
         tokenMint: tokenMint,
+        chain,
+        walletAddress,
         buys: [],
         sells: [],
         totalBuyAmount: 0,
@@ -322,7 +326,7 @@ function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[]): Trade
  * 4. A new cycle starts when balance returns to ~0 and a new buy occurs
  * 5. Track buys, sells, P/L, and completion status for each cycle
  */
-export function calculateTradeCycles(trades: any[], chain: Chain = 'solana'): TradeCycle[] {
+export function calculateTradeCycles(trades: any[], chain: Chain = 'solana', walletAddress: string = ''): TradeCycle[] {
   // Handle empty input
   if (!trades || trades.length === 0) {
     return [];
@@ -349,7 +353,7 @@ export function calculateTradeCycles(trades: any[], chain: Chain = 'solana'): Tr
     }
 
     // Create trade groups for this token
-    const tradeGroups = createTradeGroupsForToken(tokenMint, tokenTrades);
+    const tradeGroups = createTradeGroupsForToken(tokenMint, tokenTrades, chain, walletAddress);
 
     // Only add tokens that have actual buy/sell activity
     if (tradeGroups.length > 0 && tradeGroups.some(g => g.buys.length > 0 || g.sells.length > 0)) {

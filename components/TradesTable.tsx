@@ -18,7 +18,7 @@ import { TokenWithBadge } from '@/components/chain-badge'
 
 interface TradesTableProps {
   trades: Trade[]
-  chain: Chain
+  chain?: Chain // optional fallback; per-trade _chain preferred
 }
 
 const PAGE_SIZE = 50
@@ -31,6 +31,10 @@ export const TradesTable = memo(function TradesTable({
 
   const totalPages = Math.ceil(trades.length / PAGE_SIZE)
   const paginated = trades.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  function getChain(trade: any): Chain {
+    return trade._chain || chain || 'solana'
+  }
 
   return (
     <div>
@@ -71,7 +75,7 @@ export const TradesTable = memo(function TradesTable({
               <TableCell className="text-xs">
                 <span className="flex items-center gap-1.5">
                   {trade.tokenIn?.logoURI && (
-                    <TokenWithBadge chain={chain} size="sm">
+                    <TokenWithBadge chain={getChain(trade)} size="sm">
                       <img
                         src={trade.tokenIn.logoURI}
                         alt=""
@@ -85,7 +89,7 @@ export const TradesTable = memo(function TradesTable({
               <TableCell className="text-xs">
                 <span className="flex items-center gap-1.5">
                   {trade.tokenOut?.logoURI && (
-                    <TokenWithBadge chain={chain} size="sm">
+                    <TokenWithBadge chain={getChain(trade)} size="sm">
                       <img
                         src={trade.tokenOut.logoURI}
                         alt=""
@@ -113,7 +117,7 @@ export const TradesTable = memo(function TradesTable({
               </TableCell>
               <TableCell>
                 <a
-                  href={explorerTxUrl(chain, trade.signature)}
+                  href={explorerTxUrl(getChain(trade), trade.signature)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline"
