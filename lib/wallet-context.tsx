@@ -16,14 +16,20 @@ interface CacheInfo {
   cachedAt?: Date
 }
 
+// Known app fee rates (deducted from valueUSD)
+const APP_FEE_RATES: Record<string, number> = {
+  fomo: 0.01, // 1% fee
+}
+
 interface WalletContextValue {
   currentWallet: string
   currentChain: Chain
+  currentDex: string
   trades: any[]
   isLoading: boolean
   error: string
   cacheInfo: CacheInfo | null
-  searchWallet: (address: string, chain?: Chain, forceRefresh?: boolean) => Promise<void>
+  searchWallet: (address: string, chain?: Chain, forceRefresh?: boolean, dex?: string) => Promise<void>
   clearWallet: () => void
 }
 
@@ -38,6 +44,7 @@ export function useWallet() {
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [currentWallet, setCurrentWallet] = useState('')
   const [currentChain, setCurrentChain] = useState<Chain>('solana')
+  const [currentDex, setCurrentDex] = useState('other')
   const [trades, setTrades] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -48,12 +55,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
 
   const searchWallet = useCallback(
-    async (address: string, chain: Chain = 'solana', forceRefresh = false) => {
+    async (address: string, chain: Chain = 'solana', forceRefresh = false, dex: string = 'other') => {
       setIsLoading(true)
       setError('')
       setTrades([])
       setCurrentWallet(address)
       setCurrentChain(chain)
+      setCurrentDex(dex)
       setCacheInfo(null)
 
       // Sync to URL
@@ -75,7 +83,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           (a: any, b: any) => b.timestamp - a.timestamp
         )
 
-        setTrades(sortedTrades)
+        // Apply app fee deduction (e.g. Fomo 1% fee)
+        const feeRate = APP_FEE_RATES[dex] || 0
+        const adjustedTrades = feeRate > 0
+          ? sortedTrades.map((t: any) => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate) }))
+          : sortedTrades
+
+        setTrades(adjustedTrades)
         setCacheInfo({
           cached: data.cached,
           cachedAt: data.cachedAt ? new Date(data.cachedAt) : undefined,
@@ -94,6 +108,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const clearWallet = useCallback(() => {
     setCurrentWallet('')
     setCurrentChain('solana')
+    setCurrentDex('other')
     setTrades([])
     setError('')
     setCacheInfo(null)
@@ -103,12 +118,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [searchParams, router, pathname])
 
-  // Read wallet + chain from URL on mount
+  // Read wallet + chain from URL on mount, restore dex from saved wallets
   useEffect(() => {
     const walletParam = searchParams.get('wallet')
     const chainParam = (searchParams.get('chain') || 'solana') as Chain
     if (walletParam && !currentWallet) {
-      searchWallet(walletParam, chainParam)
+      let dex = 'other'
+      try {
+        const raw = localStorage.getItem('journalio_saved_wallets')
+        const saved = raw ? JSON.parse(raw) : []
+        const match = saved.find((w: any) => w.address === walletParam && w.chain === chainParam)
+        if (match?.dex) dex = match.dex
+      } catch {}
+      searchWallet(walletParam, chainParam, false, dex)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -118,6 +140,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       value={{
         currentWallet,
         currentChain,
+        currentDex,
         trades,
         isLoading,
         error,

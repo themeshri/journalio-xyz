@@ -730,7 +730,7 @@ function JournalHistoryTab() {
 // --- Main page ---
 
 export default function HistoryPage() {
-  const { currentWallet, currentChain, trades, isLoading, error, searchWallet, cacheInfo } =
+  const { currentWallet, currentChain, currentDex, trades, isLoading, error, searchWallet, cacheInfo } =
     useWallet()
 
   return (
@@ -780,7 +780,7 @@ export default function HistoryPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => searchWallet(currentWallet, currentChain, true)}
+                    onClick={() => searchWallet(currentWallet, currentChain, true, currentDex)}
                     disabled={isLoading}
                   >
                     Refresh

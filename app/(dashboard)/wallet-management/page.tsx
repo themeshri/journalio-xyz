@@ -11,7 +11,16 @@ interface SavedWallet {
   address: string
   chain: Chain
   nickname: string
+  dex: string // 'fomo' | 'axiom' | 'jupiter' | 'gmgn' | 'other'
 }
+
+const DEX_OPTIONS = [
+  { value: 'fomo', label: 'Fomo' },
+  { value: 'axiom', label: 'Axiom' },
+  { value: 'jupiter', label: 'Jupiter' },
+  { value: 'gmgn', label: 'GMGN' },
+  { value: 'other', label: 'Other' },
+] as const
 
 const STORAGE_KEY = 'journalio_saved_wallets'
 
@@ -36,11 +45,12 @@ const CHAIN_LABELS: Record<Chain, string> = {
 }
 
 export default function WalletManagementPage() {
-  const { currentWallet, currentChain, searchWallet, clearWallet, isLoading } = useWallet()
+  const { currentWallet, currentChain, currentDex, searchWallet, clearWallet, isLoading } = useWallet()
   const [wallets, setWallets] = useState<SavedWallet[]>([])
   const [address, setAddress] = useState('')
   const [nickname, setNickname] = useState('')
   const [selectedChain, setSelectedChain] = useState<Chain>('solana')
+  const [selectedDex, setSelectedDex] = useState('other')
   const [error, setError] = useState('')
   const [mounted, setMounted] = useState(false)
 
@@ -85,27 +95,28 @@ export default function WalletManagementPage() {
     }
     const next = [
       ...wallets,
-      { address: trimmed, chain: selectedChain, nickname: nickname.trim() },
+      { address: trimmed, chain: selectedChain, nickname: nickname.trim(), dex: selectedDex },
     ]
     persistWallets(next)
     setAddress('')
     setNickname('')
     setSelectedChain('solana')
+    setSelectedDex('other')
 
     // Auto-switch if no active wallet
     if (!currentWallet) {
-      searchWallet(trimmed, selectedChain)
+      searchWallet(trimmed, selectedChain, false, selectedDex)
     }
   }
 
-  function handleSwitch(addr: string, chain: Chain) {
-    searchWallet(addr, chain)
+  function handleSwitch(addr: string, chain: Chain, dex: string) {
+    searchWallet(addr, chain, false, dex)
   }
 
-  function handleRemove(addr: string) {
-    const next = wallets.filter((w) => w.address !== addr)
+  function handleRemove(addr: string, chain: Chain) {
+    const next = wallets.filter((w) => !(w.address === addr && w.chain === chain))
     persistWallets(next)
-    if (currentWallet === addr) {
+    if (currentWallet === addr && currentChain === chain) {
       clearWallet()
     }
   }
@@ -137,7 +148,7 @@ export default function WalletManagementPage() {
                 variant="outline"
                 size="sm"
                 className="text-xs"
-                onClick={() => searchWallet(currentWallet, currentChain, true)}
+                onClick={() => searchWallet(currentWallet, currentChain, true, currentDex)}
                 disabled={isLoading}
               >
                 {isLoading ? 'Refreshing...' : 'Refresh'}
@@ -201,6 +212,26 @@ export default function WalletManagementPage() {
               })}
             </div>
           </div>
+          <div className="flex gap-1.5 items-center">
+            <span className="text-xs text-muted-foreground mr-1">App:</span>
+            {DEX_OPTIONS.map((opt) => {
+              const isSelected = selectedDex === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSelectedDex(opt.value)}
+                  className={`text-xs px-2 py-1.5 rounded border transition-colors ${
+                    isSelected
+                      ? 'font-medium bg-muted border-border'
+                      : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button type="submit" size="sm" className="text-xs" disabled={isLoading}>
             Add Wallet
@@ -231,6 +262,11 @@ export default function WalletManagementPage() {
                     <span className="text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
                       {CHAIN_LABELS[w.chain]}
                     </span>
+                    {w.dex && w.dex !== 'other' && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                        {DEX_OPTIONS.find((d) => d.value === w.dex)?.label || w.dex}
+                      </span>
+                    )}
                     {w.nickname && (
                       <span className="text-sm font-medium">{w.nickname}</span>
                     )}
@@ -248,7 +284,7 @@ export default function WalletManagementPage() {
                       variant="outline"
                       size="sm"
                       className="text-xs"
-                      onClick={() => handleSwitch(w.address, w.chain)}
+                      onClick={() => handleSwitch(w.address, w.chain, w.dex || 'other')}
                       disabled={isLoading}
                     >
                       Switch
@@ -258,7 +294,7 @@ export default function WalletManagementPage() {
                     variant="ghost"
                     size="sm"
                     className="text-xs text-destructive"
-                    onClick={() => handleRemove(w.address)}
+                    onClick={() => handleRemove(w.address, w.chain)}
                   >
                     Remove
                   </Button>
