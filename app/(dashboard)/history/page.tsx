@@ -793,7 +793,7 @@ export default function HistoryPage() {
                   No transactions found for this wallet.
                 </p>
               ) : (
-                <TradesTable trades={trades} />
+                <TradesTable trades={trades} chain={currentChain} />
               )}
             </div>
           )}

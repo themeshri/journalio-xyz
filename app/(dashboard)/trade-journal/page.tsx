@@ -18,6 +18,7 @@ import TransactionModal from '@/components/TransactionModal'
 import JournalModal, { JournalData } from '@/components/JournalModal'
 import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
 import { toast } from 'sonner'
+import { TokenWithBadge } from '@/components/chain-badge'
 
 const balanceCache = new Map<string, { tokens: any[]; timestamp: number }>()
 const CACHE_DURATION = 60000
@@ -425,18 +426,20 @@ export default function TradeJournalPage() {
                     {/* Token */}
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {tokenLogo ? (
-                          <img
-                            src={tokenLogo}
-                            alt={trade.token}
-                            className="w-7 h-7 rounded-full shrink-0"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-muted shrink-0 flex items-center justify-center text-xs font-medium text-muted-foreground">
-                            {trade.token.charAt(0)}
-                          </div>
-                        )}
+                        <TokenWithBadge chain={currentChain} size="md">
+                          {tokenLogo ? (
+                            <img
+                              src={tokenLogo}
+                              alt={trade.token}
+                              className="w-7 h-7 rounded-full"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                            />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                              {trade.token.charAt(0)}
+                            </div>
+                          )}
+                        </TokenWithBadge>
                         <div>
                           <div className="font-semibold text-sm">{trade.token}</div>
                           <div className="text-xs text-muted-foreground">

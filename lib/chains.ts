@@ -67,3 +67,11 @@ export function isEvmChain(chain: Chain): boolean {
 export function isValidAddress(address: string, chain: Chain): boolean {
   return CHAIN_CONFIG[chain].addressPattern.test(address)
 }
+
+export function explorerTxUrl(chain: Chain, signature: string): string {
+  switch (chain) {
+    case 'solana': return `https://solscan.io/tx/${signature}`
+    case 'base':   return `https://basescan.org/tx/${signature}`
+    case 'bnb':    return `https://bscscan.com/tx/${signature}`
+  }
+}

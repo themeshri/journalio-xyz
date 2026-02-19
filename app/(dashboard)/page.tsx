@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table'
 import { format } from 'date-fns'
 import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
+import { ChainIcon } from '@/components/chain-badge'
 
 export default function OverviewPage() {
   const { currentWallet, currentChain, trades, isLoading, error } = useWallet()
@@ -131,7 +132,10 @@ export default function OverviewPage() {
                 </span>
               </TableCell>
               <TableCell className="text-xs">
-                {trade.tokenIn?.symbol || '?'}
+                <span className="flex items-center gap-1">
+                  <ChainIcon chain={currentChain} size={10} />
+                  {trade.tokenIn?.symbol || '?'}
+                </span>
               </TableCell>
               <TableCell className="text-xs">
                 {trade.tokenOut?.symbol || '?'}

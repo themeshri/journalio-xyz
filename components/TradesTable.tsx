@@ -13,15 +13,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Chain, explorerTxUrl } from '@/lib/chains'
+import { TokenWithBadge } from '@/components/chain-badge'
 
 interface TradesTableProps {
   trades: Trade[]
+  chain: Chain
 }
 
 const PAGE_SIZE = 50
 
 export const TradesTable = memo(function TradesTable({
   trades,
+  chain,
 }: TradesTableProps) {
   const [page, setPage] = useState(0)
 
@@ -67,11 +71,13 @@ export const TradesTable = memo(function TradesTable({
               <TableCell className="text-xs">
                 <span className="flex items-center gap-1.5">
                   {trade.tokenIn?.logoURI && (
-                    <img
-                      src={trade.tokenIn.logoURI}
-                      alt=""
-                      className="w-4 h-4 rounded-full"
-                    />
+                    <TokenWithBadge chain={chain} size="sm">
+                      <img
+                        src={trade.tokenIn.logoURI}
+                        alt=""
+                        className="w-4 h-4 rounded-full"
+                      />
+                    </TokenWithBadge>
                   )}
                   {trade.tokenIn?.symbol || '?'}
                 </span>
@@ -79,11 +85,13 @@ export const TradesTable = memo(function TradesTable({
               <TableCell className="text-xs">
                 <span className="flex items-center gap-1.5">
                   {trade.tokenOut?.logoURI && (
-                    <img
-                      src={trade.tokenOut.logoURI}
-                      alt=""
-                      className="w-4 h-4 rounded-full"
-                    />
+                    <TokenWithBadge chain={chain} size="sm">
+                      <img
+                        src={trade.tokenOut.logoURI}
+                        alt=""
+                        className="w-4 h-4 rounded-full"
+                      />
+                    </TokenWithBadge>
                   )}
                   {trade.tokenOut?.symbol || '?'}
                 </span>
@@ -105,7 +113,7 @@ export const TradesTable = memo(function TradesTable({
               </TableCell>
               <TableCell>
                 <a
-                  href={`https://solscan.io/tx/${trade.signature}`}
+                  href={explorerTxUrl(chain, trade.signature)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline"
