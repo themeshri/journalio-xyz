@@ -4,6 +4,8 @@ import React, { useState, useCallback, useEffect, memo } from 'react';
 import { FlattenedTrade } from '@/lib/tradeCycles';
 import { formatDuration, formatTime, formatValue, formatMarketCap } from '@/lib/formatters';
 import { loadTradeComments, getCommentsByCategory, type TradeComment } from '@/lib/trade-comments';
+import { loadStrategies as loadStrategiesFromLib, type Strategy, type StrategyRule } from '@/lib/strategies';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -25,8 +27,16 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 
+export interface TradeRuleResult {
+  ruleId: string;
+  ruleGroupId: string;
+  followed: boolean;
+}
+
 export interface JournalData {
   strategy: string;
+  strategyId?: string | null;
+  ruleResults?: TradeRuleResult[];
   emotionalState: string;
   buyNotes: string;
   buyRating: number;
@@ -94,21 +104,7 @@ const emotionTags = [
   { id: 'neutral', emoji: '\ud83d\ude10', label: 'Neutral' },
 ];
 
-interface SavedStrategy {
-  id: string;
-  name: string;
-  active: boolean;
-}
-
-function loadStrategies(): SavedStrategy[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem('journalio_strategies');
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+// Strategy loading is now from lib/strategies.ts
 
 function ratingDot(rating: TradeComment['rating']) {
   if (rating === 'positive') return 'bg-emerald-500';
@@ -136,7 +132,9 @@ const JournalModal = memo(function JournalModal({
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
   const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
   const [attachment, setAttachment] = useState<string | undefined>(initialData?.attachment);
-  const [strategies, setStrategies] = useState<SavedStrategy[]>([]);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [strategyId, setStrategyId] = useState<string | null>(initialData?.strategyId ?? null);
+  const [ruleResults, setRuleResults] = useState<TradeRuleResult[]>(initialData?.ruleResults ?? []);
   const [tradeComments, setTradeComments] = useState<TradeComment[]>([]);
   const [entryCommentId, setEntryCommentId] = useState<string | null>(initialData?.entryCommentId ?? null);
   const [exitCommentId, setExitCommentId] = useState<string | null>(initialData?.exitCommentId ?? null);
@@ -144,7 +142,7 @@ const JournalModal = memo(function JournalModal({
   const [emotionTag, setEmotionTag] = useState<string | null>(initialData?.emotionTag ?? null);
 
   useEffect(() => {
-    setStrategies(loadStrategies());
+    setStrategies(loadStrategiesFromLib());
     setTradeComments(loadTradeComments());
   }, []);
 
@@ -154,6 +152,8 @@ const JournalModal = memo(function JournalModal({
 
   const buildData = useCallback((): JournalData => ({
     strategy,
+    strategyId,
+    ruleResults,
     emotionalState,
     buyNotes,
     buyRating,
@@ -168,7 +168,7 @@ const JournalModal = memo(function JournalModal({
     managementCommentId,
     emotionTag,
     journaledAt: initialData?.journaledAt || new Date().toISOString(),
-  }), [strategy, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachment, entryCommentId, exitCommentId, managementCommentId, emotionTag, initialData?.journaledAt]);
+  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachment, entryCommentId, exitCommentId, managementCommentId, emotionTag, initialData?.journaledAt]);
 
   const handleSave = useCallback(() => {
     onSave(buildData());
@@ -205,7 +205,80 @@ const JournalModal = memo(function JournalModal({
   const avgBuyPrice = trade.totalBuyAmount > 0 ? trade.totalBuyValue / trade.totalBuyAmount : 0;
   const avgSellPrice = trade.totalSellAmount > 0 ? trade.totalSellValue / trade.totalSellAmount : 0;
 
-  const activeStrategies = strategies.filter((s) => s.active);
+  const activeStrategies = strategies.filter((s) => !s.isArchived);
+
+  // Get the selected strategy object for rule display
+  const selectedStrategy = strategyId ? strategies.find((s) => s.id === strategyId) : null;
+
+  // Determine trade outcome for showWhen filtering
+  const tradeOutcome: 'winner' | 'loser' | 'breakeven' =
+    trade.profitLoss > 0.01 ? 'winner' : trade.profitLoss < -0.01 ? 'loser' : 'breakeven';
+
+  // Get applicable rules (filtered by showWhen)
+  const getApplicableRules = (strat: Strategy) => {
+    const rules: { rule: StrategyRule; groupId: string; groupName: string }[] = [];
+    for (const group of strat.ruleGroups) {
+      for (const rule of group.rules) {
+        if (rule.showWhen === 'always' || rule.showWhen === tradeOutcome) {
+          rules.push({ rule, groupId: group.id, groupName: group.name });
+        }
+      }
+    }
+    return rules;
+  };
+
+  // Follow rate calculation
+  const followRate = selectedStrategy ? (() => {
+    const applicable = getApplicableRules(selectedStrategy);
+    const total = applicable.length;
+    const followed = ruleResults.filter((r) => r.followed).length;
+    const requiredRules = applicable.filter((a) => a.rule.isRequired);
+    const requiredTotal = requiredRules.length;
+    const requiredFollowed = requiredRules.filter((a) =>
+      ruleResults.find((r) => r.ruleId === a.rule.id && r.followed)
+    ).length;
+    return {
+      total,
+      followed,
+      percent: total > 0 ? Math.round((followed / total) * 100) : 0,
+      requiredTotal,
+      requiredFollowed,
+      requiredPercent: requiredTotal > 0 ? Math.round((requiredFollowed / requiredTotal) * 100) : 0,
+    };
+  })() : null;
+
+  function handleStrategyChange(id: string) {
+    if (id === '__add_new') {
+      window.open('/strategies', '_blank');
+      return;
+    }
+    const strat = strategies.find((s) => s.id === id);
+    if (strat) {
+      setStrategyId(id);
+      setStrategy(strat.name);
+      // Initialize rule results for all applicable rules (preserve existing results)
+      const applicable = getApplicableRules(strat);
+      const newResults = applicable.map((a) => {
+        const existing = ruleResults.find((r) => r.ruleId === a.rule.id);
+        return existing || { ruleId: a.rule.id, ruleGroupId: a.groupId, followed: false };
+      });
+      setRuleResults(newResults);
+    } else {
+      setStrategyId(null);
+      setStrategy('');
+      setRuleResults([]);
+    }
+  }
+
+  function toggleRule(ruleId: string, groupId: string) {
+    setRuleResults((prev) => {
+      const existing = prev.find((r) => r.ruleId === ruleId);
+      if (existing) {
+        return prev.map((r) => r.ruleId === ruleId ? { ...r, followed: !r.followed } : r);
+      }
+      return [...prev, { ruleId, ruleGroupId: groupId, followed: true }];
+    });
+  }
 
   function renderCommentSelect(
     label: string,
@@ -291,20 +364,24 @@ const JournalModal = memo(function JournalModal({
                 <Label className="text-xs mb-1.5">
                   Strategy
                 </Label>
-                <Select value={strategy} onValueChange={(val) => {
-                  if (val === '__add_new') {
-                    window.open('/strategies', '_blank');
-                    return;
-                  }
-                  setStrategy(val);
-                }}>
+                <Select value={strategyId || ''} onValueChange={handleStrategyChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a strategy..." />
+                    <SelectValue placeholder="Select a strategy...">
+                      {selectedStrategy && (
+                        <span className="flex items-center gap-1.5">
+                          <span>{selectedStrategy.icon}</span>
+                          <span>{selectedStrategy.name}</span>
+                        </span>
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {activeStrategies.map((s) => (
-                      <SelectItem key={s.id} value={s.name}>
-                        {s.name}
+                      <SelectItem key={s.id} value={s.id}>
+                        <span className="flex items-center gap-1.5">
+                          <span>{s.icon}</span>
+                          <span>{s.name}</span>
+                        </span>
                       </SelectItem>
                     ))}
                     {activeStrategies.length > 0 && <Separator className="my-1" />}
@@ -314,6 +391,69 @@ const JournalModal = memo(function JournalModal({
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Strategy Rule Checklist */}
+              {selectedStrategy && selectedStrategy.ruleGroups.length > 0 && (
+                <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Rule Checklist</Label>
+                    {followRate && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className={`font-medium ${followRate.percent >= 75 ? 'text-emerald-600' : followRate.percent >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {followRate.followed}/{followRate.total} ({followRate.percent}%)
+                        </span>
+                        {followRate.requiredTotal > 0 && (
+                          <span className="text-muted-foreground">
+                            Req: {followRate.requiredFollowed}/{followRate.requiredTotal}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedStrategy.ruleGroups
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((group) => {
+                      const applicableRules = group.rules.filter(
+                        (r) => r.showWhen === 'always' || r.showWhen === tradeOutcome
+                      );
+                      if (applicableRules.length === 0) return null;
+                      return (
+                        <div key={group.id}>
+                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                            {group.name}
+                          </p>
+                          <div className="space-y-1">
+                            {applicableRules
+                              .sort((a, b) => a.sortOrder - b.sortOrder)
+                              .map((rule) => {
+                                const result = ruleResults.find((r) => r.ruleId === rule.id);
+                                const isFollowed = result?.followed ?? false;
+                                return (
+                                  <label
+                                    key={rule.id}
+                                    className="flex items-start gap-2 cursor-pointer group"
+                                  >
+                                    <Checkbox
+                                      checked={isFollowed}
+                                      onCheckedChange={() => toggleRule(rule.id, group.id)}
+                                      className="mt-0.5"
+                                    />
+                                    <span className={`text-xs ${isFollowed ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                      {rule.text}
+                                      {!rule.isRequired && (
+                                        <span className="text-muted-foreground/50 ml-1">(optional)</span>
+                                      )}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
 
               <div>
                 <Label className="text-xs mb-1.5">

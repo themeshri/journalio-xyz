@@ -14,8 +14,22 @@ import {
   computeWhatIf,
   computeWhatIfEquity,
   detectPatterns,
+  computeCalendarData,
+  computeHourlyPerformance,
+  computeDayOfWeekPerformance,
+  computeSessionPerformance,
+  computeEnhancedDurationBuckets,
+  computeStrategyPerformance,
+  computeRuleImpact,
+  computeCompletionVsPerformance,
+  computeMissedTradeStats,
+  computeHesitationCost,
+  getDayColorClass,
   type WhatIfFilter,
+  type CalendarMonth,
+  type MissedTradeEntry,
 } from '@/lib/analytics'
+import { loadStrategies } from '@/lib/strategies'
 import { loadTradeComments, type TradeComment } from '@/lib/trade-comments'
 import type { JournalData } from '@/components/JournalModal'
 import {
@@ -70,6 +84,24 @@ const whatIfEquityConfig = {
   actualPnL: { label: 'Actual P/L', color: 'var(--chart-1)' },
   filteredPnL: { label: 'What-If P/L', color: 'oklch(0.527 0.154 163.225)' },
 } satisfies ChartConfig
+
+const hourlyPLConfig = {
+  totalPnL: { label: 'Total P/L', color: 'var(--chart-1)' },
+} satisfies ChartConfig
+
+const dayOfWeekConfig = {
+  totalPnL: { label: 'Total P/L', color: 'var(--chart-1)' },
+} satisfies ChartConfig
+
+const ruleImpactConfig = {
+  impact: { label: 'Impact', color: 'var(--chart-1)' },
+} satisfies ChartConfig
+
+const completionConfig = {
+  avgPnL: { label: 'Avg P/L', color: 'var(--chart-1)' },
+} satisfies ChartConfig
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 const emotionTags = [
   { id: 'fomo', label: 'FOMO' },
@@ -169,6 +201,102 @@ export default function AnalyticsPage() {
   const patterns = useMemo(
     () => detectPatterns(flattenedTrades, journalMap, tradeComments),
     [flattenedTrades, journalMap, tradeComments]
+  )
+
+  // P/L Calendar
+  const now = new Date()
+  const [calYear, setCalYear] = useState(now.getFullYear())
+  const [calMonth, setCalMonth] = useState(now.getMonth())
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+
+  const calendarData: CalendarMonth = useMemo(
+    () => computeCalendarData(flattenedTrades, calYear, calMonth),
+    [flattenedTrades, calYear, calMonth]
+  )
+
+  const calMaxPnl = useMemo(() => {
+    let max = 0
+    for (const w of calendarData.weeks) {
+      for (const d of w.days) {
+        if (d && d.pnl > max) max = d.pnl
+      }
+    }
+    return max
+  }, [calendarData])
+
+  const calMaxLoss = useMemo(() => {
+    let max = 0
+    for (const w of calendarData.weeks) {
+      for (const d of w.days) {
+        if (d && Math.abs(d.pnl) > max && d.pnl < 0) max = Math.abs(d.pnl)
+      }
+    }
+    return max
+  }, [calendarData])
+
+  // Time analytics
+  const hourlyPerfData = useMemo(
+    () => computeHourlyPerformance(flattenedTrades),
+    [flattenedTrades]
+  )
+
+  const dayOfWeekData = useMemo(
+    () => computeDayOfWeekPerformance(flattenedTrades),
+    [flattenedTrades]
+  )
+
+  const sessionPerfData = useMemo(
+    () => computeSessionPerformance(flattenedTrades),
+    [flattenedTrades]
+  )
+
+  const enhancedDurationData = useMemo(
+    () => computeEnhancedDurationBuckets(flattenedTrades),
+    [flattenedTrades]
+  )
+
+  // Strategy performance
+  const allStrategies = useMemo(() => loadStrategies(), [])
+
+  const strategyPerfData = useMemo(
+    () => computeStrategyPerformance(
+      flattenedTrades,
+      journalMap,
+      allStrategies.map((s) => ({ id: s.id, name: s.name }))
+    ),
+    [flattenedTrades, journalMap, allStrategies]
+  )
+
+  // Rule impact
+  const ruleImpactData = useMemo(
+    () => computeRuleImpact(flattenedTrades, journalMap, allStrategies),
+    [flattenedTrades, journalMap, allStrategies]
+  )
+
+  const completionData = useMemo(
+    () => computeCompletionVsPerformance(flattenedTrades, journalMap),
+    [flattenedTrades, journalMap]
+  )
+
+  // Missed trade analytics
+  const [missedTrades, setMissedTrades] = useState<MissedTradeEntry[]>([])
+  useEffect(() => {
+    fetch('/api/papered-plays')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setMissedTrades(data)
+      })
+      .catch(() => {})
+  }, [])
+
+  const missedStats = useMemo(
+    () => computeMissedTradeStats(missedTrades),
+    [missedTrades]
+  )
+
+  const hesitationCost = useMemo(
+    () => computeHesitationCost(missedTrades, flattenedTrades),
+    [missedTrades, flattenedTrades]
   )
 
   // Collect unique strategies from journals
@@ -427,6 +555,457 @@ export default function AnalyticsPage() {
               </Bar>
             </BarChart>
           </ChartContainer>
+        </section>
+      )}
+
+      {/* P/L Calendar */}
+      <section className="mb-10">
+        <h2 className="text-sm font-semibold mb-4">P/L Calendar</h2>
+        <div className="flex items-center gap-4 mb-3">
+          <button
+            onClick={() => {
+              if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1) }
+              else setCalMonth((m) => m - 1)
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border"
+          >
+            Prev
+          </button>
+          <span className="text-sm font-medium">{MONTH_NAMES[calMonth]} {calYear}</span>
+          <button
+            onClick={() => {
+              if (calMonth === 11) { setCalMonth(0); setCalYear((y) => y + 1) }
+              else setCalMonth((m) => m + 1)
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border"
+          >
+            Next
+          </button>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {calendarData.totalTrades} trades | {calendarData.totalPnL >= 0 ? '+' : ''}{formatValue(calendarData.totalPnL)}
+          </span>
+        </div>
+        <div className="border rounded-lg overflow-hidden">
+          <div className="grid grid-cols-8 text-xs text-muted-foreground border-b">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Wk P/L'].map((d) => (
+              <div key={d} className="p-2 text-center font-medium">{d}</div>
+            ))}
+          </div>
+          {calendarData.weeks.map((week, wi) => (
+            <div key={wi} className="grid grid-cols-8 border-b last:border-b-0">
+              {week.days.map((day, di) => (
+                <div
+                  key={di}
+                  className={`p-1.5 min-h-[52px] border-r text-center cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all ${
+                    day && day.tradeCount > 0 ? getDayColorClass(day.pnl, calMaxPnl, calMaxLoss) : ''
+                  } ${selectedDay === day?.date ? 'ring-2 ring-primary' : ''}`}
+                  onClick={() => day && day.tradeCount > 0 && setSelectedDay(selectedDay === day.date ? null : day.date)}
+                >
+                  {day && (
+                    <>
+                      <div className="text-[10px] text-muted-foreground">{parseInt(day.date.split('-')[2])}</div>
+                      {day.tradeCount > 0 && (
+                        <div className={`text-[10px] font-mono font-medium ${day.pnl >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                          {day.pnl >= 0 ? '+' : ''}{formatValue(day.pnl)}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+              <div className="p-1.5 text-center flex items-center justify-center">
+                <span className={`text-xs font-mono ${week.weeklyPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {week.weeklyPnL !== 0 ? `${week.weeklyPnL >= 0 ? '+' : ''}${formatValue(week.weeklyPnL)}` : '-'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        {selectedDay && (() => {
+          const dayData = calendarData.weeks.flatMap((w) => w.days).find((d) => d?.date === selectedDay)
+          if (!dayData || dayData.tradeCount === 0) return null
+          return (
+            <div className="mt-3 p-3 rounded-lg border bg-muted/30 text-sm">
+              <p className="font-medium mb-1">{selectedDay}</p>
+              <div className="flex gap-6 text-xs text-muted-foreground">
+                <span>Trades: {dayData.tradeCount}</span>
+                <span>Wins: {dayData.wins}</span>
+                <span>Losses: {dayData.losses}</span>
+                <span className={dayData.pnl >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                  P/L: {dayData.pnl >= 0 ? '+' : ''}{formatValue(dayData.pnl)}
+                </span>
+              </div>
+            </div>
+          )
+        })()}
+        {calendarData.bestDay && (
+          <div className="flex gap-6 mt-3 text-xs text-muted-foreground">
+            <span>Best day: {calendarData.bestDay.date} (+{formatValue(calendarData.bestDay.pnl)})</span>
+            {calendarData.worstDay && (
+              <span>Worst day: {calendarData.worstDay.date} ({formatValue(calendarData.worstDay.pnl)})</span>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Hourly P/L */}
+      {hourlyPerfData.some((d) => d.tradeCount > 0) && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Hourly P/L Breakdown</h2>
+          <p className="text-xs text-muted-foreground mb-3">Total P/L by hour of day</p>
+          <ChartContainer config={hourlyPLConfig} className="h-[220px] w-full">
+            <BarChart data={hourlyPerfData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={2} />
+              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+              <ReferenceLine y={0} stroke="var(--border)" />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, _name, item) => {
+                      const d = item.payload as (typeof hourlyPerfData)[number]
+                      return [
+                        `$${Number(value).toFixed(2)} total | ${d.tradeCount} trades | ${d.winRate}% WR`,
+                        d.label,
+                      ]
+                    }}
+                  />
+                }
+              />
+              <Bar dataKey="totalPnL" radius={[2, 2, 0, 0]}>
+                {hourlyPerfData.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={entry.totalPnL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+          {(() => {
+            const active = hourlyPerfData.filter((d) => d.tradeCount >= 2)
+            if (active.length < 2) return null
+            const best = active.reduce((a, b) => (b.avgPnL > a.avgPnL ? b : a))
+            const worst = active.reduce((a, b) => (b.avgPnL < a.avgPnL ? b : a))
+            return (
+              <p className="text-xs text-muted-foreground mt-2">
+                Best hour: {best.label} (avg +${best.avgPnL.toFixed(2)}, {best.winRate}% WR) | Worst: {worst.label} (avg ${worst.avgPnL.toFixed(2)})
+              </p>
+            )
+          })()}
+        </section>
+      )}
+
+      {/* Day of Week P/L */}
+      {dayOfWeekData.some((d) => d.tradeCount > 0) && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Day of Week Performance</h2>
+          <ChartContainer config={dayOfWeekConfig} className="h-[200px] w-full">
+            <BarChart data={dayOfWeekData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+              <ReferenceLine y={0} stroke="var(--border)" />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, _name, item) => {
+                      const d = item.payload as (typeof dayOfWeekData)[number]
+                      return [`$${Number(value).toFixed(2)} | ${d.tradeCount} trades | ${d.winRate}% WR`, d.label]
+                    }}
+                  />
+                }
+              />
+              <Bar dataKey="totalPnL" radius={[3, 3, 0, 0]}>
+                {dayOfWeekData.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={entry.totalPnL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        </section>
+      )}
+
+      {/* Session Performance */}
+      {sessionPerfData.some((s) => s.tradeCount > 0) && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Session Performance</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {sessionPerfData.filter((s) => s.tradeCount > 0).map((s) => (
+              <div key={s.session.name} className="rounded-lg border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.session.color }} />
+                  <span className="text-xs font-medium">{s.session.name}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {s.session.startHour}:00-{s.session.endHour}:00
+                  </span>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Trades</span>
+                    <span className="font-mono">{s.tradeCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">P/L</span>
+                    <span className={`font-mono ${s.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {s.totalPnL >= 0 ? '+' : ''}{formatValue(s.totalPnL)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Win Rate</span>
+                    <span className="font-mono">{s.winRate}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">PF</span>
+                    <span className="font-mono">{s.profitFactor === Infinity ? '\u221e' : s.profitFactor.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Enhanced Duration Table */}
+      {enhancedDurationData.some((d) => d.count > 0) && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Duration Analysis</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b text-muted-foreground">
+                  <th className="text-left p-2">Duration</th>
+                  <th className="text-right p-2">Trades</th>
+                  <th className="text-right p-2">Avg P/L</th>
+                  <th className="text-right p-2">Total P/L</th>
+                  <th className="text-right p-2">Win Rate</th>
+                  <th className="text-right p-2">Profit Factor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enhancedDurationData.filter((d) => d.count > 0).map((d) => (
+                  <tr key={d.bucket} className="border-b border-border/50">
+                    <td className="p-2 font-medium">{d.bucket}</td>
+                    <td className="p-2 text-right font-mono">{d.count}</td>
+                    <td className={`p-2 text-right font-mono ${d.avgPL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {d.avgPL >= 0 ? '+' : ''}{formatValue(d.avgPL)}
+                    </td>
+                    <td className={`p-2 text-right font-mono ${d.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {d.totalPnL >= 0 ? '+' : ''}{formatValue(d.totalPnL)}
+                    </td>
+                    <td className="p-2 text-right font-mono">{d.winRate}%</td>
+                    <td className="p-2 text-right font-mono">
+                      {d.profitFactor === Infinity ? '\u221e' : d.profitFactor.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Strategy Performance */}
+      {strategyPerfData.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Strategy Performance</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b text-muted-foreground">
+                  <th className="text-left p-2">Strategy</th>
+                  <th className="text-right p-2">Trades</th>
+                  <th className="text-right p-2">Total P/L</th>
+                  <th className="text-right p-2">Avg P/L</th>
+                  <th className="text-right p-2">Win Rate</th>
+                  <th className="text-right p-2">PF</th>
+                  <th className="text-right p-2">Follow Rate</th>
+                  <th className="text-right p-2">Best</th>
+                  <th className="text-right p-2">Worst</th>
+                </tr>
+              </thead>
+              <tbody>
+                {strategyPerfData.map((s) => (
+                  <tr key={s.strategyId} className="border-b border-border/50">
+                    <td className="p-2 font-medium">{s.strategyName}</td>
+                    <td className="p-2 text-right font-mono">{s.tradeCount}</td>
+                    <td className={`p-2 text-right font-mono ${s.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {s.totalPnL >= 0 ? '+' : ''}{formatValue(s.totalPnL)}
+                    </td>
+                    <td className={`p-2 text-right font-mono ${s.avgPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {formatValue(s.avgPnL)}
+                    </td>
+                    <td className="p-2 text-right font-mono">{s.winRate}%</td>
+                    <td className="p-2 text-right font-mono">
+                      {s.profitFactor === Infinity ? '\u221e' : s.profitFactor.toFixed(2)}
+                    </td>
+                    <td className="p-2 text-right font-mono">{s.avgFollowRate > 0 ? `${s.avgFollowRate}%` : '-'}</td>
+                    <td className="p-2 text-right font-mono text-emerald-600">+{formatValue(s.bestTrade)}</td>
+                    <td className="p-2 text-right font-mono text-red-600">{formatValue(s.worstTrade)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Rule Impact */}
+      {ruleImpactData.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Rule Impact Analysis</h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Difference in avg P/L when rule is followed vs skipped
+          </p>
+          <ChartContainer
+            config={ruleImpactConfig}
+            className="w-full"
+            style={{ height: `${ruleImpactData.length * 32 + 40}px` }}
+          >
+            <BarChart data={ruleImpactData} layout="vertical" margin={{ left: 20, right: 20 }}>
+              <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+              <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+              <YAxis
+                dataKey="ruleText"
+                type="category"
+                tick={{ fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                width={180}
+              />
+              <ReferenceLine x={0} stroke="var(--border)" />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, _name, item) => {
+                      const d = item.payload as (typeof ruleImpactData)[number]
+                      return [
+                        `Impact: $${Number(value).toFixed(2)} | Followed: ${d.followedCount}x ($${d.avgPnLWhenFollowed}) | Skipped: ${d.skippedCount}x ($${d.avgPnLWhenSkipped})`,
+                        d.ruleText,
+                      ]
+                    }}
+                  />
+                }
+              />
+              <Bar dataKey="impact" radius={[0, 3, 3, 0]}>
+                {ruleImpactData.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={entry.impact >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        </section>
+      )}
+
+      {/* Checklist Completion vs Performance */}
+      {completionData.some((b) => b.tradeCount > 0) && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Checklist Completion vs P/L</h2>
+          <ChartContainer config={completionConfig} className="h-[200px] w-full">
+            <BarChart data={completionData}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="range" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+              <ReferenceLine y={0} stroke="var(--border)" />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, _name, item) => {
+                      const d = item.payload as (typeof completionData)[number]
+                      return [`$${Number(value).toFixed(2)} avg | ${d.tradeCount} trades | ${d.winRate}% WR`, d.range]
+                    }}
+                  />
+                }
+              />
+              <Bar dataKey="avgPnL" radius={[3, 3, 0, 0]}>
+                {completionData.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={entry.avgPnL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        </section>
+      )}
+
+      {/* Missed Trade Analytics */}
+      {missedTrades.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-sm font-semibold mb-4">Missed Trade Analytics</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-lg font-mono font-semibold">{missedStats.totalMissed}</div>
+              <div className="text-[10px] text-muted-foreground">Total Missed</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-lg font-mono font-semibold text-amber-500">
+                {formatValue(missedStats.totalMissedPnL)}
+              </div>
+              <div className="text-[10px] text-muted-foreground">Missed Profit</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-lg font-mono font-semibold">{missedStats.avgMultiplier.toFixed(1)}x</div>
+              <div className="text-[10px] text-muted-foreground">Avg Multiplier</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-lg font-mono font-semibold">
+                {missedStats.totalMissed > 0
+                  ? Math.round((missedStats.winCount / missedStats.totalMissed) * 100)
+                  : 0}%
+              </div>
+              <div className="text-[10px] text-muted-foreground">Would-be Win Rate</div>
+            </div>
+          </div>
+
+          {/* Reason breakdown */}
+          {missedStats.reasonBreakdown.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-xs font-medium text-muted-foreground mb-2">By Reason</h3>
+              <div className="space-y-1.5">
+                {missedStats.reasonBreakdown.map((r) => (
+                  <div key={r.reason} className="flex items-center gap-2 text-xs">
+                    <span className="w-24 truncate">{r.reason}</span>
+                    <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full bg-amber-500 rounded-full"
+                        style={{ width: `${(r.count / missedStats.totalMissed) * 100}%` }}
+                      />
+                    </div>
+                    <span className="font-mono w-8 text-right">{r.count}</span>
+                    <span className="font-mono w-20 text-right text-muted-foreground">
+                      {formatValue(r.totalMissedPnL)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Hesitation cost comparison */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] text-muted-foreground mb-1">Actual Trading</p>
+              <div className={`text-sm font-mono font-semibold ${hesitationCost.totalActualPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {hesitationCost.totalActualPnL >= 0 ? '+' : ''}{formatValue(hesitationCost.totalActualPnL)}
+              </div>
+              <p className="text-[10px] text-muted-foreground">{hesitationCost.actualWinRate}% win rate</p>
+            </div>
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <p className="text-[10px] text-muted-foreground mb-1">Hesitation Cost</p>
+              <div className="text-sm font-mono font-semibold text-amber-500">
+                {formatValue(hesitationCost.hesitationCost)}
+              </div>
+              <p className="text-[10px] text-muted-foreground">{hesitationCost.missedWinRate}% would-be WR</p>
+            </div>
+          </div>
         </section>
       )}
 

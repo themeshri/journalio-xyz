@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import { TokenWithBadge } from '@/components/chain-badge'
 import { loadTradeComments, type TradeComment } from '@/lib/trade-comments'
 import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from '@/lib/discipline'
+import { loadStrategies, type Strategy } from '@/lib/strategies'
 import { computeJournalingStreak, type StreakResult } from '@/lib/streaks'
 import {
   Tooltip,
@@ -94,8 +95,9 @@ export default function TradeJournalPage() {
   const [journalMap, setJournalMap] = useState<Record<string, JournalData>>({})
   const [tradeComments, setTradeComments] = useState<TradeComment[]>([])
   const [streak, setStreak] = useState<StreakResult>({ current: 0, longest: 0 })
+  const [strategiesMap, setStrategiesMap] = useState<Map<string, Strategy>>(new Map())
 
-  // Load view mode, trade comments, and streak from localStorage
+  // Load view mode, trade comments, strategies, and streak from localStorage
   useEffect(() => {
     try {
       const mode = localStorage.getItem('journalio_journal_view_mode')
@@ -103,6 +105,8 @@ export default function TradeJournalPage() {
     } catch {}
     setTradeComments(loadTradeComments())
     setStreak(computeJournalingStreak())
+    const strats = loadStrategies()
+    setStrategiesMap(new Map(strats.map((s) => [s.id, s])))
   }, [])
 
   useEffect(() => {
@@ -387,6 +391,40 @@ export default function TradeJournalPage() {
           {trade.duration ? formatDuration(trade.duration) : '-'}
         </TableCell>
 
+        {/* Strategy */}
+        <TableCell className="text-center">
+          {(() => {
+            const strat = journal?.strategyId ? strategiesMap.get(journal.strategyId) : null
+            if (!strat) return <span className="text-xs text-muted-foreground">&mdash;</span>
+            return (
+              <span className="text-xs flex items-center gap-1 justify-center">
+                <span>{strat.icon}</span>
+                <span className="truncate max-w-[80px]">{strat.name}</span>
+              </span>
+            )
+          })()}
+        </TableCell>
+
+        {/* Follow Rate */}
+        <TableCell className="text-center">
+          {(() => {
+            if (!journal?.ruleResults || !journal?.strategyId) {
+              return <span className="text-xs text-muted-foreground">&mdash;</span>
+            }
+            const total = journal.ruleResults.length
+            if (total === 0) return <span className="text-xs text-muted-foreground">&mdash;</span>
+            const followed = journal.ruleResults.filter((r) => r.followed).length
+            const pct = Math.round((followed / total) * 100)
+            const color = pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600'
+            return (
+              <span className={`text-xs font-mono tabular-nums font-medium ${color}`}>
+                {pct}%
+                <span className="text-muted-foreground font-normal ml-0.5">({followed}/{total})</span>
+              </span>
+            )
+          })()}
+        </TableCell>
+
         {/* Bought */}
         <TableCell className="text-right">
           <div className="font-mono tabular-nums text-sm">
@@ -497,6 +535,8 @@ export default function TradeJournalPage() {
               <TableHead className="text-right min-w-[100px]">PnL</TableHead>
               <TableHead className="text-right min-w-[80px]">Balance</TableHead>
               <TableHead className="text-right min-w-[70px]">Duration</TableHead>
+              <TableHead className="text-center min-w-[90px]">Strategy</TableHead>
+              <TableHead className="text-center min-w-[80px]">Follow Rate</TableHead>
               <TableHead className="text-right min-w-[100px]">Bought</TableHead>
               <TableHead className="text-right min-w-[100px]">Sold</TableHead>
               <TableHead className="text-center min-w-[80px]">Buys/Sells</TableHead>

@@ -694,3 +694,664 @@ export function computeWhatIfEquity(
 
   return results
 }
+
+// =============================================
+// P/L Calendar (Task 8)
+// =============================================
+
+export interface CalendarDay {
+  date: string // YYYY-MM-DD
+  pnl: number
+  tradeCount: number
+  wins: number
+  losses: number
+}
+
+export interface CalendarWeek {
+  days: (CalendarDay | null)[] // 7 entries, null for days outside the month
+  weeklyPnL: number
+}
+
+export interface CalendarMonth {
+  year: number
+  month: number // 0-indexed
+  weeks: CalendarWeek[]
+  totalPnL: number
+  totalTrades: number
+  bestDay: CalendarDay | null
+  worstDay: CalendarDay | null
+}
+
+export function computeCalendarData(
+  trades: FlattenedTrade[],
+  year: number,
+  month: number
+): CalendarMonth {
+  const completed = trades.filter((t) => t.isComplete && t.endDate)
+
+  // Group trades by date string
+  const dayMap = new Map<string, CalendarDay>()
+  for (const t of completed) {
+    const d = new Date((t.endDate || t.startDate) * 1000)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (d.getFullYear() !== year || d.getMonth() !== month) continue
+    const existing = dayMap.get(key) || { date: key, pnl: 0, tradeCount: 0, wins: 0, losses: 0 }
+    existing.pnl += t.profitLoss
+    existing.tradeCount += 1
+    if (t.profitLoss > 0) existing.wins += 1
+    else if (t.profitLoss < 0) existing.losses += 1
+    dayMap.set(key, existing)
+  }
+
+  // Build weeks
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startDow = firstDay.getDay() // 0=Sun
+  const daysInMonth = lastDay.getDate()
+
+  const weeks: CalendarWeek[] = []
+  let currentWeek: (CalendarDay | null)[] = new Array(startDow).fill(null)
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    currentWeek.push(dayMap.get(key) || { date: key, pnl: 0, tradeCount: 0, wins: 0, losses: 0 })
+    if (currentWeek.length === 7) {
+      const weeklyPnL = currentWeek.reduce((s, d) => s + (d?.pnl || 0), 0)
+      weeks.push({ days: currentWeek, weeklyPnL })
+      currentWeek = []
+    }
+  }
+  if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) currentWeek.push(null)
+    const weeklyPnL = currentWeek.reduce((s, d) => s + (d?.pnl || 0), 0)
+    weeks.push({ days: currentWeek, weeklyPnL })
+  }
+
+  const allDays = [...dayMap.values()]
+  const tradingDays = allDays.filter((d) => d.tradeCount > 0)
+
+  return {
+    year,
+    month,
+    weeks,
+    totalPnL: Math.round(allDays.reduce((s, d) => s + d.pnl, 0) * 100) / 100,
+    totalTrades: allDays.reduce((s, d) => s + d.tradeCount, 0),
+    bestDay: tradingDays.length > 0 ? tradingDays.reduce((a, b) => (b.pnl > a.pnl ? b : a)) : null,
+    worstDay: tradingDays.length > 0 ? tradingDays.reduce((a, b) => (b.pnl < a.pnl ? b : a)) : null,
+  }
+}
+
+export function computeYearlyHeatmap(trades: FlattenedTrade[], year: number): CalendarDay[] {
+  const completed = trades.filter((t) => t.isComplete && t.endDate)
+  const dayMap = new Map<string, CalendarDay>()
+
+  for (const t of completed) {
+    const d = new Date((t.endDate || t.startDate) * 1000)
+    if (d.getFullYear() !== year) continue
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const existing = dayMap.get(key) || { date: key, pnl: 0, tradeCount: 0, wins: 0, losses: 0 }
+    existing.pnl += t.profitLoss
+    existing.tradeCount += 1
+    if (t.profitLoss > 0) existing.wins += 1
+    else if (t.profitLoss < 0) existing.losses += 1
+    dayMap.set(key, existing)
+  }
+
+  return [...dayMap.values()].sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export function getDayColorClass(pnl: number, maxPnl: number, maxLoss: number): string {
+  if (pnl === 0) return 'bg-zinc-800'
+  if (pnl > 0) {
+    const intensity = Math.min(pnl / (maxPnl || 1), 1)
+    if (intensity > 0.66) return 'bg-emerald-500'
+    if (intensity > 0.33) return 'bg-emerald-600/70'
+    return 'bg-emerald-700/50'
+  }
+  const intensity = Math.min(Math.abs(pnl) / (maxLoss || 1), 1)
+  if (intensity > 0.66) return 'bg-red-500'
+  if (intensity > 0.33) return 'bg-red-600/70'
+  return 'bg-red-700/50'
+}
+
+// =============================================
+// Time Analytics (Task 10)
+// =============================================
+
+export interface HourlyPerformance {
+  hour: number
+  label: string
+  tradeCount: number
+  totalPnL: number
+  avgPnL: number
+  winRate: number
+  wins: number
+  losses: number
+}
+
+export interface DayOfWeekPerformance {
+  day: number // 0=Sun
+  label: string
+  tradeCount: number
+  totalPnL: number
+  avgPnL: number
+  winRate: number
+  wins: number
+  losses: number
+}
+
+export interface TradingSession {
+  name: string
+  startHour: number
+  endHour: number
+  color: string
+}
+
+export const DEFAULT_TRADING_SESSIONS: TradingSession[] = [
+  { name: 'Morning Degen', startHour: 5, endHour: 9, color: '#f59e0b' },
+  { name: 'Peak Hours', startHour: 9, endHour: 14, color: '#10b981' },
+  { name: 'Afternoon', startHour: 14, endHour: 18, color: '#3b82f6' },
+  { name: 'Evening', startHour: 18, endHour: 22, color: '#8b5cf6' },
+  { name: 'Late Night', startHour: 22, endHour: 2, color: '#ef4444' },
+  { name: 'Early AM', startHour: 2, endHour: 5, color: '#6b7280' },
+]
+
+export interface SessionPerformance {
+  session: TradingSession
+  tradeCount: number
+  totalPnL: number
+  avgPnL: number
+  winRate: number
+  wins: number
+  losses: number
+  profitFactor: number
+}
+
+export interface DayHourPerformance {
+  day: number
+  hour: number
+  tradeCount: number
+  avgPnL: number
+  totalPnL: number
+}
+
+export interface EnhancedDurationBucket {
+  bucket: string
+  count: number
+  avgPL: number
+  winRate: number
+  profitFactor: number
+  totalPnL: number
+}
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+export function computeHourlyPerformance(trades: FlattenedTrade[]): HourlyPerformance[] {
+  const hourData = new Map<number, { count: number; total: number; wins: number; losses: number }>()
+  for (let h = 0; h < 24; h++) hourData.set(h, { count: 0, total: 0, wins: 0, losses: 0 })
+
+  for (const t of trades) {
+    const hour = new Date(t.startDate * 1000).getHours()
+    const d = hourData.get(hour)!
+    d.count++
+    d.total += t.profitLoss
+    if (t.profitLoss > 0) d.wins++
+    else if (t.profitLoss < 0) d.losses++
+  }
+
+  return Array.from(hourData.entries()).map(([hour, d]) => ({
+    hour,
+    label: HOUR_LABELS[hour],
+    tradeCount: d.count,
+    totalPnL: Math.round(d.total * 100) / 100,
+    avgPnL: d.count > 0 ? Math.round((d.total / d.count) * 100) / 100 : 0,
+    winRate: d.count > 0 ? Math.round((d.wins / d.count) * 100) : 0,
+    wins: d.wins,
+    losses: d.losses,
+  }))
+}
+
+export function computeDayOfWeekPerformance(trades: FlattenedTrade[]): DayOfWeekPerformance[] {
+  const dayData = new Map<number, { count: number; total: number; wins: number; losses: number }>()
+  for (let d = 0; d < 7; d++) dayData.set(d, { count: 0, total: 0, wins: 0, losses: 0 })
+
+  for (const t of trades) {
+    const day = new Date(t.startDate * 1000).getDay()
+    const d = dayData.get(day)!
+    d.count++
+    d.total += t.profitLoss
+    if (t.profitLoss > 0) d.wins++
+    else if (t.profitLoss < 0) d.losses++
+  }
+
+  return Array.from(dayData.entries()).map(([day, d]) => ({
+    day,
+    label: DAY_LABELS[day],
+    tradeCount: d.count,
+    totalPnL: Math.round(d.total * 100) / 100,
+    avgPnL: d.count > 0 ? Math.round((d.total / d.count) * 100) / 100 : 0,
+    winRate: d.count > 0 ? Math.round((d.wins / d.count) * 100) : 0,
+    wins: d.wins,
+    losses: d.losses,
+  }))
+}
+
+function isHourInSession(hour: number, session: TradingSession): boolean {
+  if (session.startHour < session.endHour) {
+    return hour >= session.startHour && hour < session.endHour
+  }
+  // Wraps midnight
+  return hour >= session.startHour || hour < session.endHour
+}
+
+export function computeSessionPerformance(
+  trades: FlattenedTrade[],
+  sessions: TradingSession[] = DEFAULT_TRADING_SESSIONS
+): SessionPerformance[] {
+  return sessions.map((session) => {
+    const sessionTrades = trades.filter((t) => {
+      const hour = new Date(t.startDate * 1000).getHours()
+      return isHourInSession(hour, session)
+    })
+
+    const wins = sessionTrades.filter((t) => t.profitLoss > 0)
+    const losses = sessionTrades.filter((t) => t.profitLoss < 0)
+    const grossProfit = wins.reduce((s, t) => s + t.profitLoss, 0)
+    const grossLoss = Math.abs(losses.reduce((s, t) => s + t.profitLoss, 0))
+    const totalPnL = sessionTrades.reduce((s, t) => s + t.profitLoss, 0)
+
+    return {
+      session,
+      tradeCount: sessionTrades.length,
+      totalPnL: Math.round(totalPnL * 100) / 100,
+      avgPnL: sessionTrades.length > 0 ? Math.round((totalPnL / sessionTrades.length) * 100) / 100 : 0,
+      winRate: sessionTrades.length > 0 ? Math.round((wins.length / sessionTrades.length) * 100) : 0,
+      wins: wins.length,
+      losses: losses.length,
+      profitFactor: grossLoss > 0 ? Math.round((grossProfit / grossLoss) * 100) / 100 : grossProfit > 0 ? Infinity : 0,
+    }
+  })
+}
+
+export function computeDayHourHeatmap(trades: FlattenedTrade[]): DayHourPerformance[] {
+  const map = new Map<string, { count: number; total: number }>()
+
+  for (const t of trades) {
+    const d = new Date(t.startDate * 1000)
+    const key = `${d.getDay()}-${d.getHours()}`
+    const entry = map.get(key) || { count: 0, total: 0 }
+    entry.count++
+    entry.total += t.profitLoss
+    map.set(key, entry)
+  }
+
+  const results: DayHourPerformance[] = []
+  for (let day = 0; day < 7; day++) {
+    for (let hour = 0; hour < 24; hour++) {
+      const entry = map.get(`${day}-${hour}`) || { count: 0, total: 0 }
+      results.push({
+        day,
+        hour,
+        tradeCount: entry.count,
+        avgPnL: entry.count > 0 ? Math.round((entry.total / entry.count) * 100) / 100 : 0,
+        totalPnL: Math.round(entry.total * 100) / 100,
+      })
+    }
+  }
+  return results
+}
+
+export function computeEnhancedDurationBuckets(trades: FlattenedTrade[]): EnhancedDurationBucket[] {
+  const completed = trades.filter((t) => t.isComplete && t.duration && t.duration > 0)
+
+  const buckets: { label: string; max: number }[] = [
+    { label: '<1h', max: 60 * 60 * 1000 },
+    { label: '1-6h', max: 6 * 60 * 60 * 1000 },
+    { label: '6-24h', max: 24 * 60 * 60 * 1000 },
+    { label: '1-3d', max: 3 * 24 * 60 * 60 * 1000 },
+    { label: '3-7d', max: 7 * 24 * 60 * 60 * 1000 },
+    { label: '7d+', max: Infinity },
+  ]
+
+  return buckets.map(({ label, max }, i) => {
+    const min = i === 0 ? 0 : buckets[i - 1].max
+    const inBucket = completed.filter((t) => t.duration! >= min && t.duration! < max)
+    const wins = inBucket.filter((t) => t.profitLoss > 0)
+    const losses = inBucket.filter((t) => t.profitLoss < 0)
+    const grossProfit = wins.reduce((s, t) => s + t.profitLoss, 0)
+    const grossLoss = Math.abs(losses.reduce((s, t) => s + t.profitLoss, 0))
+    const totalPnL = inBucket.reduce((s, t) => s + t.profitLoss, 0)
+
+    return {
+      bucket: label,
+      count: inBucket.length,
+      avgPL: inBucket.length > 0 ? Math.round((totalPnL / inBucket.length) * 100) / 100 : 0,
+      winRate: inBucket.length > 0 ? Math.round((wins.length / inBucket.length) * 100) : 0,
+      profitFactor: grossLoss > 0 ? Math.round((grossProfit / grossLoss) * 100) / 100 : grossProfit > 0 ? Infinity : 0,
+      totalPnL: Math.round(totalPnL * 100) / 100,
+    }
+  })
+}
+
+// =============================================
+// Missed Trade Analytics (Task 13)
+// =============================================
+
+export interface MissedTradeEntry {
+  id: string
+  missReason: string | null
+  strategyId: string | null
+  outcome: string | null
+  potentialPnL: number | null
+  potentialMultiplier: number | null
+  createdAt: string
+}
+
+export interface MissReasonBreakdown {
+  reason: string
+  count: number
+  totalMissedPnL: number
+  avgMultiplier: number
+  winCount: number
+}
+
+export interface MissedTradeAnalytics {
+  totalMissed: number
+  totalMissedPnL: number
+  avgMultiplier: number
+  winCount: number
+  reasonBreakdown: MissReasonBreakdown[]
+  strategyBreakdown: { strategyId: string; count: number; totalPnL: number }[]
+  monthlyTrend: { month: string; count: number; missedPnL: number }[]
+}
+
+export function computeMissedTradeStats(missedTrades: MissedTradeEntry[]): MissedTradeAnalytics {
+  const totalMissed = missedTrades.length
+  const totalMissedPnL = missedTrades.reduce((s, t) => s + (t.potentialPnL || 0), 0)
+  const withMultiplier = missedTrades.filter((t) => t.potentialMultiplier != null)
+  const avgMultiplier = withMultiplier.length > 0
+    ? withMultiplier.reduce((s, t) => s + t.potentialMultiplier!, 0) / withMultiplier.length
+    : 0
+  const winCount = missedTrades.filter((t) => t.outcome === 'win').length
+
+  // Reason breakdown
+  const reasonMap = new Map<string, MissReasonBreakdown>()
+  for (const t of missedTrades) {
+    const reason = t.missReason || 'unknown'
+    const entry = reasonMap.get(reason) || { reason, count: 0, totalMissedPnL: 0, avgMultiplier: 0, winCount: 0 }
+    entry.count++
+    entry.totalMissedPnL += t.potentialPnL || 0
+    if (t.outcome === 'win') entry.winCount++
+    reasonMap.set(reason, entry)
+  }
+  // Fill avgMultiplier per reason
+  for (const [reason, entry] of reasonMap) {
+    const reasonTrades = missedTrades.filter((t) => (t.missReason || 'unknown') === reason && t.potentialMultiplier != null)
+    entry.avgMultiplier = reasonTrades.length > 0
+      ? reasonTrades.reduce((s, t) => s + t.potentialMultiplier!, 0) / reasonTrades.length
+      : 0
+    reasonMap.set(reason, entry)
+  }
+
+  // Strategy breakdown
+  const stratMap = new Map<string, { count: number; totalPnL: number }>()
+  for (const t of missedTrades) {
+    if (!t.strategyId) continue
+    const entry = stratMap.get(t.strategyId) || { count: 0, totalPnL: 0 }
+    entry.count++
+    entry.totalPnL += t.potentialPnL || 0
+    stratMap.set(t.strategyId, entry)
+  }
+
+  // Monthly trend
+  const monthMap = new Map<string, { count: number; missedPnL: number }>()
+  for (const t of missedTrades) {
+    const d = new Date(t.createdAt)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const entry = monthMap.get(key) || { count: 0, missedPnL: 0 }
+    entry.count++
+    entry.missedPnL += t.potentialPnL || 0
+    monthMap.set(key, entry)
+  }
+
+  return {
+    totalMissed,
+    totalMissedPnL: Math.round(totalMissedPnL * 100) / 100,
+    avgMultiplier: Math.round(avgMultiplier * 100) / 100,
+    winCount,
+    reasonBreakdown: [...reasonMap.values()].sort((a, b) => b.count - a.count),
+    strategyBreakdown: [...stratMap.entries()].map(([strategyId, d]) => ({
+      strategyId,
+      count: d.count,
+      totalPnL: Math.round(d.totalPnL * 100) / 100,
+    })),
+    monthlyTrend: [...monthMap.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, d]) => ({ month, count: d.count, missedPnL: Math.round(d.missedPnL * 100) / 100 })),
+  }
+}
+
+export interface HesitationCostAnalysis {
+  totalActualPnL: number
+  totalMissedPnL: number
+  hesitationCost: number // what you could have made
+  missedWinRate: number
+  actualWinRate: number
+  missedPerActual: number // ratio
+}
+
+export function computeHesitationCost(
+  missedTrades: MissedTradeEntry[],
+  actualTrades: FlattenedTrade[]
+): HesitationCostAnalysis {
+  const totalActualPnL = actualTrades.reduce((s, t) => s + t.profitLoss, 0)
+  const totalMissedPnL = missedTrades.reduce((s, t) => s + (t.potentialPnL || 0), 0)
+  const actualWins = actualTrades.filter((t) => t.profitLoss > 0).length
+  const missedWins = missedTrades.filter((t) => t.outcome === 'win').length
+
+  return {
+    totalActualPnL: Math.round(totalActualPnL * 100) / 100,
+    totalMissedPnL: Math.round(totalMissedPnL * 100) / 100,
+    hesitationCost: Math.round(totalMissedPnL * 100) / 100,
+    missedWinRate: missedTrades.length > 0 ? Math.round((missedWins / missedTrades.length) * 100) : 0,
+    actualWinRate: actualTrades.length > 0 ? Math.round((actualWins / actualTrades.length) * 100) : 0,
+    missedPerActual: actualTrades.length > 0 ? Math.round((missedTrades.length / actualTrades.length) * 100) / 100 : 0,
+  }
+}
+
+// =============================================
+// Strategy Performance Analytics (Task 15)
+// =============================================
+
+export interface StrategyPerformance {
+  strategyId: string
+  strategyName: string
+  tradeCount: number
+  totalPnL: number
+  avgPnL: number
+  winRate: number
+  wins: number
+  losses: number
+  profitFactor: number
+  avgFollowRate: number
+  bestTrade: number
+  worstTrade: number
+}
+
+export function computeStrategyPerformance(
+  trades: FlattenedTrade[],
+  journalMap: Record<string, JournalData>,
+  strategies: { id: string; name: string }[]
+): StrategyPerformance[] {
+  const stratMap = new Map<string, { trades: FlattenedTrade[]; followRates: number[] }>()
+
+  for (const t of trades) {
+    const key = `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
+    const journal = journalMap[key]
+    if (!journal?.strategyId) continue
+
+    const entry = stratMap.get(journal.strategyId) || { trades: [], followRates: [] }
+    entry.trades.push(t)
+
+    // Compute follow rate from ruleResults
+    if (journal.ruleResults && journal.ruleResults.length > 0) {
+      const followed = journal.ruleResults.filter((r) => r.followed).length
+      entry.followRates.push(Math.round((followed / journal.ruleResults.length) * 100))
+    }
+
+    stratMap.set(journal.strategyId, entry)
+  }
+
+  const nameMap = new Map(strategies.map((s) => [s.id, s.name]))
+
+  return [...stratMap.entries()].map(([strategyId, data]) => {
+    const { trades: sTrades, followRates } = data
+    const wins = sTrades.filter((t) => t.profitLoss > 0)
+    const losses = sTrades.filter((t) => t.profitLoss < 0)
+    const grossProfit = wins.reduce((s, t) => s + t.profitLoss, 0)
+    const grossLoss = Math.abs(losses.reduce((s, t) => s + t.profitLoss, 0))
+    const totalPnL = sTrades.reduce((s, t) => s + t.profitLoss, 0)
+
+    return {
+      strategyId,
+      strategyName: nameMap.get(strategyId) || 'Unknown',
+      tradeCount: sTrades.length,
+      totalPnL: Math.round(totalPnL * 100) / 100,
+      avgPnL: Math.round((totalPnL / sTrades.length) * 100) / 100,
+      winRate: Math.round((wins.length / sTrades.length) * 100),
+      wins: wins.length,
+      losses: losses.length,
+      profitFactor: grossLoss > 0 ? Math.round((grossProfit / grossLoss) * 100) / 100 : grossProfit > 0 ? Infinity : 0,
+      avgFollowRate: followRates.length > 0
+        ? Math.round(followRates.reduce((s, r) => s + r, 0) / followRates.length)
+        : 0,
+      bestTrade: sTrades.length > 0 ? Math.round(Math.max(...sTrades.map((t) => t.profitLoss)) * 100) / 100 : 0,
+      worstTrade: sTrades.length > 0 ? Math.round(Math.min(...sTrades.map((t) => t.profitLoss)) * 100) / 100 : 0,
+    }
+  }).sort((a, b) => b.totalPnL - a.totalPnL)
+}
+
+// =============================================
+// Rule Impact Analysis (Task 16)
+// =============================================
+
+export interface RulePerformance {
+  ruleId: string
+  ruleText: string
+  groupName: string
+  followedCount: number
+  skippedCount: number
+  avgPnLWhenFollowed: number
+  avgPnLWhenSkipped: number
+  impact: number // difference
+}
+
+export interface CompletionBucket {
+  range: string // e.g. "0-25%"
+  minPct: number
+  maxPct: number
+  tradeCount: number
+  avgPnL: number
+  winRate: number
+}
+
+export function computeRuleImpact(
+  trades: FlattenedTrade[],
+  journalMap: Record<string, JournalData>,
+  strategies: { id: string; name: string; ruleGroups: { id: string; name: string; rules: { id: string; text: string }[] }[] }[]
+): RulePerformance[] {
+  // Build rule info map
+  const ruleInfo = new Map<string, { text: string; groupName: string }>()
+  for (const s of strategies) {
+    for (const g of s.ruleGroups) {
+      for (const r of g.rules) {
+        ruleInfo.set(r.id, { text: r.text, groupName: g.name })
+      }
+    }
+  }
+
+  const ruleData = new Map<string, { followedPnL: number[]; skippedPnL: number[] }>()
+
+  for (const t of trades) {
+    const key = `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
+    const journal = journalMap[key]
+    if (!journal?.ruleResults) continue
+
+    for (const result of journal.ruleResults) {
+      const entry = ruleData.get(result.ruleId) || { followedPnL: [], skippedPnL: [] }
+      if (result.followed) {
+        entry.followedPnL.push(t.profitLoss)
+      } else {
+        entry.skippedPnL.push(t.profitLoss)
+      }
+      ruleData.set(result.ruleId, entry)
+    }
+  }
+
+  return [...ruleData.entries()]
+    .filter(([, d]) => d.followedPnL.length + d.skippedPnL.length >= 2)
+    .map(([ruleId, d]) => {
+      const info = ruleInfo.get(ruleId) || { text: ruleId, groupName: 'Unknown' }
+      const avgFollowed = d.followedPnL.length > 0
+        ? d.followedPnL.reduce((s, v) => s + v, 0) / d.followedPnL.length
+        : 0
+      const avgSkipped = d.skippedPnL.length > 0
+        ? d.skippedPnL.reduce((s, v) => s + v, 0) / d.skippedPnL.length
+        : 0
+
+      return {
+        ruleId,
+        ruleText: info.text,
+        groupName: info.groupName,
+        followedCount: d.followedPnL.length,
+        skippedCount: d.skippedPnL.length,
+        avgPnLWhenFollowed: Math.round(avgFollowed * 100) / 100,
+        avgPnLWhenSkipped: Math.round(avgSkipped * 100) / 100,
+        impact: Math.round((avgFollowed - avgSkipped) * 100) / 100,
+      }
+    })
+    .sort((a, b) => b.impact - a.impact)
+}
+
+export function computeCompletionVsPerformance(
+  trades: FlattenedTrade[],
+  journalMap: Record<string, JournalData>
+): CompletionBucket[] {
+  const bucketDefs = [
+    { range: '0-25%', minPct: 0, maxPct: 25 },
+    { range: '26-50%', minPct: 26, maxPct: 50 },
+    { range: '51-75%', minPct: 51, maxPct: 75 },
+    { range: '76-100%', minPct: 76, maxPct: 100 },
+  ]
+
+  const bucketData = bucketDefs.map((b) => ({ ...b, trades: [] as FlattenedTrade[] }))
+
+  for (const t of trades) {
+    const key = `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
+    const journal = journalMap[key]
+    if (!journal?.ruleResults || journal.ruleResults.length === 0) continue
+
+    const followed = journal.ruleResults.filter((r) => r.followed).length
+    const pct = Math.round((followed / journal.ruleResults.length) * 100)
+
+    for (const bucket of bucketData) {
+      if (pct >= bucket.minPct && pct <= bucket.maxPct) {
+        bucket.trades.push(t)
+        break
+      }
+    }
+  }
+
+  return bucketData.map((b) => {
+    const wins = b.trades.filter((t) => t.profitLoss > 0).length
+    const totalPnL = b.trades.reduce((s, t) => s + t.profitLoss, 0)
+    return {
+      range: b.range,
+      minPct: b.minPct,
+      maxPct: b.maxPct,
+      tradeCount: b.trades.length,
+      avgPnL: b.trades.length > 0 ? Math.round((totalPnL / b.trades.length) * 100) / 100 : 0,
+      winRate: b.trades.length > 0 ? Math.round((wins / b.trades.length) * 100) : 0,
+    }
+  })
+}
