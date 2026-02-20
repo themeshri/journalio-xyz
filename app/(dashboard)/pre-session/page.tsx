@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { safeLocalStorage } from '@/lib/local-storage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -156,7 +157,7 @@ function upsertSessionsIndex(summary: PreSessionSummary) {
   } else {
     sessions.push(summary)
   }
-  localStorage.setItem('journalio_pre_sessions', JSON.stringify(sessions))
+  safeLocalStorage.setItem('journalio_pre_sessions', sessions)
 }
 
 export default function PreSessionPage() {
@@ -202,7 +203,7 @@ export default function PreSessionPage() {
       marketSnapshot: data.marketSnapshot || defaultMarketSnapshot,
     }
 
-    localStorage.setItem(getStorageKey(), JSON.stringify(savedData))
+    safeLocalStorage.setItem(getStorageKey(), savedData)
     setData(savedData)
     setIsCompletedToday(true)
 

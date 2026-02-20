@@ -43,6 +43,7 @@ export interface WalletSlot {
   trades: any[]
   isLoading: boolean
   error: string
+  isStale: boolean
   cacheInfo: CacheInfo | null
 }
 
@@ -55,6 +56,7 @@ interface WalletContextValue {
   flattenedTrades: FlattenedTrade[]
   activeWallets: SavedWallet[]
   isAnyLoading: boolean
+  isAnyStale: boolean
   hasActiveWallets: boolean
 
   // Actions
@@ -102,7 +104,7 @@ async function fetchTradesForWallet(
   address: string,
   chain: Chain,
   forceRefresh: boolean = false
-): Promise<{ trades: any[]; cached: boolean; cachedAt?: string }> {
+): Promise<{ trades: any[]; cached: boolean; cachedAt?: string; stale?: boolean }> {
   const url = `/api/trades?address=${encodeURIComponent(address)}&chain=${chain}${forceRefresh ? '&refresh=true' : ''}`
   const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch trades')
@@ -181,6 +183,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           trades: prev[key]?.trades || [],
           isLoading: true,
           error: '',
+          isStale: prev[key]?.isStale || false,
           cacheInfo: prev[key]?.cacheInfo || null,
         },
       }))
@@ -216,6 +219,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             trades: adjustedTrades,
             isLoading: false,
             error: '',
+            isStale: !!data.stale,
             cacheInfo: {
               cached: data.cached,
               cachedAt: data.cachedAt ? new Date(data.cachedAt) : undefined,
@@ -232,6 +236,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             dex,
             nickname,
             isLoading: false,
+            isStale: prev[key]?.isStale || false,
             error: err instanceof Error ? err.message : 'An unexpected error occurred',
           },
         }))
@@ -321,6 +326,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     })
   }, [activeWallets, walletSlots])
 
+  const isAnyStale = useMemo(() => {
+    return activeWallets.some((w) => {
+      const key = makeWalletKey(w.address, w.chain)
+      return walletSlots[key]?.isStale
+    })
+  }, [activeWallets, walletSlots])
+
   const hasActiveWallets = activeWallets.length > 0
 
   return (
@@ -331,6 +343,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         flattenedTrades,
         activeWallets,
         isAnyLoading,
+        isAnyStale,
         hasActiveWallets,
         setWalletActive,
         refreshWallet,

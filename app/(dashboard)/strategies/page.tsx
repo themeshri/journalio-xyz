@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { safeLocalStorage } from '@/lib/local-storage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -195,7 +196,7 @@ function loadRules(): GlobalRule[] {
 }
 
 function saveRules(rules: GlobalRule[]) {
-  localStorage.setItem(RULES_KEY, JSON.stringify(rules))
+  safeLocalStorage.setItem(RULES_KEY, rules)
 }
 
 // ─── Form Helpers ─────────────────────────────────────────────

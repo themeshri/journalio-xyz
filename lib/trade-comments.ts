@@ -1,3 +1,5 @@
+import { safeLocalStorage } from './local-storage'
+
 export interface TradeComment {
   id: string
   category: 'entry' | 'exit' | 'management'
@@ -51,13 +53,13 @@ export function loadTradeComments(): TradeComment[] {
     ...c,
     createdAt: new Date().toISOString(),
   }))
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded))
+  safeLocalStorage.setItem(STORAGE_KEY, seeded)
   return seeded
 }
 
 export function saveTradeComments(comments: TradeComment[]): void {
   if (typeof window === 'undefined') return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(comments))
+  safeLocalStorage.setItem(STORAGE_KEY, comments)
 }
 
 export function getCommentsByCategory(

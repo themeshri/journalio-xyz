@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { safeLocalStorage } from '@/lib/local-storage'
 import { useWallet } from '@/lib/wallet-context'
 import { getWalletTokens } from '@/lib/solana-tracker'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
@@ -214,9 +215,9 @@ export default function TradeJournalPage() {
   const handleJournalSave = useCallback((data: JournalData) => {
     if (!journalModalTrade) return
     const key = journalKey(journalModalTrade)
-    localStorage.setItem(
+    safeLocalStorage.setItem(
       jKey(journalModalTrade.walletAddress, journalModalTrade.tokenMint, journalModalTrade.tradeNumber),
-      JSON.stringify(data)
+      data
     )
     setJournalMap((prev) => ({ ...prev, [key]: data }))
     setJournalModalTrade(null)
@@ -226,9 +227,9 @@ export default function TradeJournalPage() {
   const handleJournalSaveAndNext = useCallback((data: JournalData) => {
     if (!journalModalTrade) return
     const key = journalKey(journalModalTrade)
-    localStorage.setItem(
+    safeLocalStorage.setItem(
       jKey(journalModalTrade.walletAddress, journalModalTrade.tokenMint, journalModalTrade.tradeNumber),
-      JSON.stringify(data)
+      data
     )
     const updatedMap = { ...journalMap, [key]: data }
     setJournalMap(updatedMap)

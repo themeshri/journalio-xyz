@@ -71,6 +71,7 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 | `TransactionModal` | `components/TransactionModal.tsx` | Dialog showing individual txs in a trade cycle |
 | `ErrorBoundary` | `components/ErrorBoundary.tsx` | React error boundary with dev stack trace |
 | `Providers` | `components/Providers.tsx` | NextAuth SessionProvider wrapper |
+| `StaleDataBanner` | `components/StaleDataBanner.tsx` | Amber banner shown when trade data is served from stale cache |
 
 Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `PaperedPlays.tsx`, `SummaryView.tsx`, `TradeCycleCard.backup.tsx`, `SkeletonLoading.tsx`
 
@@ -81,7 +82,8 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | `wallet-context.tsx` | `WalletProvider`, `useWallet` | Cross-page wallet state, URL `?wallet=` sync, trade fetching |
 | `solana-tracker.ts` | `isValidSolanaAddress`, `getWalletTrades`, `getWalletTokens`, `getTokenData` | Solana Tracker API client; browser requests proxy through `/api/solana/*` |
 | `tradeCycles.ts` | `calculateTradeCycles`, `flattenTradeCycles` | Groups txs by token → splits into buy/sell cycles by balance |
-| `analytics.ts` | `computeDurationBuckets`, `computeCumulativePL`, `computeTradingHours`, `computeAvgDuration` | Analytics computation for charts |
+| `analytics.ts` → `analytics/` | Re-export barrel; modules: `core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`, `types`, `helpers` | Analytics computation split by domain |
+| `local-storage.ts` | `safeLocalStorage` | Safe localStorage wrapper with quota error handling and toast notifications |
 | `formatters.ts` | `formatDuration`, `formatTime`, `formatValue`, `formatTokenAmount`, `formatMarketCap`, `formatPrice`, `formatPercentage` | Display formatting |
 | `utils.ts` | `cn` | Tailwind class merge (clsx + tailwind-merge) |
 | `auth.ts` | `authOptions` | NextAuth config (credentials provider, JWT strategy) |
@@ -144,6 +146,27 @@ In Tailwind v4 this must be `w-(--sidebar-width)` (parentheses, not brackets).
 - `globals.css` uses `@theme inline` and `@plugin` syntax (Tailwind v4)
 - shadcn/ui components in `components/ui/`
 - `components.json` configured with `zinc` baseColor
+
+## Error Handling
+
+### localStorage
+- All writes go through `safeLocalStorage` from `lib/local-storage.ts`
+- Catches `QuotaExceededError` and shows a toast notification via sonner
+- Reads silently fall back to defaults on parse errors
+- New localStorage writes **must** use `safeLocalStorage`, never raw `localStorage.setItem`
+
+### API Trade Cache
+- 5-minute TTL on `Trade.indexedAt`; `refresh=true` bypasses cache
+- On Solana Tracker API failure, returns stale cached data with `{ stale: true }`
+- `WalletProvider` tracks `isStale` per wallet slot; `isAnyStale` aggregates across all
+- `StaleDataBanner` component renders amber banner when any wallet has stale data
+
+### External API Proxy
+- `/api/solana/*` routes pass through HTTP status codes from Solana Tracker
+- Client-side errors surface as `error` field on `WalletSlot`
+
+### Data Storage Architecture
+- See `docs/DATA-STORAGE.md` for the full localStorage vs DB split, rationale, and migration plan
 
 ## Development
 

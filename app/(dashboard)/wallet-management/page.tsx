@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { safeLocalStorage } from '@/lib/local-storage'
 import { useWallet, makeWalletKey } from '@/lib/wallet-context'
 import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
 import { Input } from '@/components/ui/input'
@@ -35,7 +36,7 @@ function loadWallets(): SavedWallet[] {
 }
 
 function saveWallets(wallets: SavedWallet[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets))
+  safeLocalStorage.setItem(STORAGE_KEY, wallets)
 }
 
 const CHAIN_LABELS: Record<Chain, string> = {

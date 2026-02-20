@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { AppSidebar } from '@/components/app-sidebar'
 import { WalletProvider } from '@/lib/wallet-context'
 import { Separator } from '@/components/ui/separator'
+import { StaleDataBanner } from '@/components/StaleDataBanner'
 
 export default function DashboardLayout({
   children,
@@ -23,6 +24,7 @@ export default function DashboardLayout({
               </span>
             </header>
             <div className="flex-1 overflow-auto px-6 py-6">
+              <StaleDataBanner />
               {children}
             </div>
           </SidebarInset>

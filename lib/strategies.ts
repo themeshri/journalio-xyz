@@ -1,6 +1,8 @@
 // Strategy data model and localStorage helpers
 // Shared between strategies page, JournalModal, and analytics
 
+import { safeLocalStorage } from './local-storage'
+
 export interface StrategyRule {
   id: string
   text: string
@@ -95,7 +97,7 @@ export function loadStrategies(): Strategy[] {
     if (!Array.isArray(parsed)) return []
     if (isLegacyFormat(parsed)) {
       const migrated = (parsed as LegacyStrategy[]).map(migrateOldStrategy)
-      localStorage.setItem(STRATEGIES_KEY, JSON.stringify(migrated))
+      safeLocalStorage.setItem(STRATEGIES_KEY, migrated)
       return migrated
     }
     return parsed as Strategy[]
@@ -105,5 +107,5 @@ export function loadStrategies(): Strategy[] {
 }
 
 export function saveStrategies(strategies: Strategy[]) {
-  localStorage.setItem(STRATEGIES_KEY, JSON.stringify(strategies))
+  safeLocalStorage.setItem(STRATEGIES_KEY, strategies)
 }
