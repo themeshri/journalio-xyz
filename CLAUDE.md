@@ -1,6 +1,7 @@
 # Journalio — Solana Trading Journal
 
 <!-- UPDATE THIS FILE when adding new pages, components, or lib modules. -->
+<!-- UPDATE FEATURES.md when adding or changing any user-facing feature. -->
 <!-- Run `bash scripts/update-claude-md.sh` to see current project structure. -->
 
 ## Overview
