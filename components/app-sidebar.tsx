@@ -19,7 +19,6 @@ import { useWallet, makeWalletKey, type SavedWallet } from '@/lib/wallet-context
 import { CHAIN_CONFIG, type Chain } from '@/lib/chains'
 import { loadTradeComments } from '@/lib/trade-comments'
 import { computeTradeDiscipline, disciplineColor, type DisciplineResult } from '@/lib/discipline'
-import { computeJournalingStreak, type StreakResult } from '@/lib/streaks'
 import type { JournalData } from '@/components/JournalModal'
 
 function isPreSessionCompletedToday(): boolean {
@@ -48,31 +47,34 @@ function getRollingDisciplineColor(): 'emerald' | 'yellow' | 'red' | null {
     const comments = loadTradeComments()
     if (comments.length === 0) return null
 
-    const journals: JournalData[] = []
+    // Collect journals with timestamps for sorting, only keep those with comments assigned
+    const journalsWithTime: { data: JournalData; time: string }[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
       if (!key || !key.startsWith('journalio_journal_')) continue
-      // Skip non-trade journal keys (like journalio_journal_view_mode)
       const parts = key.replace('journalio_journal_', '').split('_')
       if (parts.length < 3) continue
       try {
         const data: JournalData = JSON.parse(localStorage.getItem(key)!)
         if (data.entryCommentId || data.exitCommentId || data.managementCommentId) {
-          journals.push(data)
+          journalsWithTime.push({ data, time: data.journaledAt || '' })
         }
       } catch { /* ignore */ }
     }
 
-    if (journals.length === 0) return null
+    if (journalsWithTime.length === 0) return null
 
-    const results = journals
-      .map((j) => computeTradeDiscipline(j, comments))
+    // Sort by journaledAt descending and take only the 5 most recent
+    journalsWithTime.sort((a, b) => b.time.localeCompare(a.time))
+    const recent = journalsWithTime.slice(0, 5)
+
+    const results = recent
+      .map((j) => computeTradeDiscipline(j.data, comments))
       .filter((r): r is DisciplineResult => r !== null)
 
     if (results.length === 0) return null
 
-    const window = results.slice(-5)
-    const avg = window.reduce((sum, r) => sum + r.percentage, 0) / window.length
+    const avg = results.reduce((sum, r) => sum + r.percentage, 0) / results.length
     return disciplineColor(avg)
   } catch {
     return null
@@ -96,18 +98,16 @@ const managementNav = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { activeWallets, setWalletActive, walletSlots } = useWallet()
+  const { activeWallets, setWalletActive, walletSlots, streak } = useWallet()
   const [preSessionDone, setPreSessionDone] = useState(false)
   const [savedWallets, setSavedWallets] = useState<SavedWallet[]>([])
   const [walletsExpanded, setWalletsExpanded] = useState(false)
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
-  const [streak, setStreak] = useState<StreakResult | null>(null)
 
   useEffect(() => {
     setPreSessionDone(isPreSessionCompletedToday())
     setSavedWallets(loadSavedWallets())
     setDisciplineDotColor(getRollingDisciplineColor())
-    setStreak(computeJournalingStreak())
 
     function onStorage(e: StorageEvent) {
       if (e.key === 'journalio_pre_sessions') {
@@ -118,7 +118,6 @@ export function AppSidebar() {
       }
       if (e.key?.startsWith('journalio_journal_') || e.key === 'journalio_trade_comments') {
         setDisciplineDotColor(getRollingDisciplineColor())
-        setStreak(computeJournalingStreak())
       }
     }
     window.addEventListener('storage', onStorage)
@@ -291,7 +290,7 @@ export function AppSidebar() {
         )}
       </SidebarContent>
       <SidebarFooter className="px-4 py-3">
-        {streak && streak.current > 0 && (
+        {streak.current > 0 && (
           <p className="text-xs text-muted-foreground mb-1">
             {'\ud83d\udd25'} {streak.current}-day streak
           </p>

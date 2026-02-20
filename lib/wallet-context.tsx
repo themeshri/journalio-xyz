@@ -7,10 +7,15 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react'
 import { type Chain } from './chains'
 import { calculateTradeCycles, flattenTradeCycles, type FlattenedTrade } from './tradeCycles'
+import { loadTradeComments, type TradeComment } from './trade-comments'
+import { loadStrategies, type Strategy } from './strategies'
+import { computeJournalingStreak, type StreakResult } from './streaks'
+import { getWalletTokens } from './solana-tracker'
 
 interface CacheInfo {
   cached: boolean
@@ -59,10 +64,23 @@ interface WalletContextValue {
   isAnyStale: boolean
   hasActiveWallets: boolean
 
+  // Shared localStorage state (loaded once, updated on storage events)
+  tradeComments: TradeComment[]
+  strategies: Strategy[]
+  journalMap: Record<string, any>
+  streak: StreakResult
+
+  // Shared balance data (cached in provider)
+  walletTokens: Map<string, any[]>
+  loadingBalances: boolean
+  balancesFetched: boolean
+  balanceError: string
+
   // Actions
   setWalletActive: (address: string, chain: Chain, active: boolean) => void
   refreshWallet: (address: string, chain: Chain) => Promise<void>
   refreshAll: () => Promise<void>
+  updateJournalEntry: (key: string, storageKey: string, data: any) => void
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null)
@@ -335,6 +353,140 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const hasActiveWallets = activeWallets.length > 0
 
+  // ─── Shared localStorage state ───────────────────────────────────────
+  const [tradeComments, setTradeComments] = useState<TradeComment[]>([])
+  const [strategies, setStrategies] = useState<Strategy[]>([])
+  const [journalMap, setJournalMap] = useState<Record<string, any>>({})
+  const [streak, setStreak] = useState<StreakResult>({ current: 0, longest: 0 })
+
+  // Load shared localStorage state once on mount
+  useEffect(() => {
+    setTradeComments(loadTradeComments())
+    setStrategies(loadStrategies())
+    setStreak(computeJournalingStreak())
+  }, [])
+
+  // Rebuild journalMap when flattenedTrades change
+  useEffect(() => {
+    if (flattenedTrades.length === 0) {
+      setJournalMap({})
+      return
+    }
+    const map: Record<string, any> = {}
+    for (const t of flattenedTrades) {
+      try {
+        const raw = localStorage.getItem(`journalio_journal_${t.walletAddress}_${t.tokenMint}_${t.tradeNumber}`)
+        if (raw) map[`${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`] = JSON.parse(raw)
+      } catch { /* ignore */ }
+    }
+    setJournalMap(map)
+  }, [flattenedTrades])
+
+  // Listen for storage events to keep shared state in sync
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === 'journalio_trade_comments') {
+        setTradeComments(loadTradeComments())
+      }
+      if (e.key === 'journalio_strategies') {
+        setStrategies(loadStrategies())
+      }
+      if (e.key?.startsWith('journalio_journal_')) {
+        // Rebuild the journal map
+        const map: Record<string, any> = {}
+        for (const t of flattenedTrades) {
+          try {
+            const raw = localStorage.getItem(`journalio_journal_${t.walletAddress}_${t.tokenMint}_${t.tradeNumber}`)
+            if (raw) map[`${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`] = JSON.parse(raw)
+          } catch { /* ignore */ }
+        }
+        setJournalMap(map)
+        setStreak(computeJournalingStreak())
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [flattenedTrades])
+
+  // Imperative update for same-tab journal saves (StorageEvent only fires cross-tab)
+  const updateJournalEntry = useCallback((key: string, storageKey: string, data: any) => {
+    setJournalMap((prev) => ({ ...prev, [key]: data }))
+    setStreak(computeJournalingStreak())
+  }, [])
+
+  // ─── Shared balance data ─────────────────────────────────────────────
+  const [walletTokens, setWalletTokens] = useState<Map<string, any[]>>(new Map())
+  const [loadingBalances, setLoadingBalances] = useState(false)
+  const [balancesFetched, setBalancesFetched] = useState(false)
+  const [balanceError, setBalanceError] = useState('')
+  const balanceCacheRef = useRef<Map<string, { tokens: any[]; timestamp: number }>>(new Map())
+  const balanceAbortRef = useRef<AbortController | null>(null)
+  const BALANCE_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+  useEffect(() => {
+    if (!hasActiveWallets || allTrades.length === 0) return
+
+    if (balanceAbortRef.current) {
+      balanceAbortRef.current.abort()
+    }
+
+    const controller = new AbortController()
+    balanceAbortRef.current = controller
+
+    const timer = setTimeout(() => {
+      fetchBalances(controller.signal)
+    }, 1000)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasActiveWallets, allTrades.length, activeWallets])
+
+  async function fetchBalances(signal: AbortSignal) {
+    setLoadingBalances(true)
+    setBalanceError('')
+    try {
+      const results = new Map<string, any[]>()
+
+      for (let i = 0; i < activeWallets.length; i++) {
+        const w = activeWallets[i]
+        if (signal.aborted) return
+
+        if (i > 0) await new Promise((r) => setTimeout(r, 200))
+
+        const cacheKey = `${w.chain}:${w.address}`
+        const cached = balanceCacheRef.current.get(cacheKey)
+        if (cached && Date.now() - cached.timestamp < BALANCE_CACHE_DURATION) {
+          results.set(cacheKey, cached.tokens)
+          continue
+        }
+
+        try {
+          const tokens = await getWalletTokens(w.address)
+          if (signal.aborted) return
+          results.set(cacheKey, tokens)
+          balanceCacheRef.current.set(cacheKey, { tokens, timestamp: Date.now() })
+        } catch (err) {
+          if (err instanceof Error && err.name === 'AbortError') return
+        }
+      }
+
+      if (!signal.aborted) {
+        setWalletTokens(results)
+        setBalancesFetched(true)
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      if (!signal.aborted) {
+        setBalanceError(err instanceof Error ? err.message : 'Failed to fetch balances')
+      }
+    } finally {
+      if (!signal.aborted) setLoadingBalances(false)
+    }
+  }
+
   return (
     <WalletContext.Provider
       value={{
@@ -345,9 +497,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         isAnyLoading,
         isAnyStale,
         hasActiveWallets,
+        tradeComments,
+        strategies,
+        journalMap,
+        streak,
+        walletTokens,
+        loadingBalances,
+        balancesFetched,
+        balanceError,
         setWalletActive,
         refreshWallet,
         refreshAll,
+        updateJournalEntry,
       }}
     >
       {children}

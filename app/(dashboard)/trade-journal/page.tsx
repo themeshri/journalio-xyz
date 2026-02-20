@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { safeLocalStorage } from '@/lib/local-storage'
 import { useWallet } from '@/lib/wallet-context'
-import { getWalletTokens } from '@/lib/solana-tracker'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
 import { formatValue, formatDuration, formatPrice, formatPercentage } from '@/lib/formatters'
 import { Button } from '@/components/ui/button'
@@ -20,10 +19,7 @@ import JournalModal, { JournalData } from '@/components/JournalModal'
 import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
 import { toast } from 'sonner'
 import { TokenWithBadge } from '@/components/chain-badge'
-import { loadTradeComments, type TradeComment } from '@/lib/trade-comments'
 import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from '@/lib/discipline'
-import { loadStrategies, type Strategy } from '@/lib/strategies'
-import { computeJournalingStreak, type StreakResult } from '@/lib/streaks'
 import {
   Tooltip,
   TooltipContent,
@@ -31,27 +27,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
-const balanceCache = new Map<string, { tokens: any[]; timestamp: number }>()
-const CACHE_DURATION = 60000
-
 type StatusFilter = 'all' | 'completed' | 'active'
 type JournalFilter = 'all' | 'journaled' | 'not-journaled'
 type SortOption = 'recent' | 'pl-high' | 'pl-low' | 'duration'
 
 function jKey(wallet: string, tokenMint: string, tradeNumber: number) {
   return `journalio_journal_${wallet}_${tokenMint}_${tradeNumber}`
-}
-
-function loadAllJournals(trades: FlattenedTrade[]): Record<string, JournalData> {
-  if (typeof window === 'undefined') return {}
-  const map: Record<string, JournalData> = {}
-  for (const t of trades) {
-    try {
-      const raw = localStorage.getItem(jKey(t.walletAddress, t.tokenMint, t.tradeNumber))
-      if (raw) map[`${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`] = JSON.parse(raw)
-    } catch { /* ignore */ }
-  }
-  return map
 }
 
 function relativeTime(timestamp: number): string {
@@ -75,12 +56,11 @@ function journalKey(trade: FlattenedTrade) {
 }
 
 export default function TradeJournalPage() {
-  const { activeWallets, flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades } = useWallet()
-  const [walletTokens, setWalletTokens] = useState<Map<string, any[]>>(new Map())
-  const [loadingBalances, setLoadingBalances] = useState(false)
-  const [balancesFetched, setBalancesFetched] = useState(false)
-  const [balanceError, setBalanceError] = useState('')
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const {
+    activeWallets, flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades,
+    tradeComments, strategies, journalMap, streak, updateJournalEntry,
+    walletTokens, loadingBalances, balancesFetched, balanceError,
+  } = useWallet()
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [journalFilter, setJournalFilter] = useState<JournalFilter>('all')
@@ -92,88 +72,19 @@ export default function TradeJournalPage() {
   const [sellsModalTrade, setSellsModalTrade] = useState<FlattenedTrade | null>(null)
   const [journalModalTrade, setJournalModalTrade] = useState<FlattenedTrade | null>(null)
 
-  // Journal data from localStorage
-  const [journalMap, setJournalMap] = useState<Record<string, JournalData>>({})
-  const [tradeComments, setTradeComments] = useState<TradeComment[]>([])
-  const [streak, setStreak] = useState<StreakResult>({ current: 0, longest: 0 })
-  const [strategiesMap, setStrategiesMap] = useState<Map<string, Strategy>>(new Map())
+  // Strategies as a Map for quick lookup
+  const strategiesMap = useMemo(
+    () => new Map(strategies.map((s) => [s.id, s])),
+    [strategies]
+  )
 
-  // Load view mode, trade comments, strategies, and streak from localStorage
+  // Load view mode from localStorage
   useEffect(() => {
     try {
       const mode = localStorage.getItem('journalio_journal_view_mode')
       if (mode === 'merged' || mode === 'grouped') setViewMode(mode)
     } catch {}
-    setTradeComments(loadTradeComments())
-    setStreak(computeJournalingStreak())
-    const strats = loadStrategies()
-    setStrategiesMap(new Map(strats.map((s) => [s.id, s])))
   }, [])
-
-  useEffect(() => {
-    if (!hasActiveWallets || allTrades.length === 0) return
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
-    const timer = setTimeout(() => {
-      fetchBalances(controller.signal)
-    }, 1000)
-
-    return () => {
-      clearTimeout(timer)
-      controller.abort()
-    }
-  }, [hasActiveWallets, allTrades.length, activeWallets])
-
-  async function fetchBalances(signal: AbortSignal) {
-    setLoadingBalances(true)
-    setBalanceError('')
-    try {
-      const results = new Map<string, any[]>()
-
-      for (let i = 0; i < activeWallets.length; i++) {
-        const w = activeWallets[i]
-        if (signal.aborted) return
-
-        // Stagger requests 200ms apart
-        if (i > 0) await new Promise((r) => setTimeout(r, 200))
-
-        const cacheKey = `${w.chain}:${w.address}`
-        const cached = balanceCache.get(cacheKey)
-        if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-          results.set(cacheKey, cached.tokens)
-          continue
-        }
-
-        try {
-          const tokens = await getWalletTokens(w.address)
-          if (signal.aborted) return
-          results.set(cacheKey, tokens)
-          balanceCache.set(cacheKey, { tokens, timestamp: Date.now() })
-        } catch (err) {
-          if (err instanceof Error && err.name === 'AbortError') return
-          // Continue with other wallets
-        }
-      }
-
-      if (!signal.aborted) {
-        setWalletTokens(results)
-        setBalancesFetched(true)
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return
-      if (!signal.aborted) {
-        setBalanceError(err instanceof Error ? err.message : 'Failed to fetch balances')
-      }
-    } finally {
-      if (!signal.aborted) setLoadingBalances(false)
-    }
-  }
 
   // Enrich with balance data separately — baseTrades come from context (no recomputation)
   const flattenedTrades = useMemo(() => {
@@ -201,13 +112,6 @@ export default function TradeJournalPage() {
     })
   }, [baseTrades, balancesFetched, loadingBalances, walletTokens])
 
-  // Load journals when trades change
-  useEffect(() => {
-    if (flattenedTrades.length > 0) {
-      setJournalMap(loadAllJournals(flattenedTrades))
-    }
-  }, [flattenedTrades])
-
   const getJournal = useCallback((trade: FlattenedTrade) => {
     return journalMap[journalKey(trade)] || null
   }, [journalMap])
@@ -215,26 +119,21 @@ export default function TradeJournalPage() {
   const handleJournalSave = useCallback((data: JournalData) => {
     if (!journalModalTrade) return
     const key = journalKey(journalModalTrade)
-    safeLocalStorage.setItem(
-      jKey(journalModalTrade.walletAddress, journalModalTrade.tokenMint, journalModalTrade.tradeNumber),
-      data
-    )
-    setJournalMap((prev) => ({ ...prev, [key]: data }))
+    const storageKey = jKey(journalModalTrade.walletAddress, journalModalTrade.tokenMint, journalModalTrade.tradeNumber)
+    safeLocalStorage.setItem(storageKey, data)
+    updateJournalEntry(key, storageKey, data)
     setJournalModalTrade(null)
-    setStreak(computeJournalingStreak())
-  }, [journalModalTrade])
+  }, [journalModalTrade, updateJournalEntry])
 
   const handleJournalSaveAndNext = useCallback((data: JournalData) => {
     if (!journalModalTrade) return
     const key = journalKey(journalModalTrade)
-    safeLocalStorage.setItem(
-      jKey(journalModalTrade.walletAddress, journalModalTrade.tokenMint, journalModalTrade.tradeNumber),
-      data
-    )
-    const updatedMap = { ...journalMap, [key]: data }
-    setJournalMap(updatedMap)
+    const storageKey = jKey(journalModalTrade.walletAddress, journalModalTrade.tokenMint, journalModalTrade.tradeNumber)
+    safeLocalStorage.setItem(storageKey, data)
+    updateJournalEntry(key, storageKey, data)
 
-    // Find next un-journaled trade
+    // Find next un-journaled trade (use updated map with the new entry)
+    const updatedMap = { ...journalMap, [key]: data }
     const currentIdx = flattenedTrades.indexOf(journalModalTrade)
     const nextTrade = flattenedTrades.find(
       (t, i) => i > currentIdx && !updatedMap[journalKey(t)]
@@ -246,8 +145,7 @@ export default function TradeJournalPage() {
       setJournalModalTrade(null)
       toast.success('All trades journaled!')
     }
-    setStreak(computeJournalingStreak())
-  }, [journalModalTrade, journalMap, flattenedTrades])
+  }, [journalModalTrade, journalMap, flattenedTrades, updateJournalEntry])
 
   // Apply filters and sorting
   const displayTrades = useMemo(() => {
@@ -414,7 +312,7 @@ export default function TradeJournalPage() {
             }
             const total = journal.ruleResults.length
             if (total === 0) return <span className="text-xs text-muted-foreground">&mdash;</span>
-            const followed = journal.ruleResults.filter((r) => r.followed).length
+            const followed = journal.ruleResults.filter((r: any) => r.followed).length
             const pct = Math.round((followed / total) * 100)
             const color = pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600'
             return (
