@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, memo } from 'react';
 import { FlattenedTrade } from '@/lib/tradeCycles';
 import { formatDuration, formatTime, formatValue, formatMarketCap } from '@/lib/formatters';
+import { loadTradeComments, getCommentsByCategory, type TradeComment } from '@/lib/trade-comments';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,11 @@ export interface JournalData {
   sellMistakes: string[];
   sellNotes: string;
   attachment?: string;
+  entryCommentId?: string | null;
+  exitCommentId?: string | null;
+  managementCommentId?: string | null;
+  emotionTag?: string | null;
+  journaledAt?: string;
   // Legacy fields preserved for backward compat when reading old data
   buyCategory?: string;
   fomoLevel?: number;
@@ -74,6 +80,20 @@ const mistakeOptions = [
   'Other',
 ];
 
+const emotionTags = [
+  { id: 'confident', emoji: '\ud83d\udcaa', label: 'Confident' },
+  { id: 'calm', emoji: '\ud83e\uddd8', label: 'Calm' },
+  { id: 'anxious', emoji: '\ud83d\ude30', label: 'Anxious' },
+  { id: 'fomo', emoji: '\ud83d\ude31', label: 'FOMO' },
+  { id: 'revenge', emoji: '\ud83d\ude21', label: 'Revenge' },
+  { id: 'greedy', emoji: '\ud83e\udd11', label: 'Greedy' },
+  { id: 'fearful', emoji: '\ud83d\ude28', label: 'Fearful' },
+  { id: 'bored', emoji: '\ud83d\ude34', label: 'Bored' },
+  { id: 'euphoric', emoji: '\ud83e\udd29', label: 'Euphoric' },
+  { id: 'frustrated', emoji: '\ud83d\ude24', label: 'Frustrated' },
+  { id: 'neutral', emoji: '\ud83d\ude10', label: 'Neutral' },
+];
+
 interface SavedStrategy {
   id: string;
   name: string;
@@ -90,6 +110,12 @@ function loadStrategies(): SavedStrategy[] {
   }
 }
 
+function ratingDot(rating: TradeComment['rating']) {
+  if (rating === 'positive') return 'bg-emerald-500';
+  if (rating === 'negative') return 'bg-red-500';
+  return 'bg-zinc-400';
+}
+
 const JournalModal = memo(function JournalModal({
   trade,
   initialData,
@@ -98,7 +124,7 @@ const JournalModal = memo(function JournalModal({
   onSaveAndNext,
   onClose,
 }: JournalModalProps) {
-  // Migrate old buyCategory → strategy if needed
+  // Migrate old buyCategory -> strategy if needed
   const initialStrategy = initialData?.strategy || initialData?.buyCategory || '';
   const [strategy, setStrategy] = useState(initialStrategy);
   const [emotionalState, setEmotionalState] = useState(initialData?.emotionalState || '');
@@ -111,10 +137,20 @@ const JournalModal = memo(function JournalModal({
   const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
   const [attachment, setAttachment] = useState<string | undefined>(initialData?.attachment);
   const [strategies, setStrategies] = useState<SavedStrategy[]>([]);
+  const [tradeComments, setTradeComments] = useState<TradeComment[]>([]);
+  const [entryCommentId, setEntryCommentId] = useState<string | null>(initialData?.entryCommentId ?? null);
+  const [exitCommentId, setExitCommentId] = useState<string | null>(initialData?.exitCommentId ?? null);
+  const [managementCommentId, setManagementCommentId] = useState<string | null>(initialData?.managementCommentId ?? null);
+  const [emotionTag, setEmotionTag] = useState<string | null>(initialData?.emotionTag ?? null);
 
   useEffect(() => {
     setStrategies(loadStrategies());
+    setTradeComments(loadTradeComments());
   }, []);
+
+  const entryComments = getCommentsByCategory(tradeComments, 'entry');
+  const exitComments = getCommentsByCategory(tradeComments, 'exit');
+  const managementComments = getCommentsByCategory(tradeComments, 'management');
 
   const buildData = useCallback((): JournalData => ({
     strategy,
@@ -127,7 +163,12 @@ const JournalModal = memo(function JournalModal({
     sellMistakes,
     sellNotes,
     attachment,
-  }), [strategy, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachment]);
+    entryCommentId,
+    exitCommentId,
+    managementCommentId,
+    emotionTag,
+    journaledAt: initialData?.journaledAt || new Date().toISOString(),
+  }), [strategy, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachment, entryCommentId, exitCommentId, managementCommentId, emotionTag, initialData?.journaledAt]);
 
   const handleSave = useCallback(() => {
     onSave(buildData());
@@ -165,6 +206,40 @@ const JournalModal = memo(function JournalModal({
   const avgSellPrice = trade.totalSellAmount > 0 ? trade.totalSellValue / trade.totalSellAmount : 0;
 
   const activeStrategies = strategies.filter((s) => s.active);
+
+  function renderCommentSelect(
+    label: string,
+    comments: TradeComment[],
+    value: string | null,
+    onChange: (v: string | null) => void
+  ) {
+    return (
+      <div>
+        <Label className="text-xs mb-1.5">{label}</Label>
+        <Select
+          value={value || ''}
+          onValueChange={(v) => onChange(v === '__clear' ? null : v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__clear" className="text-muted-foreground">
+              None
+            </SelectItem>
+            {comments.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                <span className="flex items-center gap-2">
+                  <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${ratingDot(c.rating)}`} />
+                  {c.label}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
 
   return (
     <Dialog open onOpenChange={() => onClose()}>
@@ -258,6 +333,36 @@ const JournalModal = memo(function JournalModal({
                 </Select>
               </div>
 
+              {/* Emotion Tag Grid */}
+              <div>
+                <Label className="text-xs mb-1.5">Emotion Tag</Label>
+                <div className="grid grid-cols-4 gap-1.5 mt-1">
+                  {emotionTags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => setEmotionTag(emotionTag === tag.id ? null : tag.id)}
+                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border cursor-pointer transition-colors ${
+                        emotionTag === tag.id
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border text-muted-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <span>{tag.emoji}</span>
+                      <span>{tag.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Entry Comment */}
+              {entryComments.length > 0 && renderCommentSelect(
+                'Entry Comment',
+                entryComments,
+                entryCommentId,
+                setEntryCommentId
+              )}
+
               <div>
                 <Label htmlFor="buy-notes" className="text-xs mb-1.5">
                   Notes
@@ -346,6 +451,14 @@ const JournalModal = memo(function JournalModal({
                 </div>
               </div>
 
+              {/* Exit Comment */}
+              {exitComments.length > 0 && renderCommentSelect(
+                'Exit Comment',
+                exitComments,
+                exitCommentId,
+                setExitCommentId
+              )}
+
               {/* Followed Exit Rule */}
               <div>
                 <Label className="text-xs mb-1.5">Did you follow your exit rule?</Label>
@@ -399,6 +512,14 @@ const JournalModal = memo(function JournalModal({
                   ))}
                 </div>
               </div>
+
+              {/* Management Comment */}
+              {managementComments.length > 0 && renderCommentSelect(
+                'Management Comment',
+                managementComments,
+                managementCommentId,
+                setManagementCommentId
+              )}
 
               {/* Sell Notes */}
               <div>

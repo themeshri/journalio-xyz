@@ -25,6 +25,12 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { FormSkeleton } from '@/components/skeletons'
+import {
+  loadTradeComments,
+  saveTradeComments,
+  getCommentsByCategory,
+  type TradeComment,
+} from '@/lib/trade-comments'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -37,6 +43,16 @@ export default function SettingsPage() {
   )
   const [isLoading, setIsLoading] = useState(true)
   const [resetConfirm, setResetConfirm] = useState(false)
+
+  // Trade Comments state
+  const [tradeComments, setTradeComments] = useState<TradeComment[]>([])
+  const [activeCommentTab, setActiveCommentTab] = useState<TradeComment['category']>('entry')
+  const [newCommentLabel, setNewCommentLabel] = useState('')
+  const [newCommentRating, setNewCommentRating] = useState<TradeComment['rating']>('neutral')
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editingLabel, setEditingLabel] = useState('')
+  const [editingRating, setEditingRating] = useState<TradeComment['rating']>('neutral')
+  const [deleteCommentConfirm, setDeleteCommentConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -52,6 +68,53 @@ export default function SettingsPage() {
       if (mode === 'merged' || mode === 'grouped') setJournalViewMode(mode)
     } catch {}
   }, [])
+
+  useEffect(() => {
+    setTradeComments(loadTradeComments())
+  }, [])
+
+  function addComment() {
+    if (!newCommentLabel.trim()) return
+    const comment: TradeComment = {
+      id: crypto.randomUUID(),
+      category: activeCommentTab,
+      label: newCommentLabel.trim(),
+      rating: newCommentRating,
+      createdAt: new Date().toISOString(),
+    }
+    const updated = [...tradeComments, comment]
+    setTradeComments(updated)
+    saveTradeComments(updated)
+    setNewCommentLabel('')
+    setNewCommentRating('neutral')
+  }
+
+  function deleteComment(id: string) {
+    const updated = tradeComments.filter((c) => c.id !== id)
+    setTradeComments(updated)
+    saveTradeComments(updated)
+    setDeleteCommentConfirm(null)
+  }
+
+  function startEditComment(c: TradeComment) {
+    setEditingCommentId(c.id)
+    setEditingLabel(c.label)
+    setEditingRating(c.rating)
+  }
+
+  function saveEditComment() {
+    if (!editingCommentId || !editingLabel.trim()) return
+    const updated = tradeComments.map((c) =>
+      c.id === editingCommentId ? { ...c, label: editingLabel.trim(), rating: editingRating } : c
+    )
+    setTradeComments(updated)
+    saveTradeComments(updated)
+    setEditingCommentId(null)
+  }
+
+  function cancelEditComment() {
+    setEditingCommentId(null)
+  }
 
   async function fetchSettings() {
     try {
@@ -239,6 +302,107 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Trade Comments */}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold mb-4">Trade Comments</h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          Manage discipline comments used in journal entries. Changes save automatically.
+        </p>
+
+        {/* Category tabs */}
+        <div className="flex gap-1 mb-4">
+          {(['entry', 'exit', 'management'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveCommentTab(tab)}
+              className={`text-xs px-2.5 py-1 rounded border transition-colors ${
+                activeCommentTab === tab
+                  ? 'font-medium bg-muted border-border'
+                  : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Comment list */}
+        <div className="space-y-1.5 mb-4">
+          {getCommentsByCategory(tradeComments, activeCommentTab).map((c) => (
+            <div key={c.id} className="flex items-center gap-2 text-sm px-2 py-1.5 rounded border border-border">
+              {editingCommentId === c.id ? (
+                <>
+                  <Input
+                    value={editingLabel}
+                    onChange={(e) => setEditingLabel(e.target.value)}
+                    className="h-7 text-xs flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && saveEditComment()}
+                  />
+                  <Select value={editingRating} onValueChange={(v) => setEditingRating(v as TradeComment['rating'])}>
+                    <SelectTrigger className="h-7 w-24 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="positive">Positive</SelectItem>
+                      <SelectItem value="neutral">Neutral</SelectItem>
+                      <SelectItem value="negative">Negative</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={saveEditComment}>Save</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={cancelEditComment}>Cancel</Button>
+                </>
+              ) : (
+                <>
+                  <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${
+                    c.rating === 'positive' ? 'bg-emerald-500' : c.rating === 'negative' ? 'bg-red-500' : 'bg-zinc-400'
+                  }`} />
+                  <span className="flex-1 text-xs">{c.label}</span>
+                  {deleteCommentConfirm === c.id ? (
+                    <>
+                      <span className="text-xs text-muted-foreground">Delete?</span>
+                      <Button variant="destructive" size="sm" className="h-6 text-xs px-2" onClick={() => deleteComment(c.id)}>Yes</Button>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setDeleteCommentConfirm(null)}>No</Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => startEditComment(c)}>Edit</Button>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-destructive" onClick={() => setDeleteCommentConfirm(c.id)}>Delete</Button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+          {getCommentsByCategory(tradeComments, activeCommentTab).length === 0 && (
+            <p className="text-xs text-muted-foreground py-2">No {activeCommentTab} comments yet.</p>
+          )}
+        </div>
+
+        {/* Add form */}
+        <div className="flex gap-2">
+          <Input
+            value={newCommentLabel}
+            onChange={(e) => setNewCommentLabel(e.target.value)}
+            placeholder={`New ${activeCommentTab} comment...`}
+            className="text-xs h-8 flex-1"
+            onKeyDown={(e) => e.key === 'Enter' && addComment()}
+          />
+          <Select value={newCommentRating} onValueChange={(v) => setNewCommentRating(v as TradeComment['rating'])}>
+            <SelectTrigger className="h-8 w-24 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="positive">Positive</SelectItem>
+              <SelectItem value="neutral">Neutral</SelectItem>
+              <SelectItem value="negative">Negative</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" className="h-8 text-xs" onClick={addComment} disabled={!newCommentLabel.trim()}>
+            Add
+          </Button>
         </div>
       </section>
 

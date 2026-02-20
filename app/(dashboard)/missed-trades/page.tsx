@@ -13,6 +13,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
+import { TableRowsSkeleton } from '@/components/skeletons'
 
 interface PaperedPlay {
   id: string
@@ -38,6 +50,7 @@ export default function MissedTradesPage() {
   const [attachment, setAttachment] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPlays()
@@ -65,7 +78,7 @@ export default function MissedTradesPage() {
       !ath.trim() ||
       !reasonMissed.trim()
     ) {
-      alert('Please fill in all fields')
+      toast.error('Please fill in all fields')
       return
     }
 
@@ -96,7 +109,7 @@ export default function MissedTradesPage() {
         setAttachment(null)
         setShowForm(false)
       } else {
-        alert('Failed to save')
+        toast.error('Failed to save')
       }
     } catch {
       alert('Failed to save')
@@ -105,24 +118,26 @@ export default function MissedTradesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this entry?')) return
+  async function executeDelete(id: string) {
     try {
       const res = await fetch(`/api/papered-plays/${id}`, { method: 'DELETE' })
       if (res.ok) {
         setPlays(plays.filter((p) => p.id !== id))
       } else {
-        alert('Failed to delete')
+        toast.error('Failed to delete')
       }
     } catch {
-      alert('Failed to delete')
+      toast.error('Failed to delete')
+    } finally {
+      setDeleteId(null)
     }
   }
 
   if (isLoading) {
     return (
       <div className="pt-8">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <h1 className="text-xl font-semibold mb-6">Missed Trades</h1>
+        <TableRowsSkeleton rows={3} cols={6} />
       </div>
     )
   }
@@ -243,11 +258,11 @@ export default function MissedTradesPage() {
                     const file = e.target.files?.[0]
                     if (!file) return
                     if (!file.type.startsWith('image/')) {
-                      alert('Please upload an image file')
+                      toast.error('Please upload an image file')
                       return
                     }
                     if (file.size > 5 * 1024 * 1024) {
-                      alert('Image size should be less than 5MB')
+                      toast.error('Image size should be less than 5MB')
                       return
                     }
                     const reader = new FileReader()
@@ -346,7 +361,7 @@ export default function MissedTradesPage() {
                     variant="ghost"
                     size="sm"
                     className="text-xs text-destructive hover:text-destructive h-7"
-                    onClick={() => handleDelete(play.id)}
+                    onClick={() => setDeleteId(play.id)}
                   >
                     Delete
                   </Button>
@@ -356,6 +371,19 @@ export default function MissedTradesPage() {
           </TableBody>
         </Table>
       )}
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && executeDelete(deleteId)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -19,6 +19,15 @@ import JournalModal, { JournalData } from '@/components/JournalModal'
 import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
 import { toast } from 'sonner'
 import { TokenWithBadge } from '@/components/chain-badge'
+import { loadTradeComments, type TradeComment } from '@/lib/trade-comments'
+import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from '@/lib/discipline'
+import { computeJournalingStreak, type StreakResult } from '@/lib/streaks'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 const balanceCache = new Map<string, { tokens: any[]; timestamp: number }>()
 const CACHE_DURATION = 60000
@@ -83,13 +92,17 @@ export default function TradeJournalPage() {
 
   // Journal data from localStorage
   const [journalMap, setJournalMap] = useState<Record<string, JournalData>>({})
+  const [tradeComments, setTradeComments] = useState<TradeComment[]>([])
+  const [streak, setStreak] = useState<StreakResult>({ current: 0, longest: 0 })
 
-  // Load view mode from localStorage
+  // Load view mode, trade comments, and streak from localStorage
   useEffect(() => {
     try {
       const mode = localStorage.getItem('journalio_journal_view_mode')
       if (mode === 'merged' || mode === 'grouped') setViewMode(mode)
     } catch {}
+    setTradeComments(loadTradeComments())
+    setStreak(computeJournalingStreak())
   }, [])
 
   useEffect(() => {
@@ -203,6 +216,7 @@ export default function TradeJournalPage() {
     )
     setJournalMap((prev) => ({ ...prev, [key]: data }))
     setJournalModalTrade(null)
+    setStreak(computeJournalingStreak())
   }, [journalModalTrade])
 
   const handleJournalSaveAndNext = useCallback((data: JournalData) => {
@@ -227,6 +241,7 @@ export default function TradeJournalPage() {
       setJournalModalTrade(null)
       toast.success('All trades journaled!')
     }
+    setStreak(computeJournalingStreak())
   }, [journalModalTrade, journalMap, flattenedTrades])
 
   // Apply filters and sorting
@@ -411,6 +426,51 @@ export default function TradeJournalPage() {
           </span>
         </TableCell>
 
+        {/* Discipline */}
+        <TableCell className="text-center">
+          {(() => {
+            const discipline = computeTradeDiscipline(journal, tradeComments)
+            if (!discipline) return <span className="text-xs text-muted-foreground">&mdash;</span>
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="inline-flex flex-col items-center gap-0.5 cursor-default">
+                    <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${disciplineBgClass(discipline.percentage)}`}
+                        style={{ width: `${discipline.percentage}%` }}
+                      />
+                    </div>
+                    <span className={`text-[10px] font-mono tabular-nums ${disciplineColorClass(discipline.percentage)}`}>
+                      {Math.round(discipline.percentage)}%
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs space-y-1">
+                  {discipline.entryComment && (
+                    <div className="flex items-center gap-1.5">
+                      <span>{discipline.entryComment.rating === 'positive' ? '\u2713' : discipline.entryComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
+                      <span>Entry: {discipline.entryComment.label}</span>
+                    </div>
+                  )}
+                  {discipline.exitComment && (
+                    <div className="flex items-center gap-1.5">
+                      <span>{discipline.exitComment.rating === 'positive' ? '\u2713' : discipline.exitComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
+                      <span>Exit: {discipline.exitComment.label}</span>
+                    </div>
+                  )}
+                  {discipline.managementComment && (
+                    <div className="flex items-center gap-1.5">
+                      <span>{discipline.managementComment.rating === 'positive' ? '\u2713' : discipline.managementComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
+                      <span>Mgmt: {discipline.managementComment.label}</span>
+                    </div>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            )
+          })()}
+        </TableCell>
+
         {/* Actions */}
         <TableCell className="text-center">
           <Button
@@ -428,6 +488,7 @@ export default function TradeJournalPage() {
 
   function renderTable(trades: FlattenedTrade[]) {
     return (
+      <TooltipProvider>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -439,6 +500,7 @@ export default function TradeJournalPage() {
               <TableHead className="text-right min-w-[100px]">Bought</TableHead>
               <TableHead className="text-right min-w-[100px]">Sold</TableHead>
               <TableHead className="text-center min-w-[80px]">Buys/Sells</TableHead>
+              <TableHead className="text-center min-w-[80px]">Discipline</TableHead>
               <TableHead className="text-center min-w-[70px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -447,6 +509,7 @@ export default function TradeJournalPage() {
           </TableBody>
         </Table>
       </div>
+      </TooltipProvider>
     )
   }
 
@@ -490,6 +553,14 @@ export default function TradeJournalPage() {
             {journaledCount}/{totalTrades}
           </span>
         </div>
+        {streak.current > 0 && (
+          <div>
+            <span className="text-muted-foreground">Streak</span>
+            <span className="ml-2 font-mono tabular-nums font-semibold">
+              {'\ud83d\udd25'} {streak.current}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Filter bar */}

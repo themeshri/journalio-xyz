@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { FormSkeleton } from '@/components/skeletons'
 
 interface Rule {
   id: string
@@ -239,8 +240,9 @@ export default function PreSessionPage() {
 
   if (!loaded) {
     return (
-      <div className="pt-8">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="max-w-xl pt-8">
+        <h1 className="text-xl font-semibold mb-6">Pre Session</h1>
+        <FormSkeleton fields={6} />
       </div>
     )
   }

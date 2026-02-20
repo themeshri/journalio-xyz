@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { StrategyCardSkeleton } from '@/components/skeletons'
 
 // --- Strategies ---
 
@@ -302,8 +303,12 @@ export default function StrategiesPage() {
 
   if (!loaded) {
     return (
-      <div className="pt-8">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="max-w-xl pt-8">
+        <h1 className="text-xl font-semibold mb-6">Strategies</h1>
+        <div className="space-y-3">
+          <StrategyCardSkeleton />
+          <StrategyCardSkeleton />
+        </div>
       </div>
     )
   }
