@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useWallet } from '@/lib/wallet-context'
+import { useWallet, useMetadata } from '@/lib/wallet-context'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import { KPICards } from '@/components/overview/KPICards'
 import { PLCalendar } from '@/components/overview/PLCalendar'
@@ -23,6 +23,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, streak } = useWallet()
+  const { preSessionDone, missedTrades } = useMetadata()
 
   if (!hasActiveWallets) {
     return (
@@ -105,7 +106,7 @@ export default function OverviewPage() {
         </div>
         <div className="lg:col-span-2">
           <ErrorBoundary fallback={sectionErrorFallback}>
-            <InsightsPanel trades={flattenedTrades} streak={streak} />
+            <InsightsPanel trades={flattenedTrades} streak={streak} missedTrades={missedTrades} preSessionDone={preSessionDone} />
           </ErrorBoundary>
         </div>
       </div>

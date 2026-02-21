@@ -148,6 +148,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [journalMap, setJournalMap] = useState<Record<string, any>>({})
   const [streak, setStreak] = useState<{ current: number; longest: number }>({ current: 0, longest: 0 })
+  const [preSessionDone, setPreSessionDone] = useState(false)
+  const [missedTrades, setMissedTrades] = useState<any[]>([])
   const journalsRef = useRef<JournalRecord[]>([])
 
   // ─── Balances ─────────────────────────────────────────
@@ -309,6 +311,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
             setJournalMap(buildJournalMap(data.journals))
           }
           if (data.streak) setStreak(data.streak)
+          if (data.preSessionDone !== undefined) setPreSessionDone(data.preSessionDone)
+          if (data.missedTrades) setMissedTrades(data.missedTrades)
 
           // Trigger external fetch for wallets with no cached trades
           for (const w of active) {
@@ -437,6 +441,27 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     setStreak(computeStreakFromJournals(all))
   }, [activeWallets])
 
+  const reloadPreSessionStatus = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      const res = await fetch(`/api/pre-sessions/${today}`)
+      const data = await res.json()
+      setPreSessionDone(data !== null && !!data?.savedAt)
+    } catch {
+      // keep existing state on error
+    }
+  }, [])
+
+  const reloadMissedTrades = useCallback(async () => {
+    try {
+      const res = await fetch('/api/papered-plays')
+      const data = await res.json()
+      if (Array.isArray(data)) setMissedTrades(data)
+    } catch {
+      // keep existing state on error
+    }
+  }, [])
+
   // ─── Balance fetching ─────────────────────────────────
 
   useEffect(() => {
@@ -518,11 +543,15 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     strategies,
     journalMap,
     streak,
+    preSessionDone,
+    missedTrades,
     updateJournalEntry,
     reloadStrategies,
     reloadTradeComments,
     reloadJournals,
-  }), [tradeComments, strategies, journalMap, streak, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals])
+    reloadPreSessionStatus,
+    reloadMissedTrades,
+  }), [tradeComments, strategies, journalMap, streak, preSessionDone, missedTrades, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadMissedTrades])
 
   const balanceValue = useMemo(() => ({
     walletTokens,

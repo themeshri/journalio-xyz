@@ -136,11 +136,15 @@ export async function GET(request: NextRequest) {
         strategies: [],
         journals: [],
         streak: { current: 0, longest: 0 },
+        preSessionDone: false,
+        missedTrades: [],
       })
     }
 
+    const todayDate = new Date().toISOString().slice(0, 10)
+
     // Run all queries in parallel
-    const [walletTradeResults, tradeCommentsRaw, strategiesRaw, journalResults] = await Promise.all([
+    const [walletTradeResults, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, missedTrades] = await Promise.all([
       // Trades per wallet
       Promise.all(
         params.addresses.map((address, i) => {
@@ -193,6 +197,16 @@ export async function GET(request: NextRequest) {
           })
         )
       ),
+      // Today's pre-session status
+      prisma.preSession.findFirst({
+        where: { userId: defaultUserId, date: todayDate },
+        select: { savedAt: true },
+      }),
+      // Missed trades (papered plays)
+      prisma.paperedPlay.findMany({
+        where: { userId: defaultUserId },
+        orderBy: { createdAt: 'desc' },
+      }),
     ])
 
     // Build walletTrades map
@@ -221,6 +235,8 @@ export async function GET(request: NextRequest) {
       strategies,
       journals: allJournals,
       streak,
+      preSessionDone: !!(todayPreSession?.savedAt),
+      missedTrades,
     }
 
     return NextResponse.json(sanitizeForJSON(response))

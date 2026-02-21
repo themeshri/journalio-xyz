@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { FormSkeleton } from '@/components/skeletons'
+import { useMetadata } from '@/lib/wallet-context'
 import { loadRules, type GlobalRule } from '@/lib/rules'
 import {
   type PreSessionData,
@@ -59,6 +60,7 @@ function formatDisplayTime(date: Date): string {
 }
 
 export default function PreSessionPage() {
+  const { reloadPreSessionStatus } = useMetadata()
   const [data, setData] = useState<PreSessionData>(defaultPreSessionData)
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -107,6 +109,7 @@ export default function PreSessionPage() {
       setIsCompletedToday(true)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+      reloadPreSessionStatus()
     }
   }
 

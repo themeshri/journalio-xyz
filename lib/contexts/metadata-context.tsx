@@ -3,16 +3,21 @@
 import { createContext, useContext } from 'react'
 import { type TradeComment } from '../trade-comments'
 import { type Strategy } from '../strategies'
+import { type MissedTradeEntry } from '../analytics'
 
 export interface MetadataContextValue {
   tradeComments: TradeComment[]
   strategies: Strategy[]
   journalMap: Record<string, any>
   streak: { current: number; longest: number }
+  preSessionDone: boolean
+  missedTrades: MissedTradeEntry[]
   updateJournalEntry: (key: string, data: any) => void
   reloadStrategies: () => Promise<void>
   reloadTradeComments: () => Promise<void>
   reloadJournals: () => Promise<void>
+  reloadPreSessionStatus: () => Promise<void>
+  reloadMissedTrades: () => Promise<void>
 }
 
 export const MetadataContext = createContext<MetadataContextValue | null>(null)

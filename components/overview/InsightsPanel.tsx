@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatValue } from '@/lib/formatters'
 import { computeHesitationCost, type MissedTradeEntry } from '@/lib/analytics'
@@ -11,32 +11,15 @@ import type { StreakResult } from '@/lib/streaks'
 interface InsightsPanelProps {
   trades: FlattenedTrade[]
   streak: StreakResult
+  missedTrades: MissedTradeEntry[]
+  preSessionDone: boolean
 }
 
-export function InsightsPanel({ trades, streak }: InsightsPanelProps) {
-  // Hesitation cost
-  const [missedTrades, setMissedTrades] = useState<MissedTradeEntry[]>([])
-  useEffect(() => {
-    fetch('/api/papered-plays')
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setMissedTrades(data) })
-      .catch(() => {})
-  }, [])
-
+export function InsightsPanel({ trades, streak, missedTrades, preSessionDone }: InsightsPanelProps) {
   const hesitation = useMemo(
     () => computeHesitationCost(missedTrades, trades),
     [missedTrades, trades]
   )
-
-  // Pre-session status
-  const [preSessionDone, setPreSessionDone] = useState(false)
-  useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    fetch(`/api/pre-sessions/${today}`)
-      .then((r) => r.json())
-      .then((data) => setPreSessionDone(data !== null && !!data?.savedAt))
-      .catch(() => {})
-  }, [])
 
   // Win/loss streak from trades
   const tradeStreak = useMemo(() => {

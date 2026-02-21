@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from '@/components/ui/sidebar'
-import { useWallet, makeWalletKey } from '@/lib/wallet-context'
+import { useWallet, useMetadata, makeWalletKey } from '@/lib/wallet-context'
 import { CHAIN_CONFIG, type Chain } from '@/lib/chains'
 import { computeTradeDiscipline, disciplineColor, type DisciplineResult } from '@/lib/discipline'
 import type { JournalData } from '@/components/JournalModal'
@@ -38,20 +38,9 @@ const managementNav = [
 export function AppSidebar() {
   const pathname = usePathname()
   const { activeWallets, savedWallets, setWalletActive, walletSlots, streak, tradeComments, journalMap } = useWallet()
-  const [preSessionDone, setPreSessionDone] = useState(false)
+  const { preSessionDone } = useMetadata()
   const [walletsExpanded, setWalletsExpanded] = useState(false)
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
-
-  // Check pre-session status via API
-  useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    fetch(`/api/pre-sessions/${today}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setPreSessionDone(data !== null && data?.savedAt)
-      })
-      .catch(() => setPreSessionDone(false))
-  }, [])
 
   // Compute discipline from journal map (from context)
   useEffect(() => {
