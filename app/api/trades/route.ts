@@ -5,6 +5,9 @@ import { prisma } from '@/lib/prisma'
 import { getWalletTrades as getSolanaWalletTrades } from '@/lib/solana-tracker'
 import { getWalletTrades as getEvmWalletTrades } from '@/lib/zerion'
 import { type Chain, isEvmChain } from '@/lib/chains'
+import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
+import { APP_FEE_RATES } from '@/lib/constants'
+import { invalidatePrefix } from '@/lib/server/analytics-cache'
 
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {
@@ -24,6 +27,8 @@ export async function GET(request: NextRequest) {
     
     // Read chain from query param (default to solana for backward compat)
     const chain = (searchParams.get('chain') || 'solana') as Chain
+    const wantCycles = searchParams.get('cycles') === 'true'
+    const dex = searchParams.get('dex') || ''
 
     if (!walletAddress) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
@@ -93,11 +98,16 @@ export async function GET(request: NextRequest) {
         maker: walletAddress,
       }))
 
-      return NextResponse.json({
-        trades,
-        cached: true,
-        cachedAt: cachedTrades[0].indexedAt
-      })
+      const response: any = { trades, cached: true, cachedAt: cachedTrades[0].indexedAt }
+      if (wantCycles) {
+        const feeRate = APP_FEE_RATES[dex] || 0
+        const adjusted = feeRate > 0
+          ? trades.map((t: any) => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
+          : trades.map((t: any) => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
+        const cycles = calculateTradeCycles(adjusted, chain, walletAddress)
+        response.flattenedTrades = flattenTradeCycles(cycles)
+      }
+      return NextResponse.json(response)
     }
 
     // Fetch fresh data from appropriate API
@@ -141,11 +151,19 @@ export async function GET(request: NextRequest) {
         console.log(`Successfully cached ${newTrades.length} new trades`);
       }
 
-      return NextResponse.json({
-        trades: apiTrades,
-        cached: false,
-        fetchedAt: new Date()
-      })
+      // Invalidate analytics cache for this wallet on fresh fetch
+      invalidatePrefix(walletAddress)
+
+      const freshResponse: any = { trades: apiTrades, cached: false, fetchedAt: new Date() }
+      if (wantCycles) {
+        const feeRate = APP_FEE_RATES[dex] || 0
+        const adjusted = feeRate > 0
+          ? apiTrades.map((t: any) => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
+          : apiTrades.map((t: any) => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
+        const cycles = calculateTradeCycles(adjusted, chain, walletAddress)
+        freshResponse.flattenedTrades = flattenTradeCycles(cycles)
+      }
+      return NextResponse.json(freshResponse)
     } catch (apiError) {
       console.error(`${isEvmChain(chain) ? 'Zerion' : 'Solana Tracker'} API error:`, apiError);
       
@@ -165,13 +183,22 @@ export async function GET(request: NextRequest) {
           maker: walletAddress,
         }))
 
-        return NextResponse.json({
+        const staleResponse: any = {
           trades,
           cached: true,
           stale: true,
           cachedAt: cachedTrades[0].indexedAt,
           error: 'API unavailable, showing cached data'
-        })
+        }
+        if (wantCycles) {
+          const feeRate = APP_FEE_RATES[dex] || 0
+          const adjusted = feeRate > 0
+            ? trades.map((t: any) => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
+            : trades.map((t: any) => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
+          const cycles = calculateTradeCycles(adjusted, chain, walletAddress)
+          staleResponse.flattenedTrades = flattenTradeCycles(cycles)
+        }
+        return NextResponse.json(staleResponse)
       }
 
       // Return more specific error

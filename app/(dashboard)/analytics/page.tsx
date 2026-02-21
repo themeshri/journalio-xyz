@@ -1,33 +1,22 @@
 'use client'
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
-import { useWallet } from '@/lib/wallet-context'
+import { useMemo, useState, useCallback } from 'react'
+import { useWallet, buildWalletQueryParams } from '@/lib/wallet-context'
 import { formatValue, formatDuration } from '@/lib/formatters'
 import {
-  computeDurationBuckets,
-  computeCumulativePL,
-  computeTradingHours,
-  computeAvgDuration,
-  computeCommentPerformance,
-  computeEfficiency,
-  computeDisciplineEquity,
-  computeWhatIf,
-  computeWhatIfEquity,
-  detectPatterns,
-  computeCalendarData,
-  computeHourlyPerformance,
-  computeDayOfWeekPerformance,
-  computeSessionPerformance,
-  computeEnhancedDurationBuckets,
-  computeStrategyPerformance,
-  computeRuleImpact,
-  computeCompletionVsPerformance,
-  computeMissedTradeStats,
-  computeHesitationCost,
+  useOverviewAnalytics,
+  useCalendarAnalytics,
+  useTimeAnalytics,
+  useMissedAnalytics,
+  useDisciplineAnalytics,
+  useStrategyAnalytics,
+} from '@/lib/hooks/use-analytics'
+import {
   getDayColorClass,
   type WhatIfFilter,
-  type CalendarMonth,
-  type MissedTradeEntry,
+  type WhatIfResult,
+  type MissedTradeAnalytics,
+  type HesitationCostAnalysis,
 } from '@/lib/analytics'
 import {
   ChartContainer,
@@ -119,83 +108,58 @@ const defaultFilter: WhatIfFilter = {
   excludeUndisciplined: false,
 }
 
+const emptyWhatIfResult: WhatIfResult = {
+  original: { totalTrades: 0, totalPnL: 0, winRate: 0, profitFactor: 0, avgPnL: 0 },
+  filtered: { totalTrades: 0, totalPnL: 0, winRate: 0, profitFactor: 0, avgPnL: 0 },
+  tradesRemoved: 0,
+  pnlDifference: 0,
+}
+
+/** Handle null profitFactor from server (was Infinity before JSON serialization) */
+function restoreInfinity(val: number | null): number {
+  return val === null ? Infinity : val
+}
+
+function restoreInfinityInArray<T extends Record<string, any>>(arr: T[], key: keyof T): T[] {
+  return arr.map((item) => ({ ...item, [key]: restoreInfinity(item[key] as number | null) }))
+}
+
 export default function AnalyticsPage() {
-  const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades, tradeComments, strategies: allStrategies, journalMap } = useWallet()
+  const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades, tradeComments, strategies: allStrategies, journalMap, activeWallets } = useWallet()
 
   const [activeTab, setActiveTab] = useState<'overview' | 'time' | 'discipline' | 'strategy' | 'missed'>('overview')
+
+  const walletQueryParams = useMemo(
+    () => buildWalletQueryParams(activeWallets),
+    [activeWallets]
+  )
 
   const completedTrades = useMemo(
     () => flattenedTrades.filter((t) => t.isComplete),
     [flattenedTrades]
   )
 
-  // Overview tab computations (always needed for stats)
-  const durationData = useMemo(
-    () => activeTab === 'overview' ? computeDurationBuckets(flattenedTrades) : [],
-    [flattenedTrades, activeTab]
-  )
+  // ─── SWR data fetching ─────────────────────────────────────────────
+  // GET-based hooks fire immediately for all tabs (prefetch)
+  const swrQueryParams = walletQueryParams && flattenedTrades.length > 0 ? walletQueryParams : null
 
-  const plData = useMemo(
-    () => activeTab === 'overview' ? computeCumulativePL(flattenedTrades) : [],
-    [flattenedTrades, activeTab]
-  )
+  const { data: overviewData, isLoading: overviewLoading } = useOverviewAnalytics(swrQueryParams)
 
-  const hoursData = useMemo(
-    () => activeTab === 'overview' ? computeTradingHours(flattenedTrades) : [],
-    [flattenedTrades, activeTab]
-  )
-
-  const avgDuration = useMemo(
-    () => computeAvgDuration(flattenedTrades),
-    [flattenedTrades]
-  )
-
-  const [whatIfFilter, setWhatIfFilter] = useState<WhatIfFilter>(defaultFilter)
-  const [whatIfOpen, setWhatIfOpen] = useState(false)
-
-  // Discipline tab computations (only when discipline tab is active)
-  const commentPerfData = useMemo(
-    () => activeTab === 'discipline' ? computeCommentPerformance(flattenedTrades, journalMap, tradeComments) : [],
-    [flattenedTrades, journalMap, tradeComments, activeTab]
-  )
-
-  const efficiencyData = useMemo(
-    () => activeTab === 'discipline' ? computeEfficiency(flattenedTrades, journalMap, tradeComments) : [],
-    [flattenedTrades, journalMap, tradeComments, activeTab]
-  )
-
-  const disciplineEquityData = useMemo(
-    () => activeTab === 'discipline' ? computeDisciplineEquity(flattenedTrades, journalMap, tradeComments) : [],
-    [flattenedTrades, journalMap, tradeComments, activeTab]
-  )
-
-  const whatIfResult = useMemo(
-    () => activeTab === 'discipline' ? computeWhatIf(flattenedTrades, journalMap, tradeComments, whatIfFilter) : { original: { totalTrades: 0, totalPnL: 0, winRate: 0, profitFactor: 0, avgPnL: 0 }, filtered: { totalTrades: 0, totalPnL: 0, winRate: 0, profitFactor: 0, avgPnL: 0 }, tradesRemoved: 0, pnlDifference: 0 },
-    [flattenedTrades, journalMap, tradeComments, whatIfFilter, activeTab]
-  )
-
-  const whatIfEquityData = useMemo(
-    () => activeTab === 'discipline' && whatIfResult.tradesRemoved > 0
-      ? computeWhatIfEquity(flattenedTrades, journalMap, tradeComments, whatIfFilter)
-      : [],
-    [flattenedTrades, journalMap, tradeComments, whatIfFilter, whatIfResult.tradesRemoved, activeTab]
-  )
-
-  const patterns = useMemo(
-    () => activeTab === 'discipline' ? detectPatterns(flattenedTrades, journalMap, tradeComments) : [],
-    [flattenedTrades, journalMap, tradeComments, activeTab]
-  )
-
-  // P/L Calendar (overview tab)
   const now = new Date()
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const { data: calendarRaw, isLoading: calendarLoading } = useCalendarAnalytics(swrQueryParams, calYear, calMonth)
 
-  const calendarData: CalendarMonth = useMemo(
-    () => activeTab === 'overview' ? computeCalendarData(flattenedTrades, calYear, calMonth) : { year: calYear, month: calMonth, weeks: [], totalTrades: 0, totalPnL: 0, bestDay: null, worstDay: null },
-    [flattenedTrades, calYear, calMonth, activeTab]
-  )
+  const { data: timeRaw, isLoading: timeLoading } = useTimeAnalytics(swrQueryParams)
+  const { data: missedRaw, isLoading: missedLoading } = useMissedAnalytics(swrQueryParams)
+
+  const durationData = overviewData?.durationBuckets || []
+  const plData = overviewData?.cumulativePL || []
+  const hoursData = overviewData?.tradingHours || []
+  const avgDuration = overviewData?.avgDuration || 0
+
+  const calendarData = calendarRaw || { year: calYear, month: calMonth, weeks: [], totalTrades: 0, totalPnL: 0, bestDay: null, worstDay: null }
 
   const calMaxPnl = useMemo(() => {
     let max = 0
@@ -217,70 +181,100 @@ export default function AnalyticsPage() {
     return max
   }, [calendarData])
 
-  // Time analytics (only when time tab is active)
-  const hourlyPerfData = useMemo(
-    () => activeTab === 'time' ? computeHourlyPerformance(flattenedTrades) : [],
-    [flattenedTrades, activeTab]
-  )
+  // Time data with Infinity restoration
+  const timeData = useMemo(() => {
+    if (!timeRaw) return null
+    return {
+      ...timeRaw,
+      sessionPerformance: restoreInfinityInArray(timeRaw.sessionPerformance || [], 'profitFactor'),
+      enhancedDurationBuckets: restoreInfinityInArray(timeRaw.enhancedDurationBuckets || [], 'profitFactor'),
+    }
+  }, [timeRaw])
 
-  const dayOfWeekData = useMemo(
-    () => activeTab === 'time' ? computeDayOfWeekPerformance(flattenedTrades) : [],
-    [flattenedTrades, activeTab]
-  )
+  const hourlyPerfData = timeData?.hourlyPerformance || []
+  const dayOfWeekData = timeData?.dayOfWeekPerformance || []
+  const sessionPerfData = timeData?.sessionPerformance || []
+  const enhancedDurationData = timeData?.enhancedDurationBuckets || []
 
-  const sessionPerfData = useMemo(
-    () => activeTab === 'time' ? computeSessionPerformance(flattenedTrades) : [],
-    [flattenedTrades, activeTab]
-  )
+  // ─── POST-based hooks (only fire when tab is active) ──────────────
+  const [whatIfFilter, setWhatIfFilter] = useState<WhatIfFilter>(defaultFilter)
+  const [whatIfOpen, setWhatIfOpen] = useState(false)
 
-  const enhancedDurationData = useMemo(
-    () => activeTab === 'time' ? computeEnhancedDurationBuckets(flattenedTrades) : [],
-    [flattenedTrades, activeTab]
-  )
+  const hasFilter = whatIfFilter.excludeComments.length > 0 || whatIfFilter.excludeRatings.length > 0 ||
+    whatIfFilter.excludeTags.length > 0 || whatIfFilter.excludeStrategies.length > 0 || whatIfFilter.excludeUndisciplined
 
-  // Strategy performance (only when strategy tab is active)
-  const strategyPerfData = useMemo(
-    () => activeTab === 'strategy' ? computeStrategyPerformance(
-      flattenedTrades,
+  const disciplineBodyJson = useMemo(() => {
+    if (activeTab !== 'discipline' || !swrQueryParams) return null
+    return JSON.stringify({
+      addresses: activeWallets.map((w) => w.address),
+      chains: activeWallets.map((w) => w.chain),
+      dexes: activeWallets.map((w) => w.dex),
       journalMap,
-      allStrategies.map((s) => ({ id: s.id, name: s.name }))
-    ) : [],
-    [flattenedTrades, journalMap, allStrategies, activeTab]
+      tradeComments,
+      ...(hasFilter ? { whatIfFilter } : {}),
+    })
+  }, [activeTab, swrQueryParams, activeWallets, journalMap, tradeComments, hasFilter, whatIfFilter])
+
+  const { data: disciplineRaw, isLoading: disciplineLoading } = useDisciplineAnalytics(
+    activeTab === 'discipline' ? swrQueryParams : null,
+    disciplineBodyJson
   )
 
-  const ruleImpactData = useMemo(
-    () => activeTab === 'strategy' ? computeRuleImpact(flattenedTrades, journalMap, allStrategies) : [],
-    [flattenedTrades, journalMap, allStrategies, activeTab]
+  const strategyBodyJson = useMemo(() => {
+    if (activeTab !== 'strategy' || !swrQueryParams) return null
+    return JSON.stringify({
+      addresses: activeWallets.map((w) => w.address),
+      chains: activeWallets.map((w) => w.chain),
+      dexes: activeWallets.map((w) => w.dex),
+      journalMap,
+      strategies: allStrategies,
+    })
+  }, [activeTab, swrQueryParams, activeWallets, journalMap, allStrategies])
+
+  const { data: strategyRaw, isLoading: strategyLoading } = useStrategyAnalytics(
+    activeTab === 'strategy' ? swrQueryParams : null,
+    strategyBodyJson
   )
 
-  const completionData = useMemo(
-    () => activeTab === 'strategy' ? computeCompletionVsPerformance(flattenedTrades, journalMap) : [],
-    [flattenedTrades, journalMap, activeTab]
-  )
+  // Discipline data with Infinity restoration
+  const disciplineData = useMemo(() => {
+    if (!disciplineRaw) return null
+    const result = { ...disciplineRaw }
+    if (result.whatIf) {
+      result.whatIf = {
+        ...result.whatIf,
+        original: { ...result.whatIf.original, profitFactor: restoreInfinity(result.whatIf.original.profitFactor) },
+        filtered: { ...result.whatIf.filtered, profitFactor: restoreInfinity(result.whatIf.filtered.profitFactor) },
+      }
+    }
+    return result
+  }, [disciplineRaw])
 
-  // Missed trade analytics (only when missed tab is active)
-  const [missedTrades, setMissedTrades] = useState<MissedTradeEntry[]>([])
-  useEffect(() => {
-    if (activeTab !== 'missed') return
-    fetch('/api/papered-plays')
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setMissedTrades(data)
-      })
-      .catch(() => {})
-  }, [activeTab])
+  const commentPerfData = disciplineData?.commentPerformance || []
+  const efficiencyData = disciplineData?.efficiency || []
+  const disciplineEquityData = disciplineData?.disciplineEquity || []
+  const patterns = disciplineData?.patterns || []
+  const whatIfResult = disciplineData?.whatIf || emptyWhatIfResult
+  const whatIfEquityData = disciplineData?.whatIfEquity || []
 
-  const missedStats = useMemo(
-    () => activeTab === 'missed' ? computeMissedTradeStats(missedTrades) : { totalMissed: 0, totalMissedPnL: 0, avgMultiplier: 0, winCount: 0, reasonBreakdown: [] },
-    [missedTrades, activeTab]
-  )
+  // Strategy data with Infinity restoration
+  const strategyData = useMemo(() => {
+    if (!strategyRaw) return null
+    return {
+      ...strategyRaw,
+      strategyPerformance: restoreInfinityInArray(strategyRaw.strategyPerformance || [], 'profitFactor'),
+    }
+  }, [strategyRaw])
 
-  const hesitationCost = useMemo(
-    () => activeTab === 'missed' ? computeHesitationCost(missedTrades, flattenedTrades) : { totalActualPnL: 0, actualWinRate: 0, hesitationCost: 0, missedWinRate: 0, missedPerActual: 0 },
-    [missedTrades, flattenedTrades, activeTab]
-  )
+  const strategyPerfData = strategyData?.strategyPerformance || []
+  const ruleImpactData = strategyData?.ruleImpact || []
+  const completionData = strategyData?.completionVsPerformance || []
 
-  // Collect unique strategies from journals (for what-if filter)
+  // Missed trades data
+  const missedStats = missedRaw?.missedStats ?? { totalMissed: 0, totalMissedPnL: 0, avgMultiplier: 0, winCount: 0, reasonBreakdown: [] as MissedTradeAnalytics['reasonBreakdown'], strategyBreakdown: [] as MissedTradeAnalytics['strategyBreakdown'], monthlyTrend: [] as MissedTradeAnalytics['monthlyTrend'] }
+  const hesitationCost = missedRaw?.hesitationCost ?? { totalActualPnL: 0, actualWinRate: 0, hesitationCost: 0, missedWinRate: 0, missedPerActual: 0 }
+
+  // ─── Derived client-side values (lightweight) ───────────────────────
   const journalStrategies = useMemo(() => {
     const set = new Set<string>()
     for (const j of Object.values(journalMap)) {
@@ -289,7 +283,6 @@ export default function AnalyticsPage() {
     return [...set]
   }, [journalMap])
 
-  // Collect negative comments for What-If filter options
   const negativeComments = useMemo(
     () => tradeComments.filter((c) => c.rating === 'negative'),
     [tradeComments]
@@ -327,6 +320,13 @@ export default function AnalyticsPage() {
         : [...f.excludeStrategies, strat],
     }))
   }, [])
+
+  // Check if current tab is loading (SWR shows cached data instantly on tab switch)
+  const isTabLoading = (activeTab === 'overview' && (overviewLoading || calendarLoading)) ||
+    (activeTab === 'time' && timeLoading) ||
+    (activeTab === 'discipline' && disciplineLoading) ||
+    (activeTab === 'strategy' && strategyLoading) ||
+    (activeTab === 'missed' && missedLoading)
 
   if (!hasActiveWallets) {
     return (
@@ -443,8 +443,16 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
+      {/* Tab loading skeleton */}
+      {isTabLoading && (
+        <div className="space-y-10">
+          <ChartSkeleton />
+          <ChartSkeleton />
+        </div>
+      )}
+
       {/* ─── Overview Tab ─── */}
-      {activeTab === 'overview' && (<>
+      {activeTab === 'overview' && !overviewLoading && (<>
 
       {/* Cumulative P/L */}
       {plData.length >= 2 && (
@@ -566,6 +574,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* P/L Calendar */}
+      {!calendarLoading && (
       <section className="mb-10">
         <h2 className="text-sm font-semibold mb-4">P/L Calendar</h2>
         <div className="flex items-center gap-4 mb-3">
@@ -654,11 +663,12 @@ export default function AnalyticsPage() {
           </div>
         )}
       </section>
+      )}
 
       </>)}
 
       {/* ─── Time Analysis Tab ─── */}
-      {activeTab === 'time' && (<>
+      {activeTab === 'time' && !timeLoading && (<>
 
       {/* Hourly P/L */}
       {hourlyPerfData.some((d) => d.tradeCount > 0) && (
@@ -823,7 +833,7 @@ export default function AnalyticsPage() {
       </>)}
 
       {/* ─── Strategy Tab ─── */}
-      {activeTab === 'strategy' && (<>
+      {activeTab === 'strategy' && !strategyLoading && (<>
 
       {/* Strategy Performance */}
       {strategyPerfData.length > 0 && (
@@ -956,10 +966,10 @@ export default function AnalyticsPage() {
       </>)}
 
       {/* ─── Missed Trades Tab ─── */}
-      {activeTab === 'missed' && (<>
+      {activeTab === 'missed' && !missedLoading && (<>
 
       {/* Missed Trade Analytics */}
-      {missedTrades.length > 0 && (
+      {missedStats.totalMissed > 0 && (
         <section className="mb-10">
           <h2 className="text-sm font-semibold mb-4">Missed Trade Analytics</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -1034,7 +1044,7 @@ export default function AnalyticsPage() {
       </>)}
 
       {/* ─── Discipline Tab ─── */}
-      {activeTab === 'discipline' && (<>
+      {activeTab === 'discipline' && !disciplineLoading && (<>
 
       {/* Item 9: Insights / Pattern Detection */}
       {patterns.length > 0 && (

@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 import { type Chain } from './chains'
-import { calculateTradeCycles, flattenTradeCycles, type FlattenedTrade } from './tradeCycles'
+import { type FlattenedTrade } from './tradeCycles'
 import { loadTradeComments, type TradeComment } from './trade-comments'
 import { loadStrategies, type Strategy } from './strategies'
 import { computeJournalingStreak, type StreakResult } from './streaks'
@@ -22,10 +22,7 @@ interface CacheInfo {
   cachedAt?: Date
 }
 
-// Known app fee rates (deducted from valueUSD)
-const APP_FEE_RATES: Record<string, number> = {
-  fomo: 0.01, // 1% fee
-}
+import { APP_FEE_RATES } from './constants'
 
 export type WalletKey = string // "chain:address"
 
@@ -46,6 +43,7 @@ export interface WalletSlot {
   dex: string
   nickname: string
   trades: any[]
+  flattenedTrades: FlattenedTrade[]
   isLoading: boolean
   error: string
   isStale: boolean
@@ -91,6 +89,15 @@ export function useWallet() {
   return ctx
 }
 
+/** Build query string params for analytics API endpoints from active wallets */
+export function buildWalletQueryParams(wallets: SavedWallet[]): string {
+  if (wallets.length === 0) return ''
+  const addresses = wallets.map((w) => w.address).join(',')
+  const chains = wallets.map((w) => w.chain).join(',')
+  const dexes = wallets.map((w) => w.dex).join(',')
+  return `addresses=${encodeURIComponent(addresses)}&chains=${encodeURIComponent(chains)}&dexes=${encodeURIComponent(dexes)}`
+}
+
 const SAVED_WALLETS_KEY = 'journalio_saved_wallets'
 const ACTIVE_WALLETS_KEY = 'journalio_active_wallets'
 
@@ -121,9 +128,10 @@ function saveActiveWalletKeys(keys: { address: string; chain: Chain }[]) {
 async function fetchTradesForWallet(
   address: string,
   chain: Chain,
+  dex: string,
   forceRefresh: boolean = false
-): Promise<{ trades: any[]; cached: boolean; cachedAt?: string; stale?: boolean }> {
-  const url = `/api/trades?address=${encodeURIComponent(address)}&chain=${chain}${forceRefresh ? '&refresh=true' : ''}`
+): Promise<{ trades: any[]; flattenedTrades?: FlattenedTrade[]; cached: boolean; cachedAt?: string; stale?: boolean }> {
+  const url = `/api/trades?address=${encodeURIComponent(address)}&chain=${chain}&cycles=true&dex=${encodeURIComponent(dex)}${forceRefresh ? '&refresh=true' : ''}`
   const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch trades')
   return res.json()
@@ -153,9 +161,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setInitialized(true)
 
     // Fetch trades for all active wallets in parallel
-    for (const w of active) {
-      fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)
-    }
+    Promise.all(
+      active.map(w => fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false))
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -199,6 +207,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           dex,
           nickname,
           trades: prev[key]?.trades || [],
+          flattenedTrades: prev[key]?.flattenedTrades || [],
           isLoading: true,
           error: '',
           isStale: prev[key]?.isStale || false,
@@ -207,12 +216,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }))
 
       try {
-        const data = await fetchTradesForWallet(address, chain, forceRefresh)
+        const data = await fetchTradesForWallet(address, chain, dex, forceRefresh)
         const sortedTrades = data.trades.sort(
           (a: any, b: any) => b.timestamp - a.timestamp
         )
 
-        // Apply app fee deduction
+        // Apply app fee deduction (for raw trades display)
         const feeRate = APP_FEE_RATES[dex] || 0
         const adjustedTrades = feeRate > 0
           ? sortedTrades.map((t: any) => ({
@@ -235,6 +244,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             dex,
             nickname,
             trades: adjustedTrades,
+            flattenedTrades: data.flattenedTrades || [],
             isLoading: false,
             error: '',
             isStale: !!data.stale,
@@ -253,6 +263,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             chain,
             dex,
             nickname,
+            flattenedTrades: prev[key]?.flattenedTrades || [],
             isLoading: false,
             isStale: prev[key]?.isStale || false,
             error: err instanceof Error ? err.message : 'An unexpected error occurred',
@@ -330,9 +341,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const allFlattened = activeWallets.flatMap((w) => {
       const key = makeWalletKey(w.address, w.chain)
       const slot = walletSlots[key]
-      if (!slot?.trades?.length) return []
-      const cycles = calculateTradeCycles(slot.trades, w.chain, w.address)
-      return flattenTradeCycles(cycles)
+      return slot?.flattenedTrades || []
     })
     return allFlattened.sort((a, b) => b.startDate - a.startDate)
   }, [activeWallets, walletSlots])
@@ -433,12 +442,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController()
     balanceAbortRef.current = controller
 
-    const timer = setTimeout(() => {
-      fetchBalances(controller.signal)
-    }, 1000)
+    fetchBalances(controller.signal)
 
     return () => {
-      clearTimeout(timer)
       controller.abort()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
