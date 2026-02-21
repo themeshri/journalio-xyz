@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { safeLocalStorage } from '@/lib/local-storage'
 import { useWallet, makeWalletKey } from '@/lib/wallet-context'
 import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 
-interface SavedWallet {
+interface ApiWallet {
+  id: string
   address: string
   chain: Chain
-  nickname: string
+  nickname: string | null
   dex: string
 }
 
@@ -23,22 +23,6 @@ const DEX_OPTIONS = [
   { value: 'other', label: 'Other' },
 ] as const
 
-const STORAGE_KEY = 'journalio_saved_wallets'
-
-function loadWallets(): SavedWallet[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveWallets(wallets: SavedWallet[]) {
-  safeLocalStorage.setItem(STORAGE_KEY, wallets)
-}
-
 const CHAIN_LABELS: Record<Chain, string> = {
   solana: 'SOL',
   base: 'BASE',
@@ -46,8 +30,8 @@ const CHAIN_LABELS: Record<Chain, string> = {
 }
 
 export default function WalletManagementPage() {
-  const { activeWallets, walletSlots, setWalletActive, refreshWallet, isAnyLoading } = useWallet()
-  const [wallets, setWallets] = useState<SavedWallet[]>([])
+  const { activeWallets, walletSlots, setWalletActive, refreshWallet, isAnyLoading, reloadWallets } = useWallet()
+  const [wallets, setWallets] = useState<ApiWallet[]>([])
   const [address, setAddress] = useState('')
   const [nickname, setNickname] = useState('')
   const [selectedChain, setSelectedChain] = useState<Chain>('solana')
@@ -55,15 +39,19 @@ export default function WalletManagementPage() {
   const [error, setError] = useState('')
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setWallets(loadWallets())
-    setMounted(true)
+  const fetchWallets = useCallback(async () => {
+    try {
+      const res = await fetch('/api/wallets')
+      if (!res.ok) return
+      const data = await res.json()
+      setWallets(data)
+    } catch { /* ignore */ }
   }, [])
 
-  const persistWallets = useCallback((next: SavedWallet[]) => {
-    setWallets(next)
-    saveWallets(next)
-  }, [])
+  useEffect(() => {
+    fetchWallets()
+    setMounted(true)
+  }, [fetchWallets])
 
   function handleAddressChange(value: string) {
     setAddress(value)
@@ -77,7 +65,7 @@ export default function WalletManagementPage() {
     }
   }
 
-  function handleAdd(e: React.FormEvent) {
+  async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     const trimmed = address.trim()
@@ -93,25 +81,45 @@ export default function WalletManagementPage() {
       setError('Wallet already saved')
       return
     }
-    const next = [
-      ...wallets,
-      { address: trimmed, chain: selectedChain, nickname: nickname.trim(), dex: selectedDex },
-    ]
-    persistWallets(next)
-    setAddress('')
-    setNickname('')
-    setSelectedChain('solana')
-    setSelectedDex('other')
 
-    // Auto-toggle new wallet active
-    setWalletActive(trimmed, selectedChain, true)
+    try {
+      const res = await fetch('/api/wallets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: trimmed,
+          chain: selectedChain,
+          nickname: nickname.trim() || null,
+          dex: selectedDex,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to add wallet')
+        return
+      }
+      await fetchWallets()
+      await reloadWallets()
+      setAddress('')
+      setNickname('')
+      setSelectedChain('solana')
+      setSelectedDex('other')
+
+      // Auto-toggle new wallet active
+      setWalletActive(trimmed, selectedChain, true)
+    } catch {
+      setError('Failed to add wallet')
+    }
   }
 
-  function handleRemove(addr: string, chain: Chain) {
-    const next = wallets.filter((w) => !(w.address === addr && w.chain === chain))
-    persistWallets(next)
-    // Deactivate if active
-    setWalletActive(addr, chain, false)
+  async function handleRemove(wallet: ApiWallet) {
+    try {
+      await fetch(`/api/wallets/${wallet.id}`, { method: 'DELETE' })
+      await fetchWallets()
+      await reloadWallets()
+      // Deactivate if active
+      setWalletActive(wallet.address, wallet.chain, false)
+    } catch { /* ignore */ }
   }
 
   function isActive(addr: string, chain: Chain) {
@@ -218,7 +226,7 @@ export default function WalletManagementPage() {
             const slot = walletSlots[key]
             return (
               <div
-                key={`${w.chain}-${w.address}`}
+                key={w.id}
                 className={`border rounded-md p-3 flex items-center justify-between gap-3 ${
                   active ? 'border-foreground' : 'border-border'
                 }`}
@@ -272,7 +280,7 @@ export default function WalletManagementPage() {
                     variant="ghost"
                     size="sm"
                     className="text-xs text-destructive"
-                    onClick={() => handleRemove(w.address, w.chain)}
+                    onClick={() => handleRemove(w)}
                   >
                     Remove
                   </Button>

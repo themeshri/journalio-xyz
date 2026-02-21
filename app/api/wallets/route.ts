@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// GET - List all wallets for the current user
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
+const defaultUserId = 'default-user'
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+async function ensureDefaultUser() {
+  await prisma.user.upsert({
+    where: { id: defaultUserId },
+    create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
+    update: {},
+  })
+}
+
+// GET - List all wallets for the current user
+export async function GET() {
+  try {
+    await ensureDefaultUser()
 
     const wallets = await prisma.wallet.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { userId: defaultUserId },
+      orderBy: { createdAt: 'desc' },
     })
 
     return NextResponse.json(wallets)
@@ -31,14 +31,10 @@ export async function GET(request: NextRequest) {
 // POST - Add a new wallet
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    await ensureDefaultUser()
 
     const body = await request.json()
-    const { address, nickname, isDefault, chain = 'ethereum' } = body
+    const { address, nickname, isDefault, chain = 'solana', dex = 'other' } = body
 
     if (!address) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
@@ -60,7 +56,7 @@ export async function POST(request: NextRequest) {
         case 'bitcoin':
           return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(addr)
         default:
-          return /^0x[a-fA-F0-9]{40}$/.test(addr) // Default to Ethereum format
+          return /^0x[a-fA-F0-9]{40}$/.test(addr)
       }
     }
 
@@ -72,7 +68,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.wallet.findUnique({
       where: {
         userId_address_chain: {
-          userId: session.user.id,
+          userId: defaultUserId,
           address,
           chain,
         },
@@ -86,21 +82,17 @@ export async function POST(request: NextRequest) {
     // If this is set as default, unset other defaults
     if (isDefault) {
       await prisma.wallet.updateMany({
-        where: {
-          userId: session.user.id,
-          isDefault: true,
-        },
-        data: {
-          isDefault: false,
-        },
+        where: { userId: defaultUserId, isDefault: true },
+        data: { isDefault: false },
       })
     }
 
     const wallet = await prisma.wallet.create({
       data: {
-        userId: session.user.id,
+        userId: defaultUserId,
         address,
         chain,
+        dex,
         nickname: nickname || null,
         isDefault: isDefault || false,
       },

@@ -75,6 +75,7 @@ model Wallet {
   address   String
   nickname  String?
   chain     String   @default("ethereum") // ethereum, polygon, arbitrum, solana, etc.
+  dex       String   @default("other")    // fomo, axiom, jupiter, gmgn, other
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+
+const defaultUserId = 'default-user'
 
 // DELETE - Delete a wallet
 export async function DELETE(
@@ -9,15 +9,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { id } = await params
 
-    // Verify ownership before deleting
     const wallet = await prisma.wallet.findUnique({
       where: { id },
     })
@@ -26,11 +19,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
     }
 
-    if (wallet.userId !== session.user.id) {
+    if (wallet.userId !== defaultUserId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Delete wallet and all associated trades (cascade)
     await prisma.wallet.delete({
       where: { id },
     })
@@ -42,23 +34,16 @@ export async function DELETE(
   }
 }
 
-// PATCH - Update wallet (nickname or default status)
+// PATCH - Update wallet (nickname, default status, or dex)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { id } = await params
     const body = await request.json()
-    const { nickname, isDefault } = body
+    const { nickname, isDefault, dex } = body
 
-    // Verify ownership before updating
     const wallet = await prisma.wallet.findUnique({
       where: { id },
     })
@@ -67,7 +52,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
     }
 
-    if (wallet.userId !== session.user.id) {
+    if (wallet.userId !== defaultUserId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -75,13 +60,11 @@ export async function PATCH(
     if (isDefault) {
       await prisma.wallet.updateMany({
         where: {
-          userId: session.user.id,
+          userId: defaultUserId,
           isDefault: true,
           id: { not: id },
         },
-        data: {
-          isDefault: false,
-        },
+        data: { isDefault: false },
       })
     }
 
@@ -90,6 +73,7 @@ export async function PATCH(
       data: {
         ...(nickname !== undefined && { nickname }),
         ...(isDefault !== undefined && { isDefault }),
+        ...(dex !== undefined && { dex }),
       },
     })
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 const MIGRATION_FLAG = 'journalio_migration_v1_complete'
+const WALLET_MIGRATION_FLAG = 'journalio_wallet_migration_v2_complete'
 
 interface MigrationCounts {
   rules: number
@@ -11,6 +12,7 @@ interface MigrationCounts {
   strategies: number
   preSessions: number
   journals: number
+  wallets: number
 }
 
 async function migrateRules(): Promise<number> {
@@ -206,6 +208,43 @@ async function migrateJournals(): Promise<number> {
   }
 }
 
+async function migrateWallets(): Promise<number> {
+  try {
+    if (localStorage.getItem(WALLET_MIGRATION_FLAG)) return 0
+    const raw = localStorage.getItem('journalio_saved_wallets')
+    if (!raw) {
+      localStorage.setItem(WALLET_MIGRATION_FLAG, new Date().toISOString())
+      return 0
+    }
+    const wallets: any[] = JSON.parse(raw)
+    if (!Array.isArray(wallets) || wallets.length === 0) {
+      localStorage.setItem(WALLET_MIGRATION_FLAG, new Date().toISOString())
+      return 0
+    }
+
+    let count = 0
+    for (const w of wallets) {
+      try {
+        const res = await fetch('/api/wallets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: w.address,
+            chain: w.chain || 'solana',
+            nickname: w.nickname || null,
+            dex: w.dex || 'other',
+          }),
+        })
+        if (res.ok || res.status === 400) count++ // 400 = already exists, still counts as handled
+      } catch { /* skip */ }
+    }
+    localStorage.setItem(WALLET_MIGRATION_FLAG, new Date().toISOString())
+    return count
+  } catch {
+    return 0
+  }
+}
+
 export function LocalStorageMigration() {
   const [migrating, setMigrating] = useState(false)
 
@@ -215,7 +254,9 @@ export function LocalStorageMigration() {
     if (localStorage.getItem(MIGRATION_FLAG)) return
 
     // Check if there's anything to migrate
+    const needsWalletMigration = !localStorage.getItem(WALLET_MIGRATION_FLAG) && localStorage.getItem('journalio_saved_wallets')
     const hasData =
+      needsWalletMigration ||
       localStorage.getItem('journalio_rules') ||
       localStorage.getItem('journalio_trade_comments') ||
       localStorage.getItem('journalio_strategies') ||
@@ -241,9 +282,11 @@ export function LocalStorageMigration() {
       strategies: 0,
       preSessions: 0,
       journals: 0,
+      wallets: 0,
     }
 
     try {
+      counts.wallets = await migrateWallets()
       counts.rules = await migrateRules()
       counts.tradeComments = await migrateTradeComments()
       counts.strategies = await migrateStrategies()
@@ -256,7 +299,7 @@ export function LocalStorageMigration() {
       const total = Object.values(counts).reduce((a, b) => a + b, 0)
       if (total > 0) {
         toast.success(
-          `Migrated ${total} items to database (${counts.rules} rules, ${counts.strategies} strategies, ${counts.preSessions} pre-sessions, ${counts.journals} journals, ${counts.tradeComments} custom comments)`
+          `Migrated ${total} items to database (${counts.wallets} wallets, ${counts.rules} rules, ${counts.strategies} strategies, ${counts.preSessions} pre-sessions, ${counts.journals} journals, ${counts.tradeComments} custom comments)`
         )
       }
     } catch (err) {

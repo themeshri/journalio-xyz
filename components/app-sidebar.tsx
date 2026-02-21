@@ -15,19 +15,10 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from '@/components/ui/sidebar'
-import { useWallet, makeWalletKey, type SavedWallet } from '@/lib/wallet-context'
+import { useWallet, makeWalletKey } from '@/lib/wallet-context'
 import { CHAIN_CONFIG, type Chain } from '@/lib/chains'
 import { computeTradeDiscipline, disciplineColor, type DisciplineResult } from '@/lib/discipline'
 import type { JournalData } from '@/components/JournalModal'
-
-function loadSavedWallets(): SavedWallet[] {
-  try {
-    const raw = localStorage.getItem('journalio_saved_wallets')
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
 
 const primaryNav = [
   { label: 'Overview', href: '/' },
@@ -46,9 +37,8 @@ const managementNav = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { activeWallets, setWalletActive, walletSlots, streak, tradeComments, journalMap } = useWallet()
+  const { activeWallets, savedWallets, setWalletActive, walletSlots, streak, tradeComments, journalMap } = useWallet()
   const [preSessionDone, setPreSessionDone] = useState(false)
-  const [savedWallets, setSavedWallets] = useState<SavedWallet[]>([])
   const [walletsExpanded, setWalletsExpanded] = useState(false)
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
 
@@ -61,8 +51,6 @@ export function AppSidebar() {
         setPreSessionDone(data !== null && data?.savedAt)
       })
       .catch(() => setPreSessionDone(false))
-
-    setSavedWallets(loadSavedWallets())
   }, [])
 
   // Compute discipline from journal map (from context)
@@ -99,17 +87,6 @@ export function AppSidebar() {
     const avg = results.reduce((sum, r) => sum + r.percentage, 0) / results.length
     setDisciplineDotColor(disciplineColor(avg))
   }, [tradeComments, journalMap])
-
-  // Listen for saved wallets changes
-  useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      if (e.key === 'journalio_saved_wallets') {
-        setSavedWallets(loadSavedWallets())
-      }
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
 
   function isActive(href: string) {
     if (href === '/') return pathname === '/'

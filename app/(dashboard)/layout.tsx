@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
-import { WalletProvider } from '@/lib/wallet-context'
+import { DashboardProviders } from '@/lib/contexts'
 import { Separator } from '@/components/ui/separator'
 import { StaleDataBanner } from '@/components/StaleDataBanner'
 import { LocalStorageMigration } from '@/components/LocalStorageMigration'
@@ -38,7 +38,7 @@ export default function DashboardLayout({
 }) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <WalletProvider>
+      <DashboardProviders>
         <SidebarProvider>
           <AppSidebar />
           <SidebarInset>
@@ -56,7 +56,7 @@ export default function DashboardLayout({
             </div>
           </SidebarInset>
         </SidebarProvider>
-      </WalletProvider>
+      </DashboardProviders>
     </Suspense>
   )
 }
