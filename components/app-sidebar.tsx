@@ -17,21 +17,8 @@ import {
 } from '@/components/ui/sidebar'
 import { useWallet, makeWalletKey, type SavedWallet } from '@/lib/wallet-context'
 import { CHAIN_CONFIG, type Chain } from '@/lib/chains'
-import { loadTradeComments } from '@/lib/trade-comments'
 import { computeTradeDiscipline, disciplineColor, type DisciplineResult } from '@/lib/discipline'
 import type { JournalData } from '@/components/JournalModal'
-
-function isPreSessionCompletedToday(): boolean {
-  try {
-    const raw = localStorage.getItem('journalio_pre_sessions')
-    if (!raw) return false
-    const sessions: { date: string }[] = JSON.parse(raw)
-    const today = new Date().toISOString().slice(0, 10)
-    return sessions.some((s) => s.date === today)
-  } catch {
-    return false
-  }
-}
 
 function loadSavedWallets(): SavedWallet[] {
   try {
@@ -39,45 +26,6 @@ function loadSavedWallets(): SavedWallet[] {
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
-  }
-}
-
-function getRollingDisciplineColor(): 'emerald' | 'yellow' | 'red' | null {
-  try {
-    const comments = loadTradeComments()
-    if (comments.length === 0) return null
-
-    // Collect journals with timestamps for sorting, only keep those with comments assigned
-    const journalsWithTime: { data: JournalData; time: string }[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (!key || !key.startsWith('journalio_journal_')) continue
-      const parts = key.replace('journalio_journal_', '').split('_')
-      if (parts.length < 3) continue
-      try {
-        const data: JournalData = JSON.parse(localStorage.getItem(key)!)
-        if (data.entryCommentId || data.exitCommentId || data.managementCommentId) {
-          journalsWithTime.push({ data, time: data.journaledAt || '' })
-        }
-      } catch { /* ignore */ }
-    }
-
-    if (journalsWithTime.length === 0) return null
-
-    // Sort by journaledAt descending and take only the 5 most recent
-    journalsWithTime.sort((a, b) => b.time.localeCompare(a.time))
-    const recent = journalsWithTime.slice(0, 5)
-
-    const results = recent
-      .map((j) => computeTradeDiscipline(j.data, comments))
-      .filter((r): r is DisciplineResult => r !== null)
-
-    if (results.length === 0) return null
-
-    const avg = results.reduce((sum, r) => sum + r.percentage, 0) / results.length
-    return disciplineColor(avg)
-  } catch {
-    return null
   }
 }
 
@@ -98,26 +46,65 @@ const managementNav = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { activeWallets, setWalletActive, walletSlots, streak } = useWallet()
+  const { activeWallets, setWalletActive, walletSlots, streak, tradeComments, journalMap } = useWallet()
   const [preSessionDone, setPreSessionDone] = useState(false)
   const [savedWallets, setSavedWallets] = useState<SavedWallet[]>([])
   const [walletsExpanded, setWalletsExpanded] = useState(false)
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
 
+  // Check pre-session status via API
   useEffect(() => {
-    setPreSessionDone(isPreSessionCompletedToday())
-    setSavedWallets(loadSavedWallets())
-    setDisciplineDotColor(getRollingDisciplineColor())
+    const today = new Date().toISOString().slice(0, 10)
+    fetch(`/api/pre-sessions/${today}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setPreSessionDone(data !== null && data?.savedAt)
+      })
+      .catch(() => setPreSessionDone(false))
 
-    function onStorage(e: StorageEvent) {
-      if (e.key === 'journalio_pre_sessions') {
-        setPreSessionDone(isPreSessionCompletedToday())
+    setSavedWallets(loadSavedWallets())
+  }, [])
+
+  // Compute discipline from journal map (from context)
+  useEffect(() => {
+    if (tradeComments.length === 0 || Object.keys(journalMap).length === 0) {
+      setDisciplineDotColor(null)
+      return
+    }
+
+    const journalsWithTime: { data: JournalData; time: string }[] = []
+    for (const [, data] of Object.entries(journalMap)) {
+      if (data?.entryCommentId || data?.exitCommentId || data?.managementCommentId) {
+        journalsWithTime.push({ data, time: data.journaledAt || '' })
       }
+    }
+
+    if (journalsWithTime.length === 0) {
+      setDisciplineDotColor(null)
+      return
+    }
+
+    journalsWithTime.sort((a, b) => b.time.localeCompare(a.time))
+    const recent = journalsWithTime.slice(0, 5)
+
+    const results = recent
+      .map((j) => computeTradeDiscipline(j.data, tradeComments))
+      .filter((r): r is DisciplineResult => r !== null)
+
+    if (results.length === 0) {
+      setDisciplineDotColor(null)
+      return
+    }
+
+    const avg = results.reduce((sum, r) => sum + r.percentage, 0) / results.length
+    setDisciplineDotColor(disciplineColor(avg))
+  }, [tradeComments, journalMap])
+
+  // Listen for saved wallets changes
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
       if (e.key === 'journalio_saved_wallets') {
         setSavedWallets(loadSavedWallets())
-      }
-      if (e.key?.startsWith('journalio_journal_') || e.key === 'journalio_trade_comments') {
-        setDisciplineDotColor(getRollingDisciplineColor())
       }
     }
     window.addEventListener('storage', onStorage)

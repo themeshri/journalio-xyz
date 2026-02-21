@@ -53,6 +53,11 @@ model User {
   paperedPlays  PaperedPlay[]
   tradeEdits    TradeEdit[]
   settings      UserSettings?
+  strategies    Strategy[]
+  globalRules   GlobalRule[]
+  preSessions   PreSession[]
+  journalEntries JournalEntry[]
+  tradeComments TradeComment[]
 }
 
 model VerificationToken {
@@ -213,4 +218,113 @@ model UserSettings {
   updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Phase 3: localStorage → DB Migration Models ───────────────
+
+model Strategy {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  description     String   @default("")
+  color           String   @default("#10b981")
+  icon            String   @default("📋")
+  ruleGroupsJson  String   @default("[]") // JSON string of RuleGroup[]
+  isArchived      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model GlobalRule {
+  id        String   @id @default(cuid())
+  userId    String
+  text      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sortOrder])
+}
+
+model PreSession {
+  id                  String   @id @default(cuid())
+  userId              String
+  date                String   // YYYY-MM-DD
+  time                String   @default("")
+  energyLevel         Int      @default(0)
+  emotionalState      String   @default("")
+  sessionIntent       String   @default("")
+  maxTrades           String   @default("")
+  maxLoss             String   @default("")
+  timeLimit           String   @default("")
+  defaultPositionSize String   @default("")
+  hasOpenPositions    Boolean?
+  marketSentiment     String   @default("")
+  solTrend            String   @default("")
+  majorNews           Boolean?
+  majorNewsNote       String   @default("")
+  normalVolume        Boolean?
+  marketSnapshotJson  String   @default("{}") // JSON string
+  rulesCheckedJson    String   @default("[]") // JSON string of rule IDs
+  savedAt             String   @default("")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model JournalEntry {
+  id               String   @id @default(cuid())
+  userId           String
+  walletAddress    String
+  tokenMint        String
+  tradeNumber      Int
+  strategy         String   @default("")
+  strategyId       String?
+  ruleResultsJson  String   @default("[]") // JSON string of TradeRuleResult[]
+  emotionalState   String   @default("")
+  buyNotes         String   @default("")
+  buyRating        Int      @default(0)
+  exitPlan         String   @default("")
+  sellRating       Int      @default(0)
+  followedExitRule Boolean?
+  sellMistakesJson String   @default("[]") // JSON string of string[]
+  sellNotes        String   @default("")
+  attachment       String?  // base64 data URL
+  entryCommentId   String?
+  exitCommentId    String?
+  managementCommentId String?
+  emotionTag       String?
+  journaledAt      String   @default("")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, walletAddress, tokenMint, tradeNumber])
+  @@index([userId])
+  @@index([walletAddress])
+}
+
+model TradeComment {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String   // 'entry' | 'exit' | 'management'
+  label     String
+  rating    String   // 'positive' | 'neutral' | 'negative'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
 }

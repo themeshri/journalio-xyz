@@ -32,14 +32,10 @@ export function InsightsPanel({ trades, streak }: InsightsPanelProps) {
   const [preSessionDone, setPreSessionDone] = useState(false)
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10)
-    const key = `journalio_pre_session_${today}`
-    try {
-      const raw = localStorage.getItem(key)
-      if (raw) {
-        const data = JSON.parse(raw)
-        setPreSessionDone(data?.completed === true)
-      }
-    } catch { /* ignore */ }
+    fetch(`/api/pre-sessions/${today}`)
+      .then((r) => r.json())
+      .then((data) => setPreSessionDone(data !== null && !!data?.savedAt))
+      .catch(() => {})
   }, [])
 
   // Win/loss streak from trades

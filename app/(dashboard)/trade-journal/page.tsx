@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { safeLocalStorage } from '@/lib/local-storage'
 import { useWallet } from '@/lib/wallet-context'
+import { saveJournal } from '@/lib/journals'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
 import { formatValue, formatDuration, formatPrice, formatPercentage } from '@/lib/formatters'
 import { Button } from '@/components/ui/button'
@@ -30,10 +30,6 @@ import {
 type StatusFilter = 'all' | 'completed' | 'active'
 type JournalFilter = 'all' | 'journaled' | 'not-journaled'
 type SortOption = 'recent' | 'pl-high' | 'pl-low' | 'duration'
-
-function jKey(wallet: string, tokenMint: string, tradeNumber: number) {
-  return `journalio_journal_${wallet}_${tokenMint}_${tradeNumber}`
-}
 
 function relativeTime(timestamp: number): string {
   const now = Date.now() / 1000
@@ -116,24 +112,36 @@ export default function TradeJournalPage() {
     return journalMap[journalKey(trade)] || null
   }, [journalMap])
 
-  const handleJournalSave = useCallback((data: JournalData) => {
+  const handleJournalSave = useCallback(async (data: JournalData) => {
     if (!journalModalTrade) return
     const key = journalKey(journalModalTrade)
-    const storageKey = jKey(journalModalTrade.walletAddress, journalModalTrade.tokenMint, journalModalTrade.tradeNumber)
-    safeLocalStorage.setItem(storageKey, data)
-    updateJournalEntry(key, storageKey, data)
+    const saved = await saveJournal({
+      walletAddress: journalModalTrade.walletAddress,
+      tokenMint: journalModalTrade.tokenMint,
+      tradeNumber: journalModalTrade.tradeNumber,
+      ...data,
+    })
+    if (saved) {
+      updateJournalEntry(key, saved)
+    }
     setJournalModalTrade(null)
   }, [journalModalTrade, updateJournalEntry])
 
-  const handleJournalSaveAndNext = useCallback((data: JournalData) => {
+  const handleJournalSaveAndNext = useCallback(async (data: JournalData) => {
     if (!journalModalTrade) return
     const key = journalKey(journalModalTrade)
-    const storageKey = jKey(journalModalTrade.walletAddress, journalModalTrade.tokenMint, journalModalTrade.tradeNumber)
-    safeLocalStorage.setItem(storageKey, data)
-    updateJournalEntry(key, storageKey, data)
+    const saved = await saveJournal({
+      walletAddress: journalModalTrade.walletAddress,
+      tokenMint: journalModalTrade.tokenMint,
+      tradeNumber: journalModalTrade.tradeNumber,
+      ...data,
+    })
+    if (saved) {
+      updateJournalEntry(key, saved)
+    }
 
     // Find next un-journaled trade (use updated map with the new entry)
-    const updatedMap = { ...journalMap, [key]: data }
+    const updatedMap = { ...journalMap, [key]: saved || data }
     const currentIdx = flattenedTrades.indexOf(journalModalTrade)
     const nextTrade = flattenedTrades.find(
       (t, i) => i > currentIdx && !updatedMap[journalKey(t)]

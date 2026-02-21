@@ -1,5 +1,3 @@
-import { safeLocalStorage } from './local-storage'
-
 export interface TradeComment {
   id: string
   category: 'entry' | 'exit' | 'management'
@@ -7,8 +5,6 @@ export interface TradeComment {
   rating: 'positive' | 'neutral' | 'negative'
   createdAt: string
 }
-
-const STORAGE_KEY = 'journalio_trade_comments'
 
 export const DEFAULT_TRADE_COMMENTS: TradeComment[] = [
   // Entry — positive
@@ -42,24 +38,14 @@ export const DEFAULT_TRADE_COMMENTS: TradeComment[] = [
   { id: 'm6', category: 'management', label: 'Ignored stop loss', rating: 'negative', createdAt: '' },
 ]
 
-export function loadTradeComments(): TradeComment[] {
-  if (typeof window === 'undefined') return []
+export async function loadTradeComments(): Promise<TradeComment[]> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch { /* ignore */ }
-  // Seed defaults on first load
-  const seeded = DEFAULT_TRADE_COMMENTS.map((c) => ({
-    ...c,
-    createdAt: new Date().toISOString(),
-  }))
-  safeLocalStorage.setItem(STORAGE_KEY, seeded)
-  return seeded
-}
-
-export function saveTradeComments(comments: TradeComment[]): void {
-  if (typeof window === 'undefined') return
-  safeLocalStorage.setItem(STORAGE_KEY, comments)
+    const res = await fetch('/api/trade-comments')
+    if (!res.ok) return []
+    return res.json()
+  } catch {
+    return []
+  }
 }
 
 export function getCommentsByCategory(

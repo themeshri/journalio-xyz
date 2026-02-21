@@ -23,33 +23,13 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { TableRowsSkeleton } from '@/components/skeletons'
 
-// --- Pre-Session types (read-only, matches pre-session page) ---
+import { loadPreSessions, type PreSessionData } from '@/lib/pre-sessions'
+import { loadJournals, type JournalRecord } from '@/lib/journals'
 
-interface PreSessionSummary {
-  date: string
-  savedAt: string
-  energyLevel: number
-  emotionalState: string
-  marketSentiment: string
-}
+// Use PreSessionData as PreSessionFull (API returns all fields)
+type PreSessionFull = PreSessionData
 
-interface PreSessionFull extends PreSessionSummary {
-  sessionIntent: string
-  maxTrades: string
-  maxLoss: string
-  solTrend: string
-  time: string
-  timeLimit: string
-  defaultPositionSize: string
-  hasOpenPositions: boolean | null
-  majorNews: boolean | null
-  majorNewsNote: string
-  normalVolume: boolean | null
-  rulesChecked: string[]
-}
-
-// --- Journal types (read-only, matches JournalModal) ---
-
+// JournalEntry type for history display
 interface JournalEntry {
   wallet: string
   tokenMint: string
@@ -66,77 +46,22 @@ interface JournalEntry {
   attachment: string
 }
 
-// --- Data loaders ---
-
-function loadPreSessions(): PreSessionFull[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem('journalio_pre_sessions')
-    const index: PreSessionSummary[] = raw ? JSON.parse(raw) : []
-
-    return index
-      .map((s) => {
-        try {
-          const full = JSON.parse(
-            localStorage.getItem(`journalio_pre_session_${s.date}`) || '{}'
-          )
-          return {
-            ...s,
-            sessionIntent: full.sessionIntent || '',
-            maxTrades: full.maxTrades || '',
-            maxLoss: full.maxLoss || '',
-            solTrend: full.solTrend || '',
-            time: full.time || '',
-            timeLimit: full.timeLimit || '',
-            defaultPositionSize: full.defaultPositionSize || '',
-            hasOpenPositions: full.hasOpenPositions ?? null,
-            majorNews: full.majorNews ?? null,
-            majorNewsNote: full.majorNewsNote || '',
-            normalVolume: full.normalVolume ?? null,
-            rulesChecked: full.rulesChecked || [],
-          } as PreSessionFull
-        } catch {
-          return null
-        }
-      })
-      .filter(Boolean) as PreSessionFull[]
-  } catch {
-    return []
+function journalRecordToEntry(j: JournalRecord): JournalEntry {
+  return {
+    wallet: j.walletAddress,
+    tokenMint: j.tokenMint,
+    tradeNumber: j.tradeNumber,
+    strategy: j.strategy || '',
+    emotionalState: j.emotionalState || '',
+    buyNotes: j.buyNotes || '',
+    buyRating: j.buyRating || 0,
+    exitPlan: j.exitPlan || '',
+    sellRating: j.sellRating || 0,
+    followedExitRule: j.followedExitRule ?? null,
+    sellMistakes: j.sellMistakes || [],
+    sellNotes: j.sellNotes || '',
+    attachment: j.attachment || '',
   }
-}
-
-function loadJournalEntries(): JournalEntry[] {
-  if (typeof window === 'undefined') return []
-  const entries: JournalEntry[] = []
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (!key?.startsWith('journalio_journal_')) continue
-      const data = JSON.parse(localStorage.getItem(key) || '{}')
-      const parts = key.replace('journalio_journal_', '').split('_')
-      const tradeNumber = parseInt(parts.pop() || '0')
-      const tokenMint = parts.pop() || ''
-      const wallet = parts.join('_')
-      entries.push({
-        wallet,
-        tokenMint,
-        tradeNumber,
-        strategy: data.strategy || data.buyCategory || '',
-        emotionalState: data.emotionalState || '',
-        buyNotes: data.buyNotes || '',
-        buyRating: data.buyRating || 0,
-        exitPlan: data.exitPlan || '',
-        sellRating: data.sellRating || 0,
-        followedExitRule: data.followedExitRule ?? null,
-        sellMistakes: data.sellMistakes || [],
-        sellNotes: data.sellNotes || '',
-        attachment: data.attachment || '',
-      })
-    }
-  } catch {
-    /* ignore */
-  }
-  return entries
 }
 
 // --- Helpers ---
@@ -492,8 +417,10 @@ function PreSessionsTab() {
   const [selectedSession, setSelectedSession] = useState<PreSessionFull | null>(null)
 
   useEffect(() => {
-    setSessions(loadPreSessions().sort((a, b) => b.date.localeCompare(a.date)))
-    setLoaded(true)
+    loadPreSessions().then((data) => {
+      setSessions(data.sort((a, b) => b.date.localeCompare(a.date)))
+      setLoaded(true)
+    })
   }, [])
 
   if (!loaded) {
@@ -609,8 +536,10 @@ function JournalHistoryTab() {
   const [selectedJournal, setSelectedJournal] = useState<JournalEntry | null>(null)
 
   useEffect(() => {
-    setEntries(loadJournalEntries().reverse())
-    setLoaded(true)
+    loadJournals().then((records) => {
+      setEntries(records.map(journalRecordToEntry))
+      setLoaded(true)
+    })
   }, [])
 
   if (!loaded) {

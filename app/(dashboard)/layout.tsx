@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { WalletProvider } from '@/lib/wallet-context'
 import { Separator } from '@/components/ui/separator'
 import { StaleDataBanner } from '@/components/StaleDataBanner'
+import { LocalStorageMigration } from '@/components/LocalStorageMigration'
 
 function DashboardSkeleton() {
   return (
@@ -49,6 +50,7 @@ export default function DashboardLayout({
               </span>
             </header>
             <div className="flex-1 overflow-auto px-6 py-6">
+              <LocalStorageMigration />
               <StaleDataBanner />
               {children}
             </div>

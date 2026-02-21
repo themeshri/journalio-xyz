@@ -3,8 +3,9 @@
 import React, { useState, useCallback, useEffect, memo } from 'react';
 import { FlattenedTrade } from '@/lib/tradeCycles';
 import { formatDuration, formatTime, formatValue, formatMarketCap } from '@/lib/formatters';
-import { loadTradeComments, getCommentsByCategory, type TradeComment } from '@/lib/trade-comments';
-import { loadStrategies as loadStrategiesFromLib, type Strategy, type StrategyRule } from '@/lib/strategies';
+import { getCommentsByCategory, type TradeComment } from '@/lib/trade-comments';
+import { type Strategy, type StrategyRule } from '@/lib/strategies';
+import { useWallet } from '@/lib/wallet-context';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -132,19 +133,13 @@ const JournalModal = memo(function JournalModal({
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
   const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
   const [attachment, setAttachment] = useState<string | undefined>(initialData?.attachment);
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const { strategies, tradeComments } = useWallet();
   const [strategyId, setStrategyId] = useState<string | null>(initialData?.strategyId ?? null);
   const [ruleResults, setRuleResults] = useState<TradeRuleResult[]>(initialData?.ruleResults ?? []);
-  const [tradeComments, setTradeComments] = useState<TradeComment[]>([]);
   const [entryCommentId, setEntryCommentId] = useState<string | null>(initialData?.entryCommentId ?? null);
   const [exitCommentId, setExitCommentId] = useState<string | null>(initialData?.exitCommentId ?? null);
   const [managementCommentId, setManagementCommentId] = useState<string | null>(initialData?.managementCommentId ?? null);
   const [emotionTag, setEmotionTag] = useState<string | null>(initialData?.emotionTag ?? null);
-
-  useEffect(() => {
-    setStrategies(loadStrategiesFromLib());
-    setTradeComments(loadTradeComments());
-  }, []);
 
   const entryComments = getCommentsByCategory(tradeComments, 'entry');
   const exitComments = getCommentsByCategory(tradeComments, 'exit');

@@ -14,7 +14,7 @@ import { type Chain } from './chains'
 import { type FlattenedTrade } from './tradeCycles'
 import { loadTradeComments, type TradeComment } from './trade-comments'
 import { loadStrategies, type Strategy } from './strategies'
-import { computeJournalingStreak, type StreakResult } from './streaks'
+import { loadJournals, type JournalRecord } from './journals'
 import { getWalletTokens } from './solana-tracker'
 
 interface CacheInfo {
@@ -62,11 +62,11 @@ interface WalletContextValue {
   isAnyStale: boolean
   hasActiveWallets: boolean
 
-  // Shared localStorage state (loaded once, updated on storage events)
+  // Shared state (loaded from API)
   tradeComments: TradeComment[]
   strategies: Strategy[]
   journalMap: Record<string, any>
-  streak: StreakResult
+  streak: { current: number; longest: number }
 
   // Shared balance data (cached in provider)
   walletTokens: Map<string, any[]>
@@ -78,7 +78,10 @@ interface WalletContextValue {
   setWalletActive: (address: string, chain: Chain, active: boolean) => void
   refreshWallet: (address: string, chain: Chain) => Promise<void>
   refreshAll: () => Promise<void>
-  updateJournalEntry: (key: string, storageKey: string, data: any) => void
+  updateJournalEntry: (key: string, data: any) => void
+  reloadStrategies: () => Promise<void>
+  reloadTradeComments: () => Promise<void>
+  reloadJournals: () => Promise<void>
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null)
@@ -135,6 +138,63 @@ async function fetchTradesForWallet(
   const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch trades')
   return res.json()
+}
+
+/** Build journal map from API data, keyed by "tokenMint-tradeNumber-walletAddress" */
+function buildJournalMap(journals: JournalRecord[]): Record<string, any> {
+  const map: Record<string, any> = {}
+  for (const j of journals) {
+    const key = `${j.tokenMint}-${j.tradeNumber}-${j.walletAddress}`
+    map[key] = j
+  }
+  return map
+}
+
+/** Compute streak from journal entries' journaledAt dates */
+function computeStreakFromJournals(journals: JournalRecord[]): { current: number; longest: number } {
+  const dates = new Set<string>()
+  for (const j of journals) {
+    if (j.journaledAt) {
+      dates.add(j.journaledAt.slice(0, 10))
+    }
+  }
+  if (dates.size === 0) return { current: 0, longest: 0 }
+
+  const sortedDates = [...dates].sort().reverse()
+  const today = new Date().toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+
+  let current = 0
+  let checkDate = ''
+  if (sortedDates[0] === today) checkDate = today
+  else if (sortedDates[0] === yesterday) checkDate = yesterday
+
+  if (checkDate) {
+    const dateSet = new Set(sortedDates)
+    const d = new Date(checkDate + 'T00:00:00')
+    let day = d
+    while (dateSet.has(day.toISOString().slice(0, 10))) {
+      current++
+      day = new Date(day.getTime() - 86400000)
+    }
+  }
+
+  const allDatesAsc = [...dates].sort()
+  let longest = 0
+  let streak = 1
+  for (let i = 1; i < allDatesAsc.length; i++) {
+    const prev = new Date(allDatesAsc[i - 1] + 'T00:00:00')
+    const curr = new Date(allDatesAsc[i] + 'T00:00:00')
+    if ((curr.getTime() - prev.getTime()) / 86400000 === 1) {
+      streak++
+    } else {
+      longest = Math.max(longest, streak)
+      streak = 1
+    }
+  }
+  longest = Math.max(longest, streak, current)
+
+  return { current, longest }
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
@@ -362,66 +422,79 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const hasActiveWallets = activeWallets.length > 0
 
-  // ─── Shared localStorage state ───────────────────────────────────────
+  // ─── Shared API state ───────────────────────────────────────────
   const [tradeComments, setTradeComments] = useState<TradeComment[]>([])
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [journalMap, setJournalMap] = useState<Record<string, any>>({})
-  const [streak, setStreak] = useState<StreakResult>({ current: 0, longest: 0 })
+  const [streak, setStreak] = useState<{ current: number; longest: number }>({ current: 0, longest: 0 })
+  const journalsRef = useRef<JournalRecord[]>([])
 
-  // Load shared localStorage state once on mount
+  // Load shared data from API on mount
   useEffect(() => {
-    setTradeComments(loadTradeComments())
-    setStrategies(loadStrategies())
-    setStreak(computeJournalingStreak())
+    loadTradeComments().then(setTradeComments)
+    loadStrategies(true).then(setStrategies)
   }, [])
 
-  // Rebuild journalMap when flattenedTrades change
+  // Fetch journals when active wallets change
   useEffect(() => {
-    if (flattenedTrades.length === 0) {
+    if (activeWallets.length === 0) {
       setJournalMap({})
+      setStreak({ current: 0, longest: 0 })
+      journalsRef.current = []
       return
     }
-    const map: Record<string, any> = {}
-    for (const t of flattenedTrades) {
-      try {
-        const raw = localStorage.getItem(`journalio_journal_${t.walletAddress}_${t.tokenMint}_${t.tradeNumber}`)
-        if (raw) map[`${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`] = JSON.parse(raw)
-      } catch { /* ignore */ }
-    }
-    setJournalMap(map)
-  }, [flattenedTrades])
 
-  // Listen for storage events to keep shared state in sync
-  useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      if (e.key === 'journalio_trade_comments') {
-        setTradeComments(loadTradeComments())
-      }
-      if (e.key === 'journalio_strategies') {
-        setStrategies(loadStrategies())
-      }
-      if (e.key?.startsWith('journalio_journal_')) {
-        // Rebuild the journal map
-        const map: Record<string, any> = {}
-        for (const t of flattenedTrades) {
-          try {
-            const raw = localStorage.getItem(`journalio_journal_${t.walletAddress}_${t.tokenMint}_${t.tradeNumber}`)
-            if (raw) map[`${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`] = JSON.parse(raw)
-          } catch { /* ignore */ }
-        }
-        setJournalMap(map)
-        setStreak(computeJournalingStreak())
-      }
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [flattenedTrades])
+    // Fetch journals for all active wallets
+    Promise.all(
+      activeWallets.map((w) => loadJournals(w.address))
+    ).then((results) => {
+      const all = results.flat()
+      journalsRef.current = all
+      setJournalMap(buildJournalMap(all))
+      setStreak(computeStreakFromJournals(all))
+    })
+  }, [activeWallets])
 
-  // Imperative update for same-tab journal saves (StorageEvent only fires cross-tab)
-  const updateJournalEntry = useCallback((key: string, storageKey: string, data: any) => {
+  // Imperative update for same-tab journal saves
+  const updateJournalEntry = useCallback((key: string, data: any) => {
     setJournalMap((prev) => ({ ...prev, [key]: data }))
-    setStreak(computeJournalingStreak())
+    // Update streak optimistically
+    if (data?.journaledAt) {
+      const updated = [...journalsRef.current]
+      // Add or update the entry
+      const existing = updated.findIndex(
+        (j) => `${j.tokenMint}-${j.tradeNumber}-${j.walletAddress}` === key
+      )
+      if (existing >= 0) {
+        updated[existing] = { ...updated[existing], ...data }
+      } else {
+        updated.push(data)
+      }
+      journalsRef.current = updated
+      setStreak(computeStreakFromJournals(updated))
+    }
   }, [])
+
+  const reloadStrategies = useCallback(async () => {
+    const strats = await loadStrategies(true)
+    setStrategies(strats)
+  }, [])
+
+  const reloadTradeComments = useCallback(async () => {
+    const comments = await loadTradeComments()
+    setTradeComments(comments)
+  }, [])
+
+  const reloadJournals = useCallback(async () => {
+    if (activeWallets.length === 0) return
+    const results = await Promise.all(
+      activeWallets.map((w) => loadJournals(w.address))
+    )
+    const all = results.flat()
+    journalsRef.current = all
+    setJournalMap(buildJournalMap(all))
+    setStreak(computeStreakFromJournals(all))
+  }, [activeWallets])
 
   // ─── Shared balance data ─────────────────────────────────────────────
   const [walletTokens, setWalletTokens] = useState<Map<string, any[]>>(new Map())
@@ -515,6 +588,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         refreshWallet,
         refreshAll,
         updateJournalEntry,
+        reloadStrategies,
+        reloadTradeComments,
+        reloadJournals,
       }}
     >
       {children}

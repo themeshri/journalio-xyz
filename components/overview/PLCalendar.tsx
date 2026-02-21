@@ -25,7 +25,7 @@ import { getCommentById, type TradeComment } from '@/lib/trade-comments'
 import { TokenWithBadge } from '@/components/chain-badge'
 import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { useWallet } from '@/lib/wallet-context'
-import { safeLocalStorage } from '@/lib/local-storage'
+import { saveJournal } from '@/lib/journals'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 
 interface PLCalendarProps {
@@ -43,9 +43,6 @@ function journalKey(t: FlattenedTrade) {
   return `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
 }
 
-function storageKeyFor(t: FlattenedTrade) {
-  return `journalio_journal_${t.walletAddress}_${t.tokenMint}_${t.tradeNumber}`
-}
 
 function ratingLabel(rating: string | undefined) {
   if (rating === 'positive') return 'Good'
@@ -178,12 +175,16 @@ export function PLCalendar({ trades, journalMap }: PLCalendarProps) {
     }
   }, [selectedDay, trades, journalMap, tradeComments, getDayTrades])
 
-  const handleJournalSave = useCallback((data: JournalData) => {
+  const handleJournalSave = useCallback(async (data: JournalData) => {
     if (!journalTrade) return
     const key = journalKey(journalTrade)
-    const sKey = storageKeyFor(journalTrade)
-    safeLocalStorage.setItem(sKey, data)
-    updateJournalEntry(key, sKey, data)
+    const saved = await saveJournal({
+      walletAddress: journalTrade.walletAddress,
+      tokenMint: journalTrade.tokenMint,
+      tradeNumber: journalTrade.tradeNumber,
+      ...data,
+    })
+    updateJournalEntry(key, saved)
     setJournalTrade(null)
   }, [journalTrade, updateJournalEntry])
 

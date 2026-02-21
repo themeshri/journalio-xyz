@@ -16,7 +16,7 @@ import Link from 'next/link'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { useWallet } from '@/lib/wallet-context'
-import { safeLocalStorage } from '@/lib/local-storage'
+import { saveJournal } from '@/lib/journals'
 import { TokenWithBadge } from '@/components/chain-badge'
 
 interface RecentCyclesProps {
@@ -27,9 +27,6 @@ function journalKey(t: FlattenedTrade) {
   return `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
 }
 
-function storageKey(t: FlattenedTrade) {
-  return `journalio_journal_${t.walletAddress}_${t.tokenMint}_${t.tradeNumber}`
-}
 
 export function RecentCycles({ trades }: RecentCyclesProps) {
   const { journalMap, updateJournalEntry } = useWallet()
@@ -40,12 +37,16 @@ export function RecentCycles({ trades }: RecentCyclesProps) {
     [trades]
   )
 
-  const handleSave = useCallback((data: JournalData) => {
+  const handleSave = useCallback(async (data: JournalData) => {
     if (!selectedTrade) return
     const key = journalKey(selectedTrade)
-    const sKey = storageKey(selectedTrade)
-    safeLocalStorage.setItem(sKey, data)
-    updateJournalEntry(key, sKey, data)
+    const saved = await saveJournal({
+      walletAddress: selectedTrade.walletAddress,
+      tokenMint: selectedTrade.tokenMint,
+      tradeNumber: selectedTrade.tradeNumber,
+      ...data,
+    })
+    updateJournalEntry(key, saved)
     setSelectedTrade(null)
   }, [selectedTrade, updateJournalEntry])
 

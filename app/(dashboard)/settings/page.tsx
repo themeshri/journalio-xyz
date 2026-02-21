@@ -27,7 +27,6 @@ import { toast } from 'sonner'
 import { FormSkeleton } from '@/components/skeletons'
 import {
   loadTradeComments,
-  saveTradeComments,
   getCommentsByCategory,
   type TradeComment,
 } from '@/lib/trade-comments'
@@ -70,29 +69,37 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    setTradeComments(loadTradeComments())
+    loadTradeComments().then(setTradeComments)
   }, [])
 
-  function addComment() {
+  async function addComment() {
     if (!newCommentLabel.trim()) return
-    const comment: TradeComment = {
-      id: crypto.randomUUID(),
-      category: activeCommentTab,
-      label: newCommentLabel.trim(),
-      rating: newCommentRating,
-      createdAt: new Date().toISOString(),
-    }
-    const updated = [...tradeComments, comment]
-    setTradeComments(updated)
-    saveTradeComments(updated)
-    setNewCommentLabel('')
-    setNewCommentRating('neutral')
+    try {
+      const res = await fetch('/api/trade-comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: activeCommentTab,
+          label: newCommentLabel.trim(),
+          rating: newCommentRating,
+        }),
+      })
+      if (res.ok) {
+        const created = await res.json()
+        setTradeComments((prev) => [...prev, created])
+        setNewCommentLabel('')
+        setNewCommentRating('neutral')
+      }
+    } catch { /* ignore */ }
   }
 
-  function deleteComment(id: string) {
-    const updated = tradeComments.filter((c) => c.id !== id)
-    setTradeComments(updated)
-    saveTradeComments(updated)
+  async function deleteComment(id: string) {
+    try {
+      const res = await fetch(`/api/trade-comments/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setTradeComments((prev) => prev.filter((c) => c.id !== id))
+      }
+    } catch { /* ignore */ }
     setDeleteCommentConfirm(null)
   }
 
@@ -102,13 +109,21 @@ export default function SettingsPage() {
     setEditingRating(c.rating)
   }
 
-  function saveEditComment() {
+  async function saveEditComment() {
     if (!editingCommentId || !editingLabel.trim()) return
-    const updated = tradeComments.map((c) =>
-      c.id === editingCommentId ? { ...c, label: editingLabel.trim(), rating: editingRating } : c
-    )
-    setTradeComments(updated)
-    saveTradeComments(updated)
+    try {
+      const res = await fetch(`/api/trade-comments/${editingCommentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: editingLabel.trim(), rating: editingRating }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setTradeComments((prev) =>
+          prev.map((c) => (c.id === editingCommentId ? updated : c))
+        )
+      }
+    } catch { /* ignore */ }
     setEditingCommentId(null)
   }
 

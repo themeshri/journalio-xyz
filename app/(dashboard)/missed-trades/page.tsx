@@ -103,7 +103,7 @@ export default function MissedTradesPage() {
 
   useEffect(() => {
     fetchPlays()
-    setStrategies(loadStrategies())
+    loadStrategies().then(setStrategies)
   }, [])
 
   async function fetchPlays() {

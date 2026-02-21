@@ -52,14 +52,14 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 | Route | Page | Storage | Description |
 |-------|------|---------|-------------|
 | `/` | Overview | API | Stat cards (cycles, win rate, P/L) + 10 recent transactions |
-| `/pre-session` | Pre-Session | localStorage | Daily checklist: energy, mindset, limits, market context, rules |
-| `/trade-journal` | Trade Journal | localStorage | Trade cycles table with JournalModal for per-cycle notes |
-| `/history` | History | Mixed | 3 tabs: Transactions (API), Pre-Sessions (localStorage), Journal (localStorage) |
+| `/pre-session` | Pre-Session | API (DB) | Daily checklist: energy, mindset, limits, market context, rules |
+| `/trade-journal` | Trade Journal | API (DB) | Trade cycles table with JournalModal for per-cycle notes |
+| `/history` | History | API (DB) | 3 tabs: Transactions (API), Pre-Sessions (API), Journal (API) |
 | `/analytics` | Analytics | API | Recharts: cumulative P/L, duration buckets, trading hours heatmap |
 | `/missed-trades` | Missed Trades | API (DB) | Track tokens you saw but didn't trade, with potential multiplier |
-| `/strategies` | Strategies | localStorage | Named strategies (entry/exit/stop-loss conditions) + global rules |
+| `/strategies` | Strategies | API (DB) | Named strategies (entry/exit/stop-loss conditions) + global rules |
 | `/wallet-management` | Wallet Mgmt | localStorage | Add/remove/switch saved wallets |
-| `/settings` | Settings | API (DB) | Display name, tx limit, USD toggle |
+| `/settings` | Settings | API (DB) | Display name, tx limit, USD toggle, trade comments |
 
 ## Key Components
 
@@ -72,6 +72,7 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 | `ErrorBoundary` | `components/ErrorBoundary.tsx` | React error boundary with dev stack trace |
 | `Providers` | `components/Providers.tsx` | NextAuth SessionProvider wrapper |
 | `StaleDataBanner` | `components/StaleDataBanner.tsx` | Amber banner shown when trade data is served from stale cache |
+| `LocalStorageMigration` | `components/LocalStorageMigration.tsx` | One-time migration of localStorage data to database |
 
 Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `PaperedPlays.tsx`, `SummaryView.tsx`, `TradeCycleCard.backup.tsx`, `SkeletonLoading.tsx`
 
@@ -84,6 +85,11 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | `tradeCycles.ts` | `calculateTradeCycles`, `flattenTradeCycles` | Groups txs by token → splits into buy/sell cycles by balance |
 | `analytics.ts` → `analytics/` | Re-export barrel; modules: `core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`, `types`, `helpers` | Analytics computation split by domain |
 | `local-storage.ts` | `safeLocalStorage` | Safe localStorage wrapper with quota error handling and toast notifications |
+| `strategies.ts` | `loadStrategies`, `createStrategy`, `updateStrategy`, `deleteStrategy` | Async strategy CRUD via API |
+| `trade-comments.ts` | `loadTradeComments`, `getCommentsByCategory`, `getCommentById` | Async trade comment loading + pure helpers |
+| `rules.ts` | `loadRules`, `createRule`, `updateRule`, `deleteRule` | Async global rule CRUD via API |
+| `pre-sessions.ts` | `loadPreSessions`, `loadPreSession`, `savePreSession` | Async pre-session CRUD via API |
+| `journals.ts` | `loadJournals`, `saveJournal` | Async journal entry CRUD via API |
 | `formatters.ts` | `formatDuration`, `formatTime`, `formatValue`, `formatTokenAmount`, `formatMarketCap`, `formatPrice`, `formatPercentage` | Display formatting |
 | `utils.ts` | `cn` | Tailwind class merge (clsx + tailwind-merge) |
 | `auth.ts` | `authOptions` | NextAuth config (credentials provider, JWT strategy) |
@@ -102,6 +108,16 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | GET | `/api/papered-plays` | No | List missed trades (default-user) |
 | POST | `/api/papered-plays` | No | Create missed trade entry |
 | DELETE/PATCH | `/api/papered-plays/[id]` | No | Delete/update missed trade |
+| GET/POST | `/api/rules` | No | List/create global rules |
+| PATCH/DELETE | `/api/rules/[id]` | No | Update/delete global rule |
+| GET/POST | `/api/trade-comments` | No | List (auto-seeds defaults)/create trade comments |
+| PATCH/DELETE | `/api/trade-comments/[id]` | No | Update/delete trade comment |
+| GET/POST | `/api/strategies` | No | List/create strategies |
+| GET/PATCH/DELETE | `/api/strategies/[id]` | No | Get/update/delete strategy |
+| GET/POST | `/api/pre-sessions` | No | List/upsert pre-sessions |
+| GET/DELETE | `/api/pre-sessions/[date]` | No | Get/delete pre-session by date |
+| GET/POST | `/api/journals` | No | List/upsert journal entries |
+| GET/DELETE | `/api/journals/[id]` | No | Get/delete journal entry |
 | GET/PATCH | `/api/settings` | Session | User preferences |
 | GET/POST | `/api/wallets` | Session | List/create wallets |
 | DELETE/PATCH | `/api/wallets/[id]` | Session | Delete/update wallet |
@@ -122,16 +138,15 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 
 | Key | Used By | Content |
 |-----|---------|---------|
-| `journalio_strategies` | Strategies page | Array of strategy objects |
-| `journalio_rules` | Strategies page, Pre-Session, Sidebar | Array of rule objects |
-| `journalio_pre_session_{YYYY-MM-DD}` | Pre-Session, History | Full pre-session data for a date |
-| `journalio_pre_sessions` | Pre-Session, History, Sidebar | Index of pre-session summaries |
-| `journalio_journal_{wallet}_{mint}_{tradeNum}` | Trade Journal, History | Journal entry per trade cycle |
 | `journalio_saved_wallets` | Wallet Management | Saved wallet objects |
+| `journalio_journal_view_mode` | Settings, Trade Journal | Journal view mode preference (merged/grouped) |
+| `journalio_migration_v1_complete` | LocalStorageMigration | Flag indicating one-time migration is done |
+
+**Migrated to DB (Phase 3)**: strategies, rules, pre-sessions, journals, trade comments — legacy localStorage keys still read by `LocalStorageMigration` component for one-time migration.
 
 ### Database (Prisma)
 
-Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`
+Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`, `Strategy`, `GlobalRule`, `PreSession`, `JournalEntry`, `TradeComment`
 
 Trade cache: 5-minute TTL on `Trade.indexedAt`, force refresh bypasses cache, stale fallback on API failure.
 
@@ -191,4 +206,4 @@ NEXTAUTH_URL="http://localhost:3000"
 
 ---
 <!-- Auto-updated by post-commit hook -->
-Last updated: 2026-02-20
+Last updated: 2026-02-21

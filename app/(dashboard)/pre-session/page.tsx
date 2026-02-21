@@ -2,66 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { safeLocalStorage } from '@/lib/local-storage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { FormSkeleton } from '@/components/skeletons'
-
-interface Rule {
-  id: string
-  text: string
-}
-
-function loadGlobalRules(): Rule[] {
-  try {
-    const raw = localStorage.getItem('journalio_rules')
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-interface MarketSnapshot {
-  btcPrice: number | null
-  ethPrice: number | null
-  solPrice: number | null
-  bnbPrice: number | null
-  fearGreedIndex: number | null
-  onchainVolume24h: number | null
-}
-
-interface PreSessionData {
-  energyLevel: number
-  emotionalState: string
-  sessionIntent: string
-  maxTrades: string
-  maxLoss: string
-  timeLimit: string
-  defaultPositionSize: string
-  hasOpenPositions: boolean | null
-  marketSentiment: string
-  solTrend: string
-  majorNews: boolean | null
-  majorNewsNote: string
-  normalVolume: boolean | null
-  rulesChecked: string[]
-  date: string
-  time: string
-  savedAt: string
-  marketSnapshot: MarketSnapshot
-}
-
-interface PreSessionSummary {
-  date: string
-  savedAt: string
-  energyLevel: number
-  emotionalState: string
-  marketSentiment: string
-  marketSnapshot: MarketSnapshot
-}
+import { loadRules, type GlobalRule } from '@/lib/rules'
+import {
+  type PreSessionData,
+  defaultPreSessionData,
+  defaultMarketSnapshot,
+  loadPreSession,
+  savePreSession,
+} from '@/lib/pre-sessions'
 
 const emotionalOptions = [
   'Calm',
@@ -71,12 +25,6 @@ const emotionalOptions = [
   'Revenge-minded',
   'Euphoric',
 ]
-
-
-function getStorageKey() {
-  const today = new Date().toISOString().slice(0, 10)
-  return `journalio_pre_session_${today}`
-}
 
 function getEnergyDescription(level: number): { text: string; className: string } | null {
   if (level >= 8)
@@ -88,36 +36,6 @@ function getEnergyDescription(level: number): { text: string; className: string 
   if (level >= 1 && level <= 2)
     return { text: 'Tapped Out — Brain scattered; high probability of irrational decisions', className: 'text-red-600' }
   return null
-}
-
-const defaultMarketSnapshot: MarketSnapshot = {
-  btcPrice: null,
-  ethPrice: null,
-  solPrice: null,
-  bnbPrice: null,
-  fearGreedIndex: null,
-  onchainVolume24h: null,
-}
-
-const defaultData: PreSessionData = {
-  energyLevel: 0,
-  emotionalState: '',
-  sessionIntent: '',
-  maxTrades: '',
-  maxLoss: '',
-  timeLimit: '',
-  defaultPositionSize: '',
-  hasOpenPositions: null,
-  marketSentiment: '',
-  solTrend: '',
-  majorNews: null,
-  majorNewsNote: '',
-  normalVolume: null,
-  rulesChecked: [],
-  date: '',
-  time: '',
-  savedAt: '',
-  marketSnapshot: defaultMarketSnapshot,
 }
 
 function getTodayDate(): string {
@@ -140,31 +58,11 @@ function formatDisplayTime(date: Date): string {
   })
 }
 
-function loadSessionsIndex(): PreSessionSummary[] {
-  try {
-    const raw = localStorage.getItem('journalio_pre_sessions')
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function upsertSessionsIndex(summary: PreSessionSummary) {
-  const sessions = loadSessionsIndex()
-  const idx = sessions.findIndex((s) => s.date === summary.date)
-  if (idx >= 0) {
-    sessions[idx] = summary
-  } else {
-    sessions.push(summary)
-  }
-  safeLocalStorage.setItem('journalio_pre_sessions', sessions)
-}
-
 export default function PreSessionPage() {
-  const [data, setData] = useState<PreSessionData>(defaultData)
+  const [data, setData] = useState<PreSessionData>(defaultPreSessionData)
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
-  const [globalRules, setGlobalRules] = useState<Rule[]>([])
+  const [globalRules, setGlobalRules] = useState<GlobalRule[]>([])
   const [isCompletedToday, setIsCompletedToday] = useState(false)
   const [displayDate, setDisplayDate] = useState('')
   const [displayTime, setDisplayTime] = useState('')
@@ -174,25 +72,25 @@ export default function PreSessionPage() {
     setDisplayDate(formatDisplayDate(now))
     setDisplayTime(formatDisplayTime(now))
 
-    try {
-      const raw = localStorage.getItem(getStorageKey())
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        setData({ ...defaultData, ...parsed })
-        if (parsed.savedAt) {
+    const today = getTodayDate()
+
+    Promise.all([loadPreSession(today), loadRules()]).then(([session, loadedRules]) => {
+      if (session) {
+        setData({ ...defaultPreSessionData, ...session })
+        if (session.savedAt) {
           setIsCompletedToday(true)
         }
       }
-    } catch {}
-    setGlobalRules(loadGlobalRules())
-    setLoaded(true)
+      setGlobalRules(loadedRules)
+      setLoaded(true)
+    })
   }, [])
 
   function update<K extends keyof PreSessionData>(key: K, value: PreSessionData[K]) {
     setData((prev) => ({ ...prev, [key]: value }))
   }
 
-  function handleSave() {
+  async function handleSave() {
     const now = new Date()
     const todayDate = getTodayDate()
     const savedData: PreSessionData = {
@@ -203,21 +101,13 @@ export default function PreSessionPage() {
       marketSnapshot: data.marketSnapshot || defaultMarketSnapshot,
     }
 
-    safeLocalStorage.setItem(getStorageKey(), savedData)
-    setData(savedData)
-    setIsCompletedToday(true)
-
-    upsertSessionsIndex({
-      date: todayDate,
-      savedAt: savedData.savedAt,
-      energyLevel: savedData.energyLevel,
-      emotionalState: savedData.emotionalState,
-      marketSentiment: savedData.marketSentiment,
-      marketSnapshot: savedData.marketSnapshot,
-    })
-
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    const result = await savePreSession(savedData)
+    if (result) {
+      setData(savedData)
+      setIsCompletedToday(true)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
   }
 
   function toggleArrayItem(key: 'rulesChecked', id: string) {

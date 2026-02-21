@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { safeLocalStorage } from '@/lib/local-storage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,8 +32,18 @@ import {
   type StrategyRule,
   type RuleGroup,
   loadStrategies,
-  saveStrategies,
+  createStrategy,
+  updateStrategy,
+  deleteStrategy,
 } from '@/lib/strategies'
+import {
+  type GlobalRule,
+  loadRules,
+  createRule,
+  updateRule,
+  deleteRule,
+} from '@/lib/rules'
+import { useWallet } from '@/lib/wallet-context'
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -176,28 +185,6 @@ const TEMPLATES: StrategyTemplate[] = [
     ],
   },
 ]
-
-// ─── Global Rules (kept for pre-session compat) ───────────────
-
-interface GlobalRule {
-  id: string
-  text: string
-}
-
-const RULES_KEY = 'journalio_rules'
-
-function loadRules(): GlobalRule[] {
-  try {
-    const raw = localStorage.getItem(RULES_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveRules(rules: GlobalRule[]) {
-  safeLocalStorage.setItem(RULES_KEY, rules)
-}
 
 // ─── Form Helpers ─────────────────────────────────────────────
 
@@ -347,21 +334,21 @@ function RuleGroupEditor({
   onUpdate: (g: RuleGroup) => void
   onRemove: () => void
 }) {
-  function updateRule(ruleId: string, updated: StrategyRule) {
+  function updateGroupRule(ruleId: string, updated: StrategyRule) {
     onUpdate({
       ...group,
       rules: group.rules.map((r) => (r.id === ruleId ? updated : r)),
     })
   }
 
-  function removeRule(ruleId: string) {
+  function removeGroupRule(ruleId: string) {
     onUpdate({
       ...group,
       rules: group.rules.filter((r) => r.id !== ruleId),
     })
   }
 
-  function addRule() {
+  function addGroupRule() {
     onUpdate({
       ...group,
       rules: [...group.rules, createBlankRule(group.rules.length)],
@@ -393,8 +380,8 @@ function RuleGroupEditor({
           <RuleEditor
             key={rule.id}
             rule={rule}
-            onUpdate={(r) => updateRule(rule.id, r)}
-            onRemove={() => removeRule(rule.id)}
+            onUpdate={(r) => updateGroupRule(rule.id, r)}
+            onRemove={() => removeGroupRule(rule.id)}
           />
         ))}
       </div>
@@ -403,7 +390,7 @@ function RuleGroupEditor({
         type="button"
         variant="ghost"
         size="sm"
-        onClick={addRule}
+        onClick={addGroupRule}
         className="text-xs text-muted-foreground"
       >
         + Add Rule
@@ -581,6 +568,7 @@ function StrategyCard({
 // ─── Main Page ────────────────────────────────────────────────
 
 export default function StrategiesPage() {
+  const { reloadStrategies: reloadCtxStrategies } = useWallet()
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [rules, setRules] = useState<GlobalRule[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -601,19 +589,11 @@ export default function StrategiesPage() {
   const [deleteRuleConfirm, setDeleteRuleConfirm] = useState<string | null>(null)
 
   useEffect(() => {
-    setStrategies(loadStrategies())
-    setRules(loadRules())
-    setLoaded(true)
-  }, [])
-
-  const persistStrategies = useCallback((updated: Strategy[]) => {
-    setStrategies(updated)
-    saveStrategies(updated)
-  }, [])
-
-  const persistRules = useCallback((updated: GlobalRule[]) => {
-    setRules(updated)
-    saveRules(updated)
+    Promise.all([loadStrategies(true), loadRules()]).then(([strats, loadedRules]) => {
+      setStrategies(strats)
+      setRules(loadedRules)
+      setLoaded(true)
+    })
   }, [])
 
   // ─── Strategy CRUD ──────────────────────────────────────────
@@ -657,7 +637,7 @@ export default function StrategiesPage() {
     )
   }
 
-  function handleSave() {
+  async function handleSave() {
     const name = formName.trim()
     if (!name) return
 
@@ -669,41 +649,50 @@ export default function StrategiesPage() {
       }))
       .filter((g) => g.rules.length > 0)
 
-    const now = new Date().toISOString()
-
     if (editingId) {
-      persistStrategies(
-        strategies.map((s) =>
-          s.id === editingId
-            ? { ...s, name, description: formDescription.trim(), color: formColor, icon: formIcon, ruleGroups: cleanGroups, updatedAt: now }
-            : s
-        )
-      )
-    } else {
-      const newStrategy: Strategy = {
-        id: crypto.randomUUID(),
+      const updated = await updateStrategy(editingId, {
         name,
         description: formDescription.trim(),
         color: formColor,
         icon: formIcon,
         ruleGroups: cleanGroups,
-        isArchived: false,
-        createdAt: now,
-        updatedAt: now,
+      })
+      if (updated) {
+        setStrategies((prev) => prev.map((s) => (s.id === editingId ? updated : s)))
+        reloadCtxStrategies()
       }
-      persistStrategies([...strategies, newStrategy])
+    } else {
+      const created = await createStrategy({
+        name,
+        description: formDescription.trim(),
+        color: formColor,
+        icon: formIcon,
+        ruleGroups: cleanGroups,
+      })
+      if (created) {
+        setStrategies((prev) => [...prev, created])
+        reloadCtxStrategies()
+      }
     }
     cancelForm()
   }
 
-  function handleDelete(id: string) {
-    persistStrategies(strategies.filter((s) => s.id !== id))
+  async function handleDelete(id: string) {
+    const ok = await deleteStrategy(id)
+    if (ok) {
+      setStrategies((prev) => prev.filter((s) => s.id !== id))
+      reloadCtxStrategies()
+    }
   }
 
-  function toggleArchive(id: string) {
-    persistStrategies(
-      strategies.map((s) => (s.id === id ? { ...s, isArchived: !s.isArchived, updatedAt: new Date().toISOString() } : s))
-    )
+  async function toggleArchive(id: string) {
+    const s = strategies.find((x) => x.id === id)
+    if (!s) return
+    const updated = await updateStrategy(id, { isArchived: !s.isArchived })
+    if (updated) {
+      setStrategies((prev) => prev.map((x) => (x.id === id ? updated : x)))
+      reloadCtxStrategies()
+    }
   }
 
   // ─── Group Editing ──────────────────────────────────────────
@@ -712,7 +701,7 @@ export default function StrategiesPage() {
     setFormGroups([...formGroups, createBlankGroup(formGroups.length)])
   }
 
-  function updateGroup(groupId: string, updated: RuleGroup) {
+  function updateFormGroup(groupId: string, updated: RuleGroup) {
     setFormGroups(formGroups.map((g) => (g.id === groupId ? updated : g)))
   }
 
@@ -722,16 +711,22 @@ export default function StrategiesPage() {
 
   // ─── Global Rule CRUD ──────────────────────────────────────
 
-  function handleAddRule() {
+  async function handleAddRule() {
     const text = newRule.trim()
     if (!text) return
-    persistRules([...rules, { id: crypto.randomUUID(), text }])
-    setNewRule('')
+    const created = await createRule(text)
+    if (created) {
+      setRules((prev) => [...prev, created])
+      setNewRule('')
+    }
   }
 
-  function handleDeleteRule(id: string) {
-    persistRules(rules.filter((r) => r.id !== id))
-    setDeleteRuleConfirm(null)
+  async function handleDeleteRule(id: string) {
+    const ok = await deleteRule(id)
+    if (ok) {
+      setRules((prev) => prev.filter((r) => r.id !== id))
+      setDeleteRuleConfirm(null)
+    }
   }
 
   function startEditRule(rule: GlobalRule) {
@@ -739,11 +734,14 @@ export default function StrategiesPage() {
     setEditingRuleText(rule.text)
   }
 
-  function saveEditRule() {
+  async function saveEditRule() {
     if (!editingRuleId) return
     const text = editingRuleText.trim()
     if (!text) return
-    persistRules(rules.map((r) => (r.id === editingRuleId ? { ...r, text } : r)))
+    const updated = await updateRule(editingRuleId, { text })
+    if (updated) {
+      setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updated : r)))
+    }
     setEditingRuleId(null)
     setEditingRuleText('')
   }
@@ -823,7 +821,7 @@ export default function StrategiesPage() {
                 <RuleGroupEditor
                   key={group.id}
                   group={group}
-                  onUpdate={(g) => updateGroup(group.id, g)}
+                  onUpdate={(g) => updateFormGroup(group.id, g)}
                   onRemove={() => removeGroup(group.id)}
                 />
               ))}

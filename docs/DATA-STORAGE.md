@@ -2,7 +2,7 @@
 
 ## Current State
 
-Journalio uses a split data storage model: some data lives in the browser's localStorage, while other data is persisted in a server-side database (SQLite/PostgreSQL via Prisma).
+Journalio stores all user data in a server-side database (SQLite in dev, PostgreSQL in prod) via Prisma ORM. Only wallet management and view preferences remain in localStorage.
 
 ### Storage Map
 
@@ -12,83 +12,44 @@ Journalio uses a split data storage model: some data lives in the browser's loca
 | User settings | DB | `UserSettings` table | Settings | API GET/PATCH `/api/settings` | API PATCH `/api/settings` |
 | Missed trades (papered plays) | DB | `PaperedPlay` table | Missed Trades | API GET `/api/papered-plays` | API POST/PATCH/DELETE `/api/papered-plays` |
 | Trade edit overrides | DB | `TradeEdit` table | Trade Journal | API GET `/api/trade-edits` | API POST/DELETE `/api/trade-edits` |
+| Strategies | DB | `Strategy` table | Strategies, JournalModal, Analytics | API GET `/api/strategies` | API POST/PATCH/DELETE `/api/strategies` |
+| Global rules | DB | `GlobalRule` table | Strategies, Pre-Session, Sidebar | API GET `/api/rules` | API POST/PATCH/DELETE `/api/rules` |
+| Pre-session data | DB | `PreSession` table | Pre-Session, History, Sidebar | API GET `/api/pre-sessions` | API POST `/api/pre-sessions` (upsert) |
+| Journal entries | DB | `JournalEntry` table | Trade Journal, History, Overview | API GET `/api/journals` | API POST `/api/journals` (upsert) |
+| Trade comments | DB | `TradeComment` table | Settings, JournalModal, Sidebar | API GET `/api/trade-comments` | API POST/PATCH/DELETE `/api/trade-comments` |
 | Wallets (auth-gated) | DB | `Wallet` table | — (unused currently) | API GET `/api/wallets` | API POST/DELETE `/api/wallets` |
 | Saved wallets | localStorage | `journalio_saved_wallets` | Wallet Management, WalletProvider | JSON.parse on mount | JSON.stringify on change |
 | Active wallets | localStorage | `journalio_active_wallets` | WalletProvider | JSON.parse on mount | JSON.stringify on toggle |
-| Pre-session data | localStorage | `journalio_pre_session_{YYYY-MM-DD}` | Pre-Session, History | JSON.parse on mount | JSON.stringify on save |
-| Pre-session index | localStorage | `journalio_pre_sessions` | Pre-Session, History, Sidebar | JSON.parse on mount | JSON.stringify on save |
-| Journal entries | localStorage | `journalio_journal_{wallet}_{mint}_{tradeNum}` | Trade Journal, History, Analytics | JSON.parse per trade | JSON.stringify on save |
-| Strategies | localStorage | `journalio_strategies` | Strategies, JournalModal, Analytics | JSON.parse on mount | JSON.stringify on save |
-| Global rules | localStorage | `journalio_rules` | Strategies, Pre-Session, Sidebar | JSON.parse on mount | JSON.stringify on save |
-| Trade comments | localStorage | `journalio_trade_comments` | Trade Journal, Analytics | JSON.parse on mount (seeds defaults if empty) | JSON.stringify on save |
-| Journal view mode | localStorage | `journalio_journal_view_mode` | Trade Journal | Direct getItem | Direct setItem |
+| Journal view mode | localStorage | `journalio_journal_view_mode` | Trade Journal, Settings | Direct getItem | Direct setItem |
 
 ### What's NOT Stored
 
 - Token metadata (logos, names): fetched live from Solana Tracker API, not cached client-side
 - Wallet balances: fetched on Trade Journal mount with 60s in-memory cache, not persisted
 
-## Rationale
+## Migration History
 
-### Why localStorage for journals/strategies/pre-sessions
+### Phase 3 Migration (localStorage → DB)
 
-1. **Instant writes** — No network round-trip. Pre-session data saves in <1ms.
-2. **Offline-first authoring** — Users can journal and create strategies without connectivity.
-3. **No auth dependency** — These features work even when NextAuth sessions expire.
-4. **Rapid iteration** — During early development, schema changes don't require DB migrations.
+Completed: Strategies, global rules, pre-sessions, journal entries, and trade comments were migrated from localStorage to the database.
 
-### Why DB for trades/settings/missed trades
+- **One-time migration**: `LocalStorageMigration` component runs on first dashboard load. Checks `journalio_migration_v1_complete` localStorage flag, reads legacy keys, POSTs data to API routes, sets flag on completion.
+- **Approach**: Hard-switch (no dual-read). All reads/writes go directly to API. No sync layer needed.
+- **Legacy keys**: Still read by migration component but no longer written to by the app.
 
-1. **Server-side API calls** — Trade data comes from Solana Tracker API, which requires a server-side API key. The server fetches and caches trades.
-2. **Auth-gated data** — User settings are tied to authenticated sessions.
-3. **Server validation** — Missed trades benefit from server-side validation before persistence.
-4. **Cache management** — The 5-minute TTL trade cache with stale fallback is best managed server-side.
+### DB Models Added in Phase 3
 
-### Known Limitations
-
-- **No multi-device sync** for journals, strategies, pre-sessions, or rules
-- **localStorage quota** (~5-10MB) could be exceeded by heavy journaling users
-- **No backup/restore** for localStorage data
-- **Data loss risk** if browser storage is cleared
-
-## Migration Plan
-
-### Phase A: Current (Hardening)
-
-- Document the storage split (this file)
-- Add `safeLocalStorage` wrapper with quota error handling (see `lib/local-storage.ts`)
-- Surface stale data indicators in the UI when trade cache serves old data
-- All new localStorage writes go through `safeLocalStorage`
-
-### Phase B: API Routes for User Content
-
-Mirror the existing papered-plays CRUD pattern for localStorage data:
-
-1. **Journals** — `GET/POST/PATCH /api/journals` with `{walletAddress, tokenMint, tradeNumber}` composite key
-2. **Strategies** — `GET/POST/PATCH/DELETE /api/strategies` with strategy CRUD
-3. **Pre-sessions** — `GET/POST /api/pre-sessions` with date-keyed entries
-4. **Rules** — `GET/POST/PATCH/DELETE /api/rules`
-5. **Trade comments** — `GET/POST/PATCH/DELETE /api/trade-comments`
-
-Each route follows the pattern:
-- Auth-gated via NextAuth session
-- Prisma model with `userId` foreign key
-- Request validation
-- JSON response
-
-### Phase C: Sync Layer
-
-Once API routes exist, add a sync layer:
-
-1. **localStorage remains the write-ahead log** — writes go to localStorage first for instant UX
-2. **Background sync** — a `SyncProvider` context periodically pushes dirty records to the API
-3. **Conflict resolution** — last-write-wins with `updatedAt` timestamps; server is source of truth
-4. **Offline queue** — failed syncs are retried with exponential backoff
-5. **Initial load** — on app mount, fetch from API and merge with localStorage (API wins on conflict)
+| Model | Unique Constraint | Notes |
+|-------|-------------------|-------|
+| `Strategy` | `@@index([userId])` | `ruleGroupsJson` stores nested rule groups as JSON string |
+| `GlobalRule` | `@@index([userId, sortOrder])` | Simple text + sort order |
+| `PreSession` | `@@unique([userId, date])` | One per user per day, upsert pattern |
+| `JournalEntry` | `@@unique([userId, walletAddress, tokenMint, tradeNumber])` | Composite key matches trade cycle identity |
+| `TradeComment` | `@@index([userId, category])` | 18 defaults auto-seeded on first empty GET |
 
 ## Guidelines for New Features
 
 1. **Default to DB-backed** — New data types should have API routes and Prisma models
-2. **Use localStorage only as cache** — For offline support or instant writes, mirror to localStorage but treat the API as source of truth
+2. **Use localStorage only for UI preferences** — View modes, collapsed states, etc.
 3. **Always use `safeLocalStorage`** — Never call `localStorage.setItem` directly; use the safe wrapper from `lib/local-storage.ts`
 4. **Document new keys** — Add any new localStorage keys or DB tables to the table above
