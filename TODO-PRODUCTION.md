@@ -16,20 +16,20 @@
 - [ ] Test all API routes against PostgreSQL
 - [ ] Set up production DATABASE_URL with SSL and pool params
 
-## Phase 3: localStorage → Database Migration (4-5 days)
-- [ ] Create `Journal` table in Prisma schema (userId, walletAddress, tokenMint, tradeNumber, content, timestamps)
-- [ ] Create `Strategy` table in Prisma schema (userId, name, entryConditions, exitConditions, stopLoss, timestamps)
-- [ ] Create `Rule` table in Prisma schema (userId, title, description, category, timestamps)
-- [ ] Create `PreSession` table in Prisma schema (userId, date, energy, mindset, marketContext, limits, rules, timestamps)
-- [ ] Create API endpoints for journals CRUD (`/api/journals`)
-- [ ] Create API endpoints for strategies CRUD (`/api/strategies`)
-- [ ] Create API endpoints for rules CRUD (`/api/rules`)
-- [ ] Create API endpoints for pre-sessions CRUD (`/api/pre-sessions`)
-- [ ] Update `WalletProvider` — fetch journals from DB instead of localStorage
-- [ ] Update Strategies page — read/write from DB instead of localStorage
-- [ ] Update Pre-Session page — read/write from DB instead of localStorage
-- [ ] Build one-time migration script: localStorage → DB (for existing users)
-- [ ] Remove `lib/local-storage.ts` dependency for core data (keep for non-critical caching only)
+## Phase 3: localStorage → Database Migration (4-5 days) ✅
+- [x] Create `Journal` table in Prisma schema (userId, walletAddress, tokenMint, tradeNumber, content, timestamps)
+- [x] Create `Strategy` table in Prisma schema (userId, name, entryConditions, exitConditions, stopLoss, timestamps)
+- [x] Create `Rule` table in Prisma schema (userId, title, description, category, timestamps)
+- [x] Create `PreSession` table in Prisma schema (userId, date, energy, mindset, marketContext, limits, rules, timestamps)
+- [x] Create API endpoints for journals CRUD (`/api/journals`)
+- [x] Create API endpoints for strategies CRUD (`/api/strategies`)
+- [x] Create API endpoints for rules CRUD (`/api/rules`)
+- [x] Create API endpoints for pre-sessions CRUD (`/api/pre-sessions`)
+- [x] Update `WalletProvider` — fetch journals from DB instead of localStorage
+- [x] Update Strategies page — read/write from DB instead of localStorage
+- [x] Update Pre-Session page — read/write from DB instead of localStorage
+- [x] Build one-time migration script: localStorage → DB (for existing users)
+- [x] Remove `lib/local-storage.ts` dependency for core data (keep for non-critical caching only)
 
 ## Phase 4: Server-Side Analytics (5-7 days)
 - [x] Create `GET /api/analytics/summary` — KPIs: total P/L, win rate, avg hold time, total cycles (→ `/api/analytics/overview`)
@@ -53,27 +53,27 @@
 - [ ] Implement cursor-based pagination on `GET /api/papered-plays` (default 50, max 100)
 - [ ] Update frontend to handle paginated responses (load more / infinite scroll)
 
-## Phase 6: Performance & Data Integrity (2-3 days)
-- [ ] Add composite index `Trade(walletId, timestamp)` in Prisma schema
-- [ ] Add composite index `PaperedPlay(userId, createdAt)` in Prisma schema
-- [ ] Add composite index `Wallet(userId, createdAt)` in Prisma schema
-- [ ] Replace trade insert loop with `prisma.trade.createMany()` in `/api/trades/route.ts`
+## Phase 6: Performance & Data Integrity (2-3 days) ✅
+- [x] Add composite index `Trade(walletId, timestamp)` in Prisma schema
+- [x] Add composite index `PaperedPlay(userId, createdAt)` in Prisma schema
+- [x] Add composite index `Wallet(userId, createdAt)` in Prisma schema
+- [x] Replace trade insert loop with `prisma.trade.createMany()` in `/api/trades/route.ts`
 - [ ] Migrate `Float` fields to `Decimal` for financial values (`valueUSD`, `amountIn`, `amountOut`, etc.)
 - [ ] Convert `tokenInData`/`tokenOutData`/`feeData` from `String` to PostgreSQL `Json` type
-- [ ] Fix cache staleness metric — store explicit cache refresh timestamp, not trade timestamp
+- [x] Fix cache staleness metric — store explicit cache refresh timestamp, not trade timestamp
 - [ ] Remove `_count: { trades: true }` from wallet list endpoint (or make separate endpoint)
-- [ ] Add request deduplication for Solana Tracker proxy (prevent duplicate in-flight requests)
+- [x] Add request deduplication for Solana Tracker proxy (prevent duplicate in-flight requests)
 
-## Phase 7: Frontend Optimization (ongoing)
-- [ ] Dynamic import Recharts components (code-split per chart type)
-- [ ] Add SSR for overview page — pre-render KPI cards server-side
-- [ ] Optimize `WalletProvider` — reduce state cascade (batch updates, fewer re-renders)
-- [ ] Replace N+1 journal localStorage lookups with single DB query
-- [ ] Add error boundaries per page section (not just root)
-- [ ] Implement progressive loading for analytics tabs (load visible tab only)
+## Phase 7: Frontend Optimization (ongoing) ✅
+- [x] Dynamic import Recharts components (EquityCurve dynamically imported on overview page)
+- [~] Add SSR for overview page — **skipped**: page depends on client-side `useWallet()` context; requires data flow redesign
+- [x] Optimize `WalletProvider` — memoize context value with `useMemo` to prevent cascading re-renders
+- [~] Replace N+1 journal localStorage lookups — **skipped**: no N+1 exists; journals batch-fetched, `journalMap` is O(1) lookup
+- [x] Add error boundaries per page section (overview, analytics tabs, trade-journal)
+- [x] Implement progressive loading for analytics tabs (Time/Missed tabs only fetch data when active)
 
 ---
 
 **Total estimated effort: ~3-4 weeks**
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-21*
