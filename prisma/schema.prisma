@@ -86,6 +86,7 @@ model Wallet {
   @@index([address])
   @@index([userId])
   @@index([chain])
+  @@index([userId, createdAt])
 }
 
 // Cached transactions from Zerion API - multichain support
@@ -127,6 +128,8 @@ model Trade {
   @@index([signature])
   @@index([chain])
   @@index([type])
+  @@index([walletId, timestamp])
+  @@index([indexedAt])
 }
 
 // Trade edits - manual adjustments to trades
@@ -204,6 +207,7 @@ model PaperedPlay {
   @@index([createdAt])
   @@index([missReason])
   @@index([strategyId])
+  @@index([userId, createdAt])
 }
 
 // User settings

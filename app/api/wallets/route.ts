@@ -19,11 +19,6 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: 'desc',
       },
-      include: {
-        _count: {
-          select: { trades: true },
-        },
-      },
     })
 
     return NextResponse.json(wallets)

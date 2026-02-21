@@ -78,8 +78,14 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const cacheAge = cachedTrades.length > 0
-      ? Date.now() - cachedTrades[0].indexedAt.getTime()
+    // Determine cache age from the most recently indexed trade (not the most recent by timestamp)
+    const lastIndexed = await prisma.trade.findFirst({
+      where: { walletId: wallet.id },
+      orderBy: { indexedAt: 'desc' },
+      select: { indexedAt: true },
+    })
+    const cacheAge = lastIndexed
+      ? Date.now() - lastIndexed.indexedAt.getTime()
       : Infinity
 
     // Return cached data if fresh and not forcing refresh
@@ -124,30 +130,29 @@ export async function GET(request: NextRequest) {
       
       console.log(`Found ${newTrades.length} new trades out of ${apiTrades.length} total trades`);
 
-      // Cache only new trades
+      // Cache only new trades (batch insert)
       if (newTrades.length > 0) {
-        for (const trade of newTrades) {
-          await prisma.trade.create({
-            data: {
-              walletId: wallet.id,
-              signature: trade.signature,
-              timestamp: trade.timestamp,
-              type: trade.type,
-              status: "confirmed",
-              direction: trade.type === 'buy' ? 'in' : 'out',
-              chain: chain,
-              tokenInData: trade.tokenIn ? JSON.stringify(trade.tokenIn) : null,
-              tokenOutData: trade.tokenOut ? JSON.stringify(trade.tokenOut) : null,
-              amountIn: trade.amountIn,
-              amountOut: trade.amountOut,
-              priceUSD: trade.priceUSD,
-              valueUSD: trade.valueUSD,
-              dex: trade.dex,
-              protocol: trade.dex,
-              indexedAt: new Date(),
-            },
-          });
-        }
+        await prisma.trade.createMany({
+          data: newTrades.map(trade => ({
+            walletId: wallet.id,
+            signature: trade.signature,
+            timestamp: trade.timestamp,
+            type: trade.type,
+            status: "confirmed",
+            direction: trade.type === 'buy' ? 'in' : 'out',
+            chain: chain,
+            tokenInData: trade.tokenIn ? JSON.stringify(trade.tokenIn) : null,
+            tokenOutData: trade.tokenOut ? JSON.stringify(trade.tokenOut) : null,
+            amountIn: trade.amountIn,
+            amountOut: trade.amountOut,
+            priceUSD: trade.priceUSD,
+            valueUSD: trade.valueUSD,
+            dex: trade.dex,
+            protocol: trade.dex,
+            indexedAt: new Date(),
+          })),
+          // skipDuplicates not supported on SQLite; duplicates are already filtered above via existingSignatures
+        })
         console.log(`Successfully cached ${newTrades.length} new trades`);
       }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { dedup } from '@/lib/server/request-dedup';
 
 const API_BASE_URL = 'https://data.solanatracker.io';
 const API_KEY = process.env.SOLANA_TRACKER_API_KEY;
@@ -34,20 +35,22 @@ export async function GET(
       );
     }
 
-    // Make request to Solana Tracker API
-    const response = await axios.get(
-      `${API_BASE_URL}/wallet/${address}/basic`,
-      {
-        headers: {
-          'x-api-key': API_KEY,
-        },
-        timeout: 10000, // 10 second timeout
-      }
+    // Make request to Solana Tracker API (deduplicated)
+    const data = await dedup(`balances:${address}`, () =>
+      axios.get(
+        `${API_BASE_URL}/wallet/${address}/basic`,
+        {
+          headers: {
+            'x-api-key': API_KEY,
+          },
+          timeout: 10000,
+        }
+      ).then(res => res.data)
     );
 
     // Return the tokens data
     return NextResponse.json({
-      tokens: response.data.tokens || [],
+      tokens: data.tokens || [],
       success: true,
     });
   } catch (error) {
