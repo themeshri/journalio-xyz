@@ -1,13 +1,25 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useWallet } from '@/lib/wallet-context'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import { KPICards } from '@/components/overview/KPICards'
-import { EquityCurve } from '@/components/overview/EquityCurve'
 import { PLCalendar } from '@/components/overview/PLCalendar'
 import { RecentCycles } from '@/components/overview/RecentCycles'
 import { InsightsPanel } from '@/components/overview/InsightsPanel'
 import { QuickStatsBar } from '@/components/overview/QuickStatsBar'
+import ErrorBoundary from '@/components/ErrorBoundary'
+
+const EquityCurve = dynamic(
+  () => import('@/components/overview/EquityCurve').then((m) => ({ default: m.EquityCurve })),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+)
+
+const sectionErrorFallback = (
+  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+    Something went wrong loading this section. Try refreshing the page.
+  </div>
+)
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, streak } = useWallet()
@@ -66,30 +78,42 @@ export default function OverviewPage() {
       <h1 className="text-xl font-semibold">Overview</h1>
 
       {/* Row 1: KPI Stat Cards */}
-      <KPICards trades={flattenedTrades} />
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <KPICards trades={flattenedTrades} />
+      </ErrorBoundary>
 
       {/* Row 2: Equity Curve + P/L Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
-          <EquityCurve trades={flattenedTrades} />
+          <ErrorBoundary fallback={sectionErrorFallback}>
+            <EquityCurve trades={flattenedTrades} />
+          </ErrorBoundary>
         </div>
         <div className="lg:col-span-2">
-          <PLCalendar trades={flattenedTrades} journalMap={journalMap} />
+          <ErrorBoundary fallback={sectionErrorFallback}>
+            <PLCalendar trades={flattenedTrades} journalMap={journalMap} />
+          </ErrorBoundary>
         </div>
       </div>
 
       {/* Row 3: Recent Trade Cycles + Insights Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
-          <RecentCycles trades={flattenedTrades} />
+          <ErrorBoundary fallback={sectionErrorFallback}>
+            <RecentCycles trades={flattenedTrades} />
+          </ErrorBoundary>
         </div>
         <div className="lg:col-span-2">
-          <InsightsPanel trades={flattenedTrades} streak={streak} />
+          <ErrorBoundary fallback={sectionErrorFallback}>
+            <InsightsPanel trades={flattenedTrades} streak={streak} />
+          </ErrorBoundary>
         </div>
       </div>
 
       {/* Row 4: Quick Stats Bar */}
-      <QuickStatsBar trades={flattenedTrades} />
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <QuickStatsBar trades={flattenedTrades} />
+      </ErrorBoundary>
     </div>
   )
 }

@@ -20,6 +20,7 @@ import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
 import { toast } from 'sonner'
 import { TokenWithBadge } from '@/components/chain-badge'
 import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from '@/lib/discipline'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import {
   Tooltip,
   TooltipContent,
@@ -590,6 +591,11 @@ export default function TradeJournalPage() {
       )}
 
       {/* Table */}
+      <ErrorBoundary fallback={
+        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+          Something went wrong loading the trade table. Try refreshing the page.
+        </div>
+      }>
       {displayTrades.length === 0 ? (
         <p className="text-sm text-muted-foreground">No trades match your filters.</p>
       ) : viewMode === 'merged' || activeWallets.length <= 1 ? (
@@ -616,6 +622,7 @@ export default function TradeJournalPage() {
           })}
         </div>
       )}
+      </ErrorBoundary>
 
       {/* Modals */}
       {buysModalTrade && (

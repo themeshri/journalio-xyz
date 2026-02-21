@@ -566,33 +566,56 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const contextValue = useMemo<WalletContextValue>(() => ({
+    walletSlots,
+    allTrades,
+    flattenedTrades,
+    activeWallets,
+    isAnyLoading,
+    isAnyStale,
+    hasActiveWallets,
+    tradeComments,
+    strategies,
+    journalMap,
+    streak,
+    walletTokens,
+    loadingBalances,
+    balancesFetched,
+    balanceError,
+    setWalletActive,
+    refreshWallet,
+    refreshAll,
+    updateJournalEntry,
+    reloadStrategies,
+    reloadTradeComments,
+    reloadJournals,
+  }), [
+    walletSlots,
+    allTrades,
+    flattenedTrades,
+    activeWallets,
+    isAnyLoading,
+    isAnyStale,
+    hasActiveWallets,
+    tradeComments,
+    strategies,
+    journalMap,
+    streak,
+    walletTokens,
+    loadingBalances,
+    balancesFetched,
+    balanceError,
+    setWalletActive,
+    refreshWallet,
+    refreshAll,
+    updateJournalEntry,
+    reloadStrategies,
+    reloadTradeComments,
+    reloadJournals,
+  ])
+
   return (
-    <WalletContext.Provider
-      value={{
-        walletSlots,
-        allTrades,
-        flattenedTrades,
-        activeWallets,
-        isAnyLoading,
-        isAnyStale,
-        hasActiveWallets,
-        tradeComments,
-        strategies,
-        journalMap,
-        streak,
-        walletTokens,
-        loadingBalances,
-        balancesFetched,
-        balanceError,
-        setWalletActive,
-        refreshWallet,
-        refreshAll,
-        updateJournalEntry,
-        reloadStrategies,
-        reloadTradeComments,
-        reloadJournals,
-      }}
-    >
+    <WalletContext.Provider value={contextValue}>
       {children}
     </WalletContext.Provider>
   )

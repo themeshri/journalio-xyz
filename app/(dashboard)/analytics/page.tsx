@@ -39,6 +39,7 @@ import {
 } from 'recharts'
 import { Separator } from '@/components/ui/separator'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 const durationConfig = {
   count: { label: 'Trades', color: 'var(--chart-1)' },
@@ -124,6 +125,12 @@ function restoreInfinityInArray<T extends Record<string, any>>(arr: T[], key: ke
   return arr.map((item) => ({ ...item, [key]: restoreInfinity(item[key] as number | null) }))
 }
 
+const tabErrorFallback = (
+  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+    Something went wrong loading this section. Try refreshing the page.
+  </div>
+)
+
 export default function AnalyticsPage() {
   const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades, tradeComments, strategies: allStrategies, journalMap, activeWallets } = useWallet()
 
@@ -151,8 +158,12 @@ export default function AnalyticsPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const { data: calendarRaw, isLoading: calendarLoading } = useCalendarAnalytics(swrQueryParams, calYear, calMonth)
 
-  const { data: timeRaw, isLoading: timeLoading } = useTimeAnalytics(swrQueryParams)
-  const { data: missedRaw, isLoading: missedLoading } = useMissedAnalytics(swrQueryParams)
+  const { data: timeRaw, isLoading: timeLoading } = useTimeAnalytics(
+    activeTab === 'time' ? swrQueryParams : null
+  )
+  const { data: missedRaw, isLoading: missedLoading } = useMissedAnalytics(
+    activeTab === 'missed' ? swrQueryParams : null
+  )
 
   const durationData = overviewData?.durationBuckets || []
   const plData = overviewData?.cumulativePL || []
@@ -452,7 +463,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* ─── Overview Tab ─── */}
-      {activeTab === 'overview' && !overviewLoading && (<>
+      {activeTab === 'overview' && !overviewLoading && (<ErrorBoundary fallback={tabErrorFallback}><>
 
       {/* Cumulative P/L */}
       {plData.length >= 2 && (
@@ -665,10 +676,10 @@ export default function AnalyticsPage() {
       </section>
       )}
 
-      </>)}
+      </></ErrorBoundary>)}
 
       {/* ─── Time Analysis Tab ─── */}
-      {activeTab === 'time' && !timeLoading && (<>
+      {activeTab === 'time' && !timeLoading && (<ErrorBoundary fallback={tabErrorFallback}><>
 
       {/* Hourly P/L */}
       {hourlyPerfData.some((d) => d.tradeCount > 0) && (
@@ -830,10 +841,10 @@ export default function AnalyticsPage() {
         </section>
       )}
 
-      </>)}
+      </></ErrorBoundary>)}
 
       {/* ─── Strategy Tab ─── */}
-      {activeTab === 'strategy' && !strategyLoading && (<>
+      {activeTab === 'strategy' && !strategyLoading && (<ErrorBoundary fallback={tabErrorFallback}><>
 
       {/* Strategy Performance */}
       {strategyPerfData.length > 0 && (
@@ -963,10 +974,10 @@ export default function AnalyticsPage() {
         </section>
       )}
 
-      </>)}
+      </></ErrorBoundary>)}
 
       {/* ─── Missed Trades Tab ─── */}
-      {activeTab === 'missed' && !missedLoading && (<>
+      {activeTab === 'missed' && !missedLoading && (<ErrorBoundary fallback={tabErrorFallback}><>
 
       {/* Missed Trade Analytics */}
       {missedStats.totalMissed > 0 && (
@@ -1041,10 +1052,10 @@ export default function AnalyticsPage() {
         </section>
       )}
 
-      </>)}
+      </></ErrorBoundary>)}
 
       {/* ─── Discipline Tab ─── */}
-      {activeTab === 'discipline' && !disciplineLoading && (<>
+      {activeTab === 'discipline' && !disciplineLoading && (<ErrorBoundary fallback={tabErrorFallback}><>
 
       {/* Item 9: Insights / Pattern Detection */}
       {patterns.length > 0 && (
@@ -1500,7 +1511,7 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      </>)}
+      </></ErrorBoundary>)}
     </div>
   )
 }
