@@ -1,16 +1,21 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useWallet, useMetadata } from '@/lib/wallet-context'
+import type { FlattenedTrade } from '@/lib/tradeCycles'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import { KPICards } from '@/components/overview/KPICards'
 import { PLCalendar } from '@/components/overview/PLCalendar'
 import { RecentCycles } from '@/components/overview/RecentCycles'
-import { InsightsPanel } from '@/components/overview/InsightsPanel'
+import { ActionBanner } from '@/components/overview/ActionBanner'
+import { StrategySummary } from '@/components/overview/StrategySummary'
+import { MistakesSummary } from '@/components/overview/MistakesSummary'
 import { QuickStatsBar } from '@/components/overview/QuickStatsBar'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 import { filterTradesByRange } from '@/lib/time-filters'
+import JournalModal, { type JournalData } from '@/components/JournalModal'
+import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 const EquityCurve = dynamic(
@@ -24,14 +29,59 @@ const sectionErrorFallback = (
   </div>
 )
 
+function journalKey(t: { tokenMint: string; tradeNumber: number; walletAddress: string }) {
+  return `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
+}
+
 export default function OverviewPage() {
-  const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, streak } = useWallet()
-  const { preSessionDone, missedTrades, timeRange, timePreset, setTimeFilter } = useMetadata()
+  const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, updateJournalEntry, streak } = useWallet()
+  const { preSessionDone, missedTrades, timeRange, timePreset, setTimeFilter, strategies, tradeComments } = useMetadata()
 
   const filteredTrades = useMemo(
     () => filterTradesByRange(flattenedTrades, timeRange),
     [flattenedTrades, timeRange],
   )
+
+  const { unjournalledCount, firstUnjournaled } = useMemo(() => {
+    const completed = filteredTrades.filter(t => t.isComplete)
+    const unjournaled = completed.filter(t => !journalMap[journalKey(t)])
+    return { unjournalledCount: unjournaled.length, firstUnjournaled: unjournaled[0] || null }
+  }, [filteredTrades, journalMap])
+
+  // State for ActionBanner-triggered journal modal
+  const [bannerJournalTrade, setBannerJournalTrade] = useState<FlattenedTrade | null>(null)
+
+  const handleJournalClick = useCallback(() => {
+    if (firstUnjournaled) {
+      setBannerJournalTrade(firstUnjournaled)
+    }
+  }, [firstUnjournaled])
+
+  const handleBannerJournalSave = useCallback(async (data: JournalData) => {
+    if (!bannerJournalTrade) return
+    const key = journalKey(bannerJournalTrade)
+    const saved = await saveJournal({
+      walletAddress: bannerJournalTrade.walletAddress,
+      tokenMint: bannerJournalTrade.tokenMint,
+      tradeNumber: bannerJournalTrade.tradeNumber,
+      ...data,
+    })
+    if (saved) updateJournalEntry(key, saved)
+
+    // Find next un-journaled trade
+    const updatedMap = { ...journalMap, [key]: saved || data }
+    const completed = filteredTrades.filter(t => t.isComplete)
+    const currentIdx = completed.indexOf(bannerJournalTrade)
+    const nextTrade = completed.find(
+      (t, i) => i > currentIdx && !updatedMap[journalKey(t)]
+    )
+
+    if (nextTrade) {
+      setBannerJournalTrade(nextTrade)
+    } else {
+      setBannerJournalTrade(null)
+    }
+  }, [bannerJournalTrade, journalMap, filteredTrades, updateJournalEntry])
 
   if (!hasActiveWallets) {
     return (
@@ -89,16 +139,25 @@ export default function OverviewPage() {
         <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
       </div>
 
-      {/* Row 1: KPI Stat Cards */}
+      {/* Row 1: Action Banner */}
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <ActionBanner
+          preSessionDone={preSessionDone}
+          unjournalledCount={unjournalledCount}
+          onJournalClick={handleJournalClick}
+        />
+      </ErrorBoundary>
+
+      {/* Row 2: KPI Cards — horizontal strip */}
       <ErrorBoundary fallback={sectionErrorFallback}>
         <KPICards trades={filteredTrades} />
       </ErrorBoundary>
 
-      {/* Row 2: Equity Curve + P/L Calendar */}
+      {/* Row 3: Recent Trades + P/L Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
           <ErrorBoundary fallback={sectionErrorFallback}>
-            <EquityCurve trades={filteredTrades} />
+            <RecentCycles trades={filteredTrades} unjournalledCount={unjournalledCount} />
           </ErrorBoundary>
         </div>
         <div className="lg:col-span-2">
@@ -108,24 +167,37 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* Row 3: Recent Trade Cycles + Insights Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3">
-          <ErrorBoundary fallback={sectionErrorFallback}>
-            <RecentCycles trades={filteredTrades} />
-          </ErrorBoundary>
-        </div>
-        <div className="lg:col-span-2">
-          <ErrorBoundary fallback={sectionErrorFallback}>
-            <InsightsPanel trades={filteredTrades} streak={streak} missedTrades={missedTrades} preSessionDone={preSessionDone} />
-          </ErrorBoundary>
-        </div>
+      {/* Row 4: Equity Curve — full width */}
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <EquityCurve trades={filteredTrades} />
+      </ErrorBoundary>
+
+      {/* Row 5: Strategy Summary + Mistakes Summary — side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ErrorBoundary fallback={sectionErrorFallback}>
+          <StrategySummary trades={filteredTrades} journalMap={journalMap} strategies={strategies} />
+        </ErrorBoundary>
+        <ErrorBoundary fallback={sectionErrorFallback}>
+          <MistakesSummary trades={filteredTrades} journalMap={journalMap} tradeComments={tradeComments} />
+        </ErrorBoundary>
       </div>
 
-      {/* Row 4: Quick Stats Bar */}
+      {/* Row 6: Quick Stats Bar */}
       <ErrorBoundary fallback={sectionErrorFallback}>
-        <QuickStatsBar trades={filteredTrades} />
+        <QuickStatsBar trades={filteredTrades} streak={streak} missedTrades={missedTrades} />
       </ErrorBoundary>
+
+      {/* Journal Modal triggered from ActionBanner */}
+      {bannerJournalTrade && (
+        <JournalModal
+          key={journalKey(bannerJournalTrade)}
+          trade={bannerJournalTrade}
+          initialData={journalMap[journalKey(bannerJournalTrade)] || null}
+          tokenLogo={bannerJournalTrade.buys[0]?.tokenOut?.logoURI || bannerJournalTrade.sells[0]?.tokenIn?.logoURI || null}
+          onSave={handleBannerJournalSave}
+          onClose={() => setBannerJournalTrade(null)}
+        />
+      )}
     </div>
   )
 }

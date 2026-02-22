@@ -9,6 +9,29 @@ interface KPICardsProps {
   trades: FlattenedTrade[]
 }
 
+function TradeLineItem({ trade, type }: { trade: FlattenedTrade; type: 'best' | 'worst' }) {
+  const logo = trade.buys[0]?.tokenOut?.logoURI || trade.sells[0]?.tokenIn?.logoURI || null
+  const colorClass = type === 'best' ? 'text-emerald-500' : 'text-red-500'
+
+  return (
+    <div className="flex items-center gap-2">
+      {logo ? (
+        <img src={logo} alt={trade.token} className="w-4 h-4 rounded-full shrink-0" />
+      ) : (
+        <div className="w-4 h-4 rounded-full bg-zinc-700 flex items-center justify-center text-[7px] font-bold text-zinc-300 shrink-0">
+          {trade.token.slice(0, 2)}
+        </div>
+      )}
+      <div className="min-w-0">
+        <p className={`text-sm font-mono tabular-nums font-semibold ${colorClass}`}>
+          {trade.profitLoss >= 0 ? '+' : ''}{formatValue(trade.profitLoss)}
+        </p>
+        <p className="text-[9px] text-muted-foreground truncate">{trade.token}</p>
+      </div>
+    </div>
+  )
+}
+
 export function KPICards({ trades }: KPICardsProps) {
   const stats = useMemo(() => {
     const completed = trades.filter((t) => t.isComplete)
@@ -20,10 +43,14 @@ export function KPICards({ trades }: KPICardsProps) {
     const grossProfit = wins.reduce((s, t) => s + t.profitLoss, 0)
     const grossLoss = Math.abs(losses.reduce((s, t) => s + t.profitLoss, 0))
     const profitFactor = grossLoss > 0 ? Math.round((grossProfit / grossLoss) * 100) / 100 : grossProfit > 0 ? Infinity : 0
-    const bestTrade = completed.length > 0 ? Math.max(...completed.map((t) => t.profitLoss)) : 0
-    const worstTrade = completed.length > 0 ? Math.min(...completed.map((t) => t.profitLoss)) : 0
+    let bestTradeObj: FlattenedTrade | null = null
+    let worstTradeObj: FlattenedTrade | null = null
+    for (const t of completed) {
+      if (!bestTradeObj || t.profitLoss > bestTradeObj.profitLoss) bestTradeObj = t
+      if (!worstTradeObj || t.profitLoss < worstTradeObj.profitLoss) worstTradeObj = t
+    }
 
-    return { totalPL, winRate, profitFactor, totalTrades: completed.length, activeCycles: active.length, bestTrade, worstTrade }
+    return { totalPL, winRate, profitFactor, totalTrades: completed.length, activeCycles: active.length, bestTradeObj, worstTradeObj }
   }, [trades])
 
   return (
@@ -79,14 +106,13 @@ export function KPICards({ trades }: KPICardsProps) {
       <Card>
         <CardContent className="p-4">
           <p className="text-xs text-muted-foreground mb-1">Best / Worst</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-mono tabular-nums font-semibold text-emerald-500">
-              +{formatValue(stats.bestTrade)}
-            </span>
-            <span className="text-muted-foreground text-[10px]">/</span>
-            <span className="text-sm font-mono tabular-nums font-semibold text-red-500">
-              {formatValue(stats.worstTrade)}
-            </span>
+          <div className="space-y-1.5">
+            {stats.bestTradeObj && (
+              <TradeLineItem trade={stats.bestTradeObj} type="best" />
+            )}
+            {stats.worstTradeObj && (
+              <TradeLineItem trade={stats.worstTradeObj} type="worst" />
+            )}
           </div>
         </CardContent>
       </Card>

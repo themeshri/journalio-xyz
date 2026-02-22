@@ -25,6 +25,7 @@ import { TableRowsSkeleton } from '@/components/skeletons'
 
 import { loadPreSessions, type PreSessionData } from '@/lib/pre-sessions'
 import { loadJournals, type JournalRecord } from '@/lib/journals'
+import { formatValue } from '@/lib/formatters'
 
 // Use PreSessionData as PreSessionFull (API returns all fields)
 type PreSessionFull = PreSessionData
@@ -656,6 +657,302 @@ function JournalHistoryTab() {
   )
 }
 
+// --- Missed Trades types & helpers ---
+
+interface PaperedPlay {
+  id: string
+  coinName: string
+  tokenMint: string | null
+  tokenSymbol: string | null
+  tokenImage: string | null
+  missReason: string | null
+  strategyId: string | null
+  outcome: string | null
+  entryPrice: number | null
+  exitPrice: number | null
+  hypotheticalPositionSize: number | null
+  potentialMultiplier: number | null
+  potentialPnL: number | null
+  peakMultiplier: number | null
+  notes: string
+  attachment: string | null
+  createdAt: string
+}
+
+const MISS_REASONS: { id: string; emoji: string; label: string }[] = [
+  { id: 'hesitation', emoji: '\ud83d\ude30', label: 'Hesitated' },
+  { id: 'distracted', emoji: '\ud83d\udcf1', label: 'Distracted' },
+  { id: 'no_capital', emoji: '\ud83d\udcb0', label: 'No Capital' },
+  { id: 'risk_limit', emoji: '\u23f0', label: 'Risk Limit' },
+  { id: 'late_spotted', emoji: '\u23f3', label: 'Spotted Late' },
+  { id: 'low_conviction', emoji: '\ud83e\udd14', label: 'Low Conviction' },
+  { id: 'sleeping', emoji: '\ud83d\ude34', label: 'Sleeping' },
+  { id: 'other', emoji: '\ud83d\udcdd', label: 'Other' },
+]
+
+function getMissReasonLabel(reason: string | null): string {
+  if (!reason) return '-'
+  const found = MISS_REASONS.find((r) => r.id === reason)
+  return found ? `${found.emoji} ${found.label}` : reason
+}
+
+function outcomeColor(outcome: string | null): string {
+  switch (outcome) {
+    case 'win': return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+    case 'loss': return 'bg-red-500/10 text-red-600 border-red-500/30'
+    case 'breakeven': return 'bg-zinc-500/10 text-zinc-600 border-zinc-500/30'
+    default: return 'bg-zinc-500/10 text-muted-foreground border-zinc-500/30'
+  }
+}
+
+function formatTimestamp(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch {
+    return iso
+  }
+}
+
+// --- Missed Trade Detail Dialog ---
+
+function MissedTradeDetailDialog({
+  play,
+  onClose,
+}: {
+  play: PaperedPlay | null
+  onClose: () => void
+}) {
+  if (!play) return null
+
+  return (
+    <Dialog open={!!play} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {play.tokenImage && (
+              <img src={play.tokenImage} alt={play.coinName} className="w-5 h-5 rounded-full" />
+            )}
+            {play.coinName}
+            {play.tokenSymbol && (
+              <span className="text-sm text-muted-foreground font-normal">{play.tokenSymbol}</span>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          <DetailRow label="Date">{formatTimestamp(play.createdAt)}</DetailRow>
+          <DetailRow label="Reason Missed">{getMissReasonLabel(play.missReason)}</DetailRow>
+          <DetailRow label="Outcome">
+            {play.outcome ? (
+              <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium border ${outcomeColor(play.outcome)}`}>
+                {capitalize(play.outcome)}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Pending</span>
+            )}
+          </DetailRow>
+
+          <Separator />
+
+          {(play.entryPrice != null || play.exitPrice != null) && (
+            <>
+              <div>
+                <h4 className="text-sm font-medium mb-2">Prices</h4>
+                {play.entryPrice != null && <DetailRow label="Entry Price">${play.entryPrice.toFixed(6)}</DetailRow>}
+                {play.exitPrice != null && <DetailRow label="Exit Price">${play.exitPrice.toFixed(6)}</DetailRow>}
+              </div>
+              <Separator />
+            </>
+          )}
+
+          <div>
+            <h4 className="text-sm font-medium mb-2">Hypothetical</h4>
+            {play.hypotheticalPositionSize != null && (
+              <DetailRow label="Position Size">{formatValue(play.hypotheticalPositionSize)}</DetailRow>
+            )}
+            {play.potentialMultiplier != null && (
+              <DetailRow label="Multiplier">
+                <span className={`font-mono tabular-nums font-medium ${play.potentialMultiplier >= 1 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {play.potentialMultiplier.toFixed(2)}x
+                </span>
+              </DetailRow>
+            )}
+            {play.peakMultiplier != null && (
+              <DetailRow label="Peak Multiplier">
+                <span className="font-mono tabular-nums font-medium text-emerald-500">
+                  {play.peakMultiplier.toFixed(2)}x
+                </span>
+              </DetailRow>
+            )}
+            {play.potentialPnL != null && (
+              <DetailRow label="Potential P/L">
+                <span className={`font-mono tabular-nums font-medium ${play.potentialPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {play.potentialPnL >= 0 ? '+' : ''}{formatValue(play.potentialPnL)}
+                </span>
+              </DetailRow>
+            )}
+          </div>
+
+          {play.notes && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-sm font-medium mb-2">Notes</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{play.notes}</p>
+              </div>
+            </>
+          )}
+
+          {play.attachment && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-sm font-medium mb-2">Attachment</h4>
+                <img
+                  src={play.attachment}
+                  alt="Missed trade attachment"
+                  className="rounded-md max-w-full max-h-64 object-contain"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// --- Missed Trades Tab ---
+
+function MissedTradesTab() {
+  const [plays, setPlays] = useState<PaperedPlay[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [selectedPlay, setSelectedPlay] = useState<PaperedPlay | null>(null)
+
+  useEffect(() => {
+    fetch('/api/papered-plays')
+      .then((res) => res.json())
+      .then((data) => {
+        setPlays(Array.isArray(data) ? data : [])
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
+  }, [])
+
+  if (!loaded) {
+    return <div className="py-4"><TableRowsSkeleton rows={3} cols={6} /></div>
+  }
+
+  if (plays.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4">
+        No missed trades recorded yet. Track missed opportunities from the Missed Trades page.
+      </p>
+    )
+  }
+
+  const winners = plays.filter((p) => p.outcome === 'win')
+  const totalMissedPnL = plays.reduce((s, p) => s + (p.potentialPnL || 0), 0)
+
+  return (
+    <>
+      <div className="flex items-center gap-3 mt-4 mb-4 text-sm text-muted-foreground">
+        <span>{plays.length} missed trades</span>
+        <span>&middot;</span>
+        <span>{winners.length} would-be winners</span>
+        {totalMissedPnL !== 0 && (
+          <>
+            <span>&middot;</span>
+            <span className={totalMissedPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+              {totalMissedPnL >= 0 ? '+' : ''}{formatValue(totalMissedPnL)} missed
+            </span>
+          </>
+        )}
+      </div>
+
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[120px]">Token</TableHead>
+              <TableHead className="min-w-[100px]">Reason</TableHead>
+              <TableHead className="text-center min-w-[80px]">Outcome</TableHead>
+              <TableHead className="text-right min-w-[80px]">Multiplier</TableHead>
+              <TableHead className="text-right min-w-[100px]">Potential P/L</TableHead>
+              <TableHead className="min-w-[100px]">Date</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {plays.map((p) => (
+              <TableRow
+                key={p.id}
+                className="cursor-pointer"
+                onClick={() => setSelectedPlay(p)}
+              >
+                <TableCell className="text-sm">
+                  <div className="flex items-center gap-2">
+                    {p.tokenImage ? (
+                      <img src={p.tokenImage} alt={p.coinName} className="w-5 h-5 rounded-full shrink-0" />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[8px] font-bold text-zinc-300 shrink-0">
+                        {p.coinName.slice(0, 2)}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{p.coinName}</p>
+                      {p.tokenSymbol && (
+                        <p className="text-[10px] text-muted-foreground">{p.tokenSymbol}</p>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm">
+                  {getMissReasonLabel(p.missReason)}
+                </TableCell>
+                <TableCell className="text-center">
+                  {p.outcome ? (
+                    <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium border ${outcomeColor(p.outcome)}`}>
+                      {capitalize(p.outcome)}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">Pending</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-mono tabular-nums text-sm">
+                  {p.potentialMultiplier != null ? (
+                    <span className={p.potentialMultiplier >= 1 ? 'text-emerald-500' : 'text-red-500'}>
+                      {p.potentialMultiplier.toFixed(2)}x
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-mono tabular-nums text-sm">
+                  {p.potentialPnL != null ? (
+                    <span className={p.potentialPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                      {p.potentialPnL >= 0 ? '+' : ''}{formatValue(p.potentialPnL)}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm font-mono tabular-nums text-muted-foreground">
+                  {formatTimestamp(p.createdAt)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <MissedTradeDetailDialog
+        play={selectedPlay}
+        onClose={() => setSelectedPlay(null)}
+      />
+    </>
+  )
+}
+
 // --- Main page ---
 
 export default function HistoryPage() {
@@ -672,6 +969,7 @@ export default function HistoryPage() {
           <TabsTrigger value="pre-sessions">Pre-Sessions</TabsTrigger>
           <TabsTrigger value="journal">Journal</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="missed-trades">Missed Trades</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pre-sessions">
@@ -716,6 +1014,9 @@ export default function HistoryPage() {
               )}
             </div>
           )}
+        </TabsContent>
+        <TabsContent value="missed-trades">
+          <MissedTradesTab />
         </TabsContent>
       </Tabs>
     </div>
