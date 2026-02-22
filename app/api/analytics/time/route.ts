@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseWalletParams, resolveFlattenedTrades, sanitizeForJSON } from '@/lib/server/resolve-trades'
+import { parseWalletParams, resolveFlattenedTrades, applyDateFilter, sanitizeForJSON } from '@/lib/server/resolve-trades'
 import { getCached, setCached } from '@/lib/server/analytics-cache'
 import {
   computeHourlyPerformance,
@@ -10,16 +10,17 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const params = parseWalletParams(new URL(request.url).searchParams)
+    const { searchParams } = new URL(request.url)
+    const params = parseWalletParams(searchParams)
     if (params.addresses.length === 0) {
       return NextResponse.json({ error: 'No addresses provided' }, { status: 400 })
     }
 
-    const cacheKey = `time:${params.addresses.join(',')}:${params.dexes.join(',')}`
+    const cacheKey = `time:${params.addresses.join(',')}:${params.dexes.join(',')}:${searchParams.get('startDate') || ''}:${searchParams.get('endDate') || ''}`
     const cached = getCached<any>(cacheKey)
     if (cached) return NextResponse.json(cached)
 
-    const trades = await resolveFlattenedTrades(params)
+    const trades = applyDateFilter(await resolveFlattenedTrades(params), searchParams)
 
     const result = sanitizeForJSON({
       hourlyPerformance: computeHourlyPerformance(trades),

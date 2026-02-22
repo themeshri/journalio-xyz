@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseWalletParamsFromBody, resolveFlattenedTrades, sanitizeForJSON } from '@/lib/server/resolve-trades'
+import { parseWalletParamsFromBody, resolveFlattenedTrades, applyDateFilter, sanitizeForJSON } from '@/lib/server/resolve-trades'
 import { getCached, setCached } from '@/lib/server/analytics-cache'
 import {
   computeStrategyPerformance,
@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
     const journalMap = body.journalMap || {}
     const strategies = body.strategies || []
 
-    const trades = await resolveFlattenedTrades(params)
+    const { searchParams } = new URL(request.url)
+    const trades = applyDateFilter(await resolveFlattenedTrades(params), searchParams)
 
     const result = sanitizeForJSON({
       strategyPerformance: computeStrategyPerformance(

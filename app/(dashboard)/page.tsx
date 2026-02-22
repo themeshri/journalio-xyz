@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useWallet, useMetadata } from '@/lib/wallet-context'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
@@ -8,6 +9,8 @@ import { PLCalendar } from '@/components/overview/PLCalendar'
 import { RecentCycles } from '@/components/overview/RecentCycles'
 import { InsightsPanel } from '@/components/overview/InsightsPanel'
 import { QuickStatsBar } from '@/components/overview/QuickStatsBar'
+import { TimeRangeFilter } from '@/components/TimeRangeFilter'
+import { filterTradesByRange } from '@/lib/time-filters'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 const EquityCurve = dynamic(
@@ -23,7 +26,12 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, streak } = useWallet()
-  const { preSessionDone, missedTrades } = useMetadata()
+  const { preSessionDone, missedTrades, timeRange, timePreset, setTimeFilter } = useMetadata()
+
+  const filteredTrades = useMemo(
+    () => filterTradesByRange(flattenedTrades, timeRange),
+    [flattenedTrades, timeRange],
+  )
 
   if (!hasActiveWallets) {
     return (
@@ -76,23 +84,26 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Overview</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Overview</h1>
+        <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
+      </div>
 
       {/* Row 1: KPI Stat Cards */}
       <ErrorBoundary fallback={sectionErrorFallback}>
-        <KPICards trades={flattenedTrades} />
+        <KPICards trades={filteredTrades} />
       </ErrorBoundary>
 
       {/* Row 2: Equity Curve + P/L Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
           <ErrorBoundary fallback={sectionErrorFallback}>
-            <EquityCurve trades={flattenedTrades} />
+            <EquityCurve trades={filteredTrades} />
           </ErrorBoundary>
         </div>
         <div className="lg:col-span-2">
           <ErrorBoundary fallback={sectionErrorFallback}>
-            <PLCalendar trades={flattenedTrades} journalMap={journalMap} />
+            <PLCalendar trades={filteredTrades} journalMap={journalMap} />
           </ErrorBoundary>
         </div>
       </div>
@@ -101,19 +112,19 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
           <ErrorBoundary fallback={sectionErrorFallback}>
-            <RecentCycles trades={flattenedTrades} />
+            <RecentCycles trades={filteredTrades} />
           </ErrorBoundary>
         </div>
         <div className="lg:col-span-2">
           <ErrorBoundary fallback={sectionErrorFallback}>
-            <InsightsPanel trades={flattenedTrades} streak={streak} missedTrades={missedTrades} preSessionDone={preSessionDone} />
+            <InsightsPanel trades={filteredTrades} streak={streak} missedTrades={missedTrades} preSessionDone={preSessionDone} />
           </ErrorBoundary>
         </div>
       </div>
 
       {/* Row 4: Quick Stats Bar */}
       <ErrorBoundary fallback={sectionErrorFallback}>
-        <QuickStatsBar trades={flattenedTrades} />
+        <QuickStatsBar trades={filteredTrades} />
       </ErrorBoundary>
     </div>
   )

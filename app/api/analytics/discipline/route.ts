@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseWalletParamsFromBody, resolveFlattenedTrades, sanitizeForJSON } from '@/lib/server/resolve-trades'
+import { parseWalletParamsFromBody, resolveFlattenedTrades, applyDateFilter, sanitizeForJSON } from '@/lib/server/resolve-trades'
 import { getCached, setCached } from '@/lib/server/analytics-cache'
 import {
   computeCommentPerformance,
@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
     const tradeComments = body.tradeComments || []
     const whatIfFilter: WhatIfFilter | undefined = body.whatIfFilter
 
-    const trades = await resolveFlattenedTrades(params)
+    const { searchParams } = new URL(request.url)
+    const trades = applyDateFilter(await resolveFlattenedTrades(params), searchParams)
 
     const result: any = {
       commentPerformance: computeCommentPerformance(trades, journalMap, tradeComments),

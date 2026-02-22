@@ -15,6 +15,7 @@ import { loadStrategies, type Strategy } from '../strategies'
 import { loadJournals, type JournalRecord } from '../journals'
 import { getWalletTokens } from '../solana-tracker'
 import { APP_FEE_RATES } from '../constants'
+import { type TimePreset, type TimeRange } from '../time-filters'
 
 import {
   WalletIdentityContext,
@@ -150,6 +151,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [streak, setStreak] = useState<{ current: number; longest: number }>({ current: 0, longest: 0 })
   const [preSessionDone, setPreSessionDone] = useState(false)
   const [missedTrades, setMissedTrades] = useState<any[]>([])
+  const [timeRange, setTimeRange] = useState<TimeRange>({ startDate: null, endDate: null })
+  const [timePreset, setTimePreset] = useState<TimePreset>('all')
   const journalsRef = useRef<JournalRecord[]>([])
 
   // ─── Balances ─────────────────────────────────────────
@@ -452,6 +455,11 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const setTimeFilter = useCallback((range: TimeRange, preset: TimePreset) => {
+    setTimeRange(range)
+    setTimePreset(preset)
+  }, [])
+
   const reloadMissedTrades = useCallback(async () => {
     try {
       const res = await fetch('/api/papered-plays')
@@ -551,7 +559,10 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     reloadJournals,
     reloadPreSessionStatus,
     reloadMissedTrades,
-  }), [tradeComments, strategies, journalMap, streak, preSessionDone, missedTrades, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadMissedTrades])
+    timeRange,
+    timePreset,
+    setTimeFilter,
+  }), [tradeComments, strategies, journalMap, streak, preSessionDone, missedTrades, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter])
 
   const balanceValue = useMemo(() => ({
     walletTokens,

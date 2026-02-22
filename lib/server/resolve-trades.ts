@@ -124,6 +124,18 @@ export async function resolveFlattenedTrades(params: WalletParams): Promise<Flat
   }
 }
 
+/** Apply optional startDate/endDate filters from search params */
+export function applyDateFilter(trades: FlattenedTrade[], searchParams: URLSearchParams): FlattenedTrade[] {
+  const startDate = searchParams.get('startDate')
+  const endDate = searchParams.get('endDate')
+  if (!startDate && !endDate) return trades
+  return trades.filter((t) => {
+    if (startDate && t.startDate < Number(startDate)) return false
+    if (endDate && t.startDate > Number(endDate)) return false
+    return true
+  })
+}
+
 /**
  * Replace Infinity values with null for JSON serialization.
  * JSON.stringify silently converts Infinity to null, but we do it explicitly

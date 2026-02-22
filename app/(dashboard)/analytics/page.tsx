@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback } from 'react'
-import { useWallet, buildWalletQueryParams } from '@/lib/wallet-context'
+import { useWallet, useMetadata, buildWalletQueryParams } from '@/lib/wallet-context'
 import { formatValue, formatDuration } from '@/lib/formatters'
 import {
   useOverviewAnalytics,
@@ -40,6 +40,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 
 const durationConfig = {
   count: { label: 'Trades', color: 'var(--chart-1)' },
@@ -133,13 +134,18 @@ const tabErrorFallback = (
 
 export default function AnalyticsPage() {
   const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades, tradeComments, strategies: allStrategies, journalMap, activeWallets } = useWallet()
+  const { timeRange, timePreset, setTimeFilter } = useMetadata()
 
   const [activeTab, setActiveTab] = useState<'overview' | 'time' | 'discipline' | 'strategy' | 'missed'>('overview')
 
-  const walletQueryParams = useMemo(
-    () => buildWalletQueryParams(activeWallets),
-    [activeWallets]
-  )
+  const walletQueryParams = useMemo(() => {
+    const base = buildWalletQueryParams(activeWallets)
+    if (!base) return null
+    const parts = [base]
+    if (timeRange.startDate) parts.push(`startDate=${timeRange.startDate}`)
+    if (timeRange.endDate) parts.push(`endDate=${timeRange.endDate}`)
+    return parts.join('&')
+  }, [activeWallets, timeRange])
 
   const completedTrades = useMemo(
     () => flattenedTrades.filter((t) => t.isComplete),
@@ -382,7 +388,10 @@ export default function AnalyticsPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-xl font-semibold mb-6">Analytics</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold">Analytics</h1>
+        <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
+      </div>
 
       {/* Stats row */}
       <div className="flex flex-wrap gap-x-10 gap-y-2 mb-10 text-sm">

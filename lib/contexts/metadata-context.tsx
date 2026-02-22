@@ -4,6 +4,7 @@ import { createContext, useContext } from 'react'
 import { type TradeComment } from '../trade-comments'
 import { type Strategy } from '../strategies'
 import { type MissedTradeEntry } from '../analytics'
+import { type TimePreset, type TimeRange } from '../time-filters'
 
 export interface MetadataContextValue {
   tradeComments: TradeComment[]
@@ -18,6 +19,9 @@ export interface MetadataContextValue {
   reloadJournals: () => Promise<void>
   reloadPreSessionStatus: () => Promise<void>
   reloadMissedTrades: () => Promise<void>
+  timeRange: TimeRange
+  timePreset: TimePreset
+  setTimeFilter: (range: TimeRange, preset: TimePreset) => void
 }
 
 export const MetadataContext = createContext<MetadataContextValue | null>(null)
