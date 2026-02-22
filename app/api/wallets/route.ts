@@ -3,12 +3,16 @@ import { prisma } from '@/lib/prisma'
 
 const defaultUserId = 'default-user'
 
+let defaultUserEnsured = false
+
 async function ensureDefaultUser() {
+  if (defaultUserEnsured) return
   await prisma.user.upsert({
     where: { id: defaultUserId },
     create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
     update: {},
   })
+  defaultUserEnsured = true
 }
 
 // GET - List all wallets for the current user

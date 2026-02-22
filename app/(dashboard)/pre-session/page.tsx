@@ -70,6 +70,7 @@ export default function PreSessionPage() {
   const [displayTime, setDisplayTime] = useState('')
 
   useEffect(() => {
+    let stale = false
     const now = new Date()
     setDisplayDate(formatDisplayDate(now))
     setDisplayTime(formatDisplayTime(now))
@@ -77,6 +78,7 @@ export default function PreSessionPage() {
     const today = getTodayDate()
 
     Promise.all([loadPreSession(today), loadRules()]).then(([session, loadedRules]) => {
+      if (stale) return
       if (session) {
         setData({ ...defaultPreSessionData, ...session })
         if (session.savedAt) {
@@ -86,6 +88,8 @@ export default function PreSessionPage() {
       setGlobalRules(loadedRules)
       setLoaded(true)
     })
+
+    return () => { stale = true }
   }, [])
 
   function update<K extends keyof PreSessionData>(key: K, value: PreSessionData[K]) {
