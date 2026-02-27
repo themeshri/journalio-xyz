@@ -51,11 +51,11 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 
 | Route | Page | Storage | Description |
 |-------|------|---------|-------------|
-| `/` | Overview | API | Stat cards (cycles, win rate, P/L) + 10 recent transactions |
+| `/` | Overview | API | Stat cards, equity curve, calendar, insights — time-range filtered |
 | `/pre-session` | Pre-Session | API (DB) | Daily checklist: energy, mindset, limits, market context, rules |
 | `/trade-journal` | Trade Journal | API (DB) | Trade cycles table with JournalModal for per-cycle notes |
 | `/history` | History | API (DB) | 3 tabs: Transactions (API), Pre-Sessions (API), Journal (API) |
-| `/analytics` | Analytics | API | Recharts: cumulative P/L, duration buckets, trading hours heatmap |
+| `/analytics` | Analytics | API | Recharts: cumulative P/L, duration, hours, discipline — time-range filtered |
 | `/missed-trades` | Missed Trades | API (DB) | Track tokens you saw but didn't trade, with potential multiplier |
 | `/strategies` | Strategies | API (DB) | Named strategies (entry/exit/stop-loss conditions) + global rules |
 | `/wallet-management` | Wallet Mgmt | localStorage | Add/remove/switch saved wallets |
@@ -65,7 +65,8 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 
 | Component | File | Description |
 |-----------|------|-------------|
-| `AppSidebar` | `components/app-sidebar.tsx` | Sidebar nav with wallet display, pre-session status dot |
+| `AppSidebar` | `components/app-sidebar.tsx` | Sidebar nav with wallet display, pre-session status dot (reads from MetadataContext) |
+| `TimeRangeFilter` | `components/TimeRangeFilter.tsx` | Shared time filter: 1D/7D/30D/90D/All presets + custom date range picker |
 | `TradesTable` | `components/TradesTable.tsx` | Paginated raw transaction table (50/page) |
 | `JournalModal` | `components/JournalModal.tsx` | Dialog for journaling buy/sell analysis per trade cycle |
 | `TransactionModal` | `components/TransactionModal.tsx` | Dialog showing individual txs in a trade cycle |
@@ -80,10 +81,13 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 
 | Module | Exports | Description |
 |--------|---------|-------------|
-| `wallet-context.tsx` | `WalletProvider`, `useWallet` | Cross-page wallet state, URL `?wallet=` sync, trade fetching |
+| `wallet-context.tsx` | `WalletProvider`, `useWallet`, `useMetadata` | Barrel re-export of split contexts; `useWallet()` for compat, `useMetadata()` for metadata-only |
+| `time-filters.ts` | `TimePreset`, `TimeRange`, `presetToRange`, `filterTradesByRange` | Shared time filter types + utilities (client and server) |
 | `solana-tracker.ts` | `isValidSolanaAddress`, `getWalletTrades`, `getWalletTokens`, `getTokenData` | Solana Tracker API client; browser requests proxy through `/api/solana/*` |
 | `tradeCycles.ts` | `calculateTradeCycles`, `flattenTradeCycles` | Groups txs by token → splits into buy/sell cycles by balance |
+| `contexts/` | `DashboardProviders`, `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext` | Split context: identity, trades, metadata (strategies/journals/streak/time-filter/pre-session/missed-trades), balances |
 | `analytics.ts` → `analytics/` | Re-export barrel; modules: `core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`, `types`, `helpers` | Analytics computation split by domain |
+| `server/resolve-trades.ts` | `resolveFlattenedTrades`, `applyDateFilter`, `parseWalletParams`, `sanitizeForJSON` | Server-side trade resolution with TTL cache, dedup, date filtering |
 | `local-storage.ts` | `safeLocalStorage` | Safe localStorage wrapper with quota error handling and toast notifications |
 | `strategies.ts` | `loadStrategies`, `createStrategy`, `updateStrategy`, `deleteStrategy` | Async strategy CRUD via API |
 | `trade-comments.ts` | `loadTradeComments`, `getCommentsByCategory`, `getCommentById` | Async trade comment loading + pure helpers |
@@ -104,7 +108,14 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
+| GET | `/api/dashboard?addresses=&chains=&dexes=` | No | Combined endpoint: trades, strategies, journals, comments, streak, pre-session status, missed trades |
 | GET | `/api/trades?address=&refresh=` | No | Fetch trades with 5-min DB cache, fallback to stale |
+| GET | `/api/analytics/overview?...&startDate=&endDate=` | No | Cumulative P/L, duration buckets, trading hours |
+| GET | `/api/analytics/calendar?...&year=&month=` | No | Monthly P/L calendar data |
+| GET | `/api/analytics/time?...&startDate=&endDate=` | No | Hourly, day-of-week, session performance |
+| GET | `/api/analytics/missed?...` | No | Missed trade stats + hesitation cost |
+| POST | `/api/analytics/discipline?...` | No | Comment performance, efficiency, what-if analysis |
+| POST | `/api/analytics/strategy?...` | No | Strategy performance, rule impact |
 | GET | `/api/papered-plays` | No | List missed trades (default-user) |
 | POST | `/api/papered-plays` | No | Create missed trade entry |
 | DELETE/PATCH | `/api/papered-plays/[id]` | No | Delete/update missed trade |
@@ -149,6 +160,10 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`, `Strategy`, `GlobalRule`, `PreSession`, `JournalEntry`, `TradeComment`
 
 Trade cache: 5-minute TTL on `Trade.indexedAt`, force refresh bypasses cache, stale fallback on API failure.
+
+Dashboard data flow: `/api/dashboard` returns trades + strategies + journals + comments + streak + pre-session status + missed trades in one call. `MetadataContext` holds pre-session status, missed trades, time range filter, and provides reload callbacks. `AppSidebar` and `InsightsPanel` read from context (no individual fetches).
+
+Analytics data flow: 6 server-side endpoints (`/api/analytics/*`) accept optional `startDate`/`endDate` query params (UNIX seconds). `applyDateFilter()` in `lib/server/resolve-trades.ts` filters after trade resolution. SWR hooks in `lib/hooks/use-analytics.ts` auto-refetch when URL params change.
 
 ## Styling Notes
 
@@ -204,6 +219,12 @@ NEXTAUTH_SECRET=              # openssl rand -base64 32
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
+### Performance Notes
+- `instrumentation.ts` only loads Sentry in production (`NODE_ENV === 'production'`) to avoid `@prisma/instrumentation` warnings in dev
+- `next.config.js` sets `outputFileTracingRoot` to prevent workspace root misresolution
+- `/api/wallets` uses a module-level flag to skip `ensureDefaultUser()` upsert after first call
+- Pre-session page useEffect has a `stale` cleanup guard for React StrictMode double-mount
+
 ---
 <!-- Auto-updated by post-commit hook -->
-Last updated: 2026-02-21
+Last updated: 2026-02-22
