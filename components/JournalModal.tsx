@@ -421,68 +421,6 @@ const JournalModal = memo(function JournalModal({
               </div>
 
               {/* Strategy Rule Checklist */}
-              {selectedStrategy && selectedStrategy.ruleGroups.length > 0 && (
-                <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">Rule Checklist</Label>
-                    {followRate && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={`font-medium ${followRate.percent >= 75 ? 'text-emerald-600' : followRate.percent >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
-                          {followRate.followed}/{followRate.total} ({followRate.percent}%)
-                        </span>
-                        {followRate.requiredTotal > 0 && (
-                          <span className="text-muted-foreground">
-                            Req: {followRate.requiredFollowed}/{followRate.requiredTotal}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {selectedStrategy.ruleGroups
-                    .sort((a, b) => a.sortOrder - b.sortOrder)
-                    .map((group) => {
-                      const applicableRules = group.rules.filter(
-                        (r) => r.showWhen === 'always' || r.showWhen === tradeOutcome
-                      );
-                      if (applicableRules.length === 0) return null;
-                      return (
-                        <div key={group.id}>
-                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                            {group.name}
-                          </p>
-                          <div className="space-y-1">
-                            {applicableRules
-                              .sort((a, b) => a.sortOrder - b.sortOrder)
-                              .map((rule) => {
-                                const result = ruleResults.find((r) => r.ruleId === rule.id);
-                                const isFollowed = result?.followed ?? false;
-                                return (
-                                  <label
-                                    key={rule.id}
-                                    className="flex items-start gap-2 cursor-pointer group"
-                                  >
-                                    <Checkbox
-                                      checked={isFollowed}
-                                      onCheckedChange={() => toggleRule(rule.id, group.id)}
-                                      className="mt-0.5"
-                                    />
-                                    <span className={`text-xs ${isFollowed ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                      {rule.text}
-                                      {!rule.isRequired && (
-                                        <span className="text-muted-foreground/50 ml-1">(optional)</span>
-                                      )}
-                                    </span>
-                                  </label>
-                                );
-                              })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-
               <div>
                 <Label className="text-xs mb-1.5">
                   Emotional State
