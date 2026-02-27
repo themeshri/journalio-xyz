@@ -46,16 +46,16 @@
 
 ## Phase 3: Trade Journal Simplification + Enhanced Popup
 
-- [ ] Remove stats row (Total, Completed, Active, Win Rate, P/L, Journaled)
-- [ ] Remove filter bar (Status, Journal, Sort, View dropdowns)
-- [ ] Keep trade cycles table — simplified, clicking row opens popup
-- [ ] Default sort by recent (no user-facing sort controls)
+- [x] Remove stats row (Total, Completed, Active, Win Rate, P/L, Journaled)
+- [x] Remove filter bar (Status, Journal, Sort, View dropdowns)
+- [x] Keep trade cycles table — simplified, clicking row opens popup
+- [x] Default sort by recent (no user-facing sort controls)
 - [ ] Add "Add Manual Trade" button top-right
-- [ ] Enhanced popup: 2 tabs — Journal | Edit Trade
-  - [ ] Tab 1 (Journal): existing JournalModal content
-  - [ ] Tab 2 (Edit Trade): show all transactions, editable buy/sell values per tx
-  - [ ] "Edit Whole Trade" section: override total bought/sold
-  - [ ] Save edits to TradeEdit model (override approach)
+- [x] Enhanced popup: 2 tabs — Journal | Edit Trade
+  - [x] Tab 1 (Journal): existing JournalModal content
+  - [x] Tab 2 (Edit Trade): show all transactions, editable buy/sell values per tx
+  - [x] "Edit Whole Trade" section: override total bought/sold
+  - [x] Save edits to TradeEdit model (override approach)
 - [ ] Multi-image upload: after image uploaded, show "Upload another" below preview
   - [ ] Store as JSON array of base64 strings in `attachment` field
   - [ ] Thumbnail grid with individual remove buttons

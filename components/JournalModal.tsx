@@ -26,6 +26,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { EditTradeTab } from '@/components/EditTradeTab';
 import { toast } from 'sonner';
 
 export interface TradeRuleResult {
@@ -349,7 +351,14 @@ const JournalModal = memo(function JournalModal({
           </div>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 -mx-6 px-6 space-y-6">
+        <Tabs defaultValue="journal" className="flex-1 overflow-hidden flex flex-col">
+          <TabsList className="w-full shrink-0">
+            <TabsTrigger value="journal" className="flex-1">Journal</TabsTrigger>
+            <TabsTrigger value="edit" className="flex-1">Edit Trade</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="journal" className="overflow-y-auto flex-1 -mx-6 px-6 mt-0">
+          <div className="space-y-6 pt-4">
           {/* Buy Section */}
           <section>
             <h4 className="text-sm font-medium mb-3">Journal the Buy</h4>
@@ -715,7 +724,13 @@ const JournalModal = memo(function JournalModal({
               </div>
             )}
           </section>
-        </div>
+          </div>
+          </TabsContent>
+
+          <TabsContent value="edit" className="overflow-y-auto flex-1 -mx-6 px-6 mt-0 pt-4">
+            <EditTradeTab trade={trade} />
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter className="pt-4">
           <Button variant="outline" size="sm" onClick={onClose}>
