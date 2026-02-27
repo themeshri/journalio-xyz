@@ -56,9 +56,9 @@
   - [x] Tab 2 (Edit Trade): show all transactions, editable buy/sell values per tx
   - [x] "Edit Whole Trade" section: override total bought/sold
   - [x] Save edits to TradeEdit model (override approach)
-- [ ] Multi-image upload: after image uploaded, show "Upload another" below preview
-  - [ ] Store as JSON array of base64 strings in `attachment` field
-  - [ ] Thumbnail grid with individual remove buttons
+- [x] Multi-image upload: after image uploaded, show "Upload another" below preview
+  - [x] Store as JSON array of base64 strings in `attachment` field
+  - [x] Thumbnail grid with individual remove buttons
 - [ ] Manual Trade Entry dialog
   - [ ] Fields: Token (name/mint), Buy Price, Buy Amount, Sell Price, Sell Amount, Date, Notes
   - [ ] Creates trade in DB with `source: 'manual'` flag

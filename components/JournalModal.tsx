@@ -134,7 +134,15 @@ const JournalModal = memo(function JournalModal({
   const [followedExitRule, setFollowedExitRule] = useState<boolean | null>(initialData?.followedExitRule ?? null);
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
   const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
-  const [attachment, setAttachment] = useState<string | undefined>(initialData?.attachment);
+  // Multi-image: stored as JSON array string in DB, backward-compat with single base64 string
+  const [attachments, setAttachments] = useState<string[]>(() => {
+    const raw = initialData?.attachment;
+    if (!raw) return [];
+    if (raw.startsWith('[')) {
+      try { return JSON.parse(raw) as string[]; } catch { return []; }
+    }
+    return [raw]; // legacy single image
+  });
   const { strategies, tradeComments } = useWallet();
   const [strategyId, setStrategyId] = useState<string | null>(initialData?.strategyId ?? null);
   const [ruleResults, setRuleResults] = useState<TradeRuleResult[]>(initialData?.ruleResults ?? []);
@@ -159,13 +167,13 @@ const JournalModal = memo(function JournalModal({
     followedExitRule,
     sellMistakes,
     sellNotes,
-    attachment,
+    attachment: attachments.length > 0 ? JSON.stringify(attachments) : undefined,
     entryCommentId,
     exitCommentId,
     managementCommentId,
     emotionTag,
     journaledAt: initialData?.journaledAt || new Date().toISOString(),
-  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachment, entryCommentId, exitCommentId, managementCommentId, emotionTag, initialData?.journaledAt]);
+  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachments, entryCommentId, exitCommentId, managementCommentId, emotionTag, initialData?.journaledAt]);
 
   const handleSave = useCallback(() => {
     onSave(buildData());
@@ -173,24 +181,25 @@ const JournalModal = memo(function JournalModal({
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please upload an image file');
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAttachment(reader.result as string);
-      };
-      reader.onerror = () => {
-        toast.error('Failed to read image file');
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAttachments((prev) => [...prev, reader.result as string]);
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read image file');
+    };
+    reader.readAsDataURL(file);
+    // Reset the input so the same file can be re-uploaded
+    e.target.value = '';
   }, []);
 
   const toggleMistake = useCallback((mistake: string) => {
@@ -683,46 +692,49 @@ const JournalModal = memo(function JournalModal({
 
           <Separator />
 
-          {/* Attachment */}
+          {/* Attachments */}
           <section>
-            <h4 className="text-sm font-medium mb-3">Attachment</h4>
+            <h4 className="text-sm font-medium mb-3">Attachments</h4>
 
-            {!attachment ? (
-              <div>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="flex items-center justify-center w-full px-4 py-6 border border-dashed border-border rounded-md cursor-pointer hover:border-primary hover:bg-muted/30 transition-colors"
-                >
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Click to upload image</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, GIF up to 5MB</p>
+            {attachments.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {attachments.map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={img}
+                      alt={`Attachment ${idx + 1}`}
+                      className="w-full h-24 object-cover rounded-md border border-border"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-1 right-1 h-5 w-5 p-0 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      &times;
+                    </Button>
                   </div>
-                </label>
-              </div>
-            ) : (
-              <div className="relative">
-                <img
-                  src={attachment}
-                  alt="Trade attachment"
-                  className="w-full rounded-md border border-border"
-                />
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={() => setAttachment(undefined)}
-                >
-                  Remove
-                </Button>
+                ))}
               </div>
             )}
+
+            <div>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className="flex items-center justify-center w-full px-4 py-4 border border-dashed border-border rounded-md cursor-pointer hover:border-primary hover:bg-muted/30 transition-colors"
+              >
+                <p className="text-sm text-muted-foreground">
+                  {attachments.length > 0 ? 'Upload another image' : 'Click to upload image'}
+                </p>
+              </label>
+            </div>
           </section>
           </div>
           </TabsContent>
