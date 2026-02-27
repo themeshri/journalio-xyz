@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useWallet } from '@/lib/wallet-context'
 import { TradesTable } from '@/components/TradesTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -953,10 +955,169 @@ function MissedTradesTab() {
   )
 }
 
+// --- Chartbook Tab ---
+
+interface ChartbookImage {
+  src: string
+  tokenMint: string
+  tradeNumber: number
+  date: string
+  pnl: number | null
+  token: string
+}
+
+function ChartbookTab() {
+  const [entries, setEntries] = useState<JournalRecord[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<ChartbookImage | null>(null)
+  const { flattenedTrades } = useWallet()
+
+  useEffect(() => {
+    loadJournals().then((records) => {
+      setEntries(records)
+      setLoaded(true)
+    })
+  }, [])
+
+  // Build a map of tokenMint -> trade cycle for P/L lookup
+  const tradeMap = useMemo(() => {
+    const map = new Map<string, { pnl: number; token: string }>()
+    for (const t of flattenedTrades) {
+      // key matches how journal entries reference trades
+      const key = `${t.tokenMint}-${t.tradeNumber}`
+      map.set(key, { pnl: t.profitLoss, token: t.token })
+    }
+    return map
+  }, [flattenedTrades])
+
+  const images = useMemo(() => {
+    const result: ChartbookImage[] = []
+    for (const entry of entries) {
+      if (!entry.attachment) continue
+
+      let imgs: string[] = []
+      try {
+        const parsed = JSON.parse(entry.attachment)
+        if (Array.isArray(parsed)) {
+          imgs = parsed
+        } else {
+          imgs = [entry.attachment]
+        }
+      } catch {
+        // Not JSON — treat as single image
+        if (entry.attachment.startsWith('data:')) {
+          imgs = [entry.attachment]
+        }
+      }
+
+      const tradeInfo = tradeMap.get(`${entry.tokenMint}-${entry.tradeNumber}`)
+
+      for (const src of imgs) {
+        result.push({
+          src,
+          tokenMint: entry.tokenMint,
+          tradeNumber: entry.tradeNumber,
+          date: entry.createdAt,
+          pnl: tradeInfo?.pnl ?? null,
+          token: tradeInfo?.token || truncateAddress(entry.tokenMint),
+        })
+      }
+    }
+    return result
+  }, [entries, tradeMap])
+
+  if (!loaded) {
+    return <div className="py-4"><TableRowsSkeleton rows={2} cols={4} /></div>
+  }
+
+  if (images.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4">
+        No chart images yet. Upload screenshots when journaling trades.
+      </p>
+    )
+  }
+
+  return (
+    <>
+      <p className="text-sm text-muted-foreground mt-4 mb-4">
+        {images.length} image{images.length !== 1 ? 's' : ''} from journal entries
+      </p>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {images.map((img, i) => (
+          <Card
+            key={`${img.tokenMint}-${img.tradeNumber}-${i}`}
+            className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            onClick={() => setSelectedImage(img)}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={img.src}
+              alt={`${img.token} chart`}
+              className="w-full h-40 object-cover"
+            />
+            <div className="p-2 space-y-0.5">
+              <p className="text-sm font-medium truncate">{img.token}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {formatTimestamp(img.date)}
+                </span>
+                {img.pnl !== null && (
+                  <span className={`text-xs font-mono font-medium ${img.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {img.pnl >= 0 ? '+' : ''}{formatValue(img.pnl)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Full-size image dialog */}
+      {selectedImage && (
+        <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {selectedImage.token}
+                <span className="text-sm text-muted-foreground font-normal">
+                  #{selectedImage.tradeNumber}
+                </span>
+                {selectedImage.pnl !== null && (
+                  <span className={`text-sm font-mono font-medium ${selectedImage.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {selectedImage.pnl >= 0 ? '+' : ''}{formatValue(selectedImage.pnl)}
+                  </span>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={selectedImage.src}
+              alt={`${selectedImage.token} chart`}
+              className="w-full rounded-md"
+            />
+            <p className="text-xs text-muted-foreground font-mono">
+              {formatTimestamp(selectedImage.date)}
+            </p>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  )
+}
+
 // --- Main page ---
 
 export default function HistoryPage() {
   const { allTrades, isAnyLoading, hasActiveWallets, refreshAll } = useWallet()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const activeTab = searchParams.get('tab') || 'pre-sessions'
+
+  function handleTabChange(value: string) {
+    router.replace(`/history?tab=${value}`, { scroll: false })
+  }
 
   return (
     <div>
@@ -964,12 +1125,13 @@ export default function HistoryPage() {
         <h1 className="text-xl font-semibold">History</h1>
       </div>
 
-      <Tabs defaultValue="pre-sessions">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="pre-sessions">Pre-Sessions</TabsTrigger>
           <TabsTrigger value="journal">Journal</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="missed-trades">Missed Trades</TabsTrigger>
+          <TabsTrigger value="chartbook">Chartbook</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pre-sessions">
@@ -1017,6 +1179,9 @@ export default function HistoryPage() {
         </TabsContent>
         <TabsContent value="missed-trades">
           <MissedTradesTab />
+        </TabsContent>
+        <TabsContent value="chartbook">
+          <ChartbookTab />
         </TabsContent>
       </Tabs>
     </div>

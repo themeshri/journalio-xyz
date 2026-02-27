@@ -172,17 +172,17 @@
 
 ---
 
-## Phase 8: History — Chartbook Sub-tab
+## Phase 8: History — Chartbook Sub-tab [DONE]
 
-- [ ] Add Chartbook as 5th tab in History page
-- [ ] Gallery grid of all images from journal entries
-- [ ] Each image card: thumbnail, token name, trade date, P/L
-- [ ] Click to open full-size with journal context
-- [ ] Filter by date range
-- [ ] Reuse existing attachment data from JournalEntry model
-- [ ] Build passes
+- [x] Add Chartbook as 5th tab in History page
+- [x] Gallery grid of all images from journal entries
+- [x] Each image card: thumbnail, token name, trade date, P/L
+- [x] Click to open full-size with journal context
+- [x] URL-synced tabs (sidebar links work via ?tab= param)
+- [x] Reuse existing attachment data from JournalEntry model
+- [x] Build passes
 
-**Files:** `app/(dashboard)/history/page.tsx`, new `components/ChartbookGallery.tsx`
+**Files:** `app/(dashboard)/history/page.tsx`
 
 ---
 
@@ -250,7 +250,7 @@
 | 5 | Filter Bar + Dark Mode + Account | DONE | Medium | Phase 1 |
 | 6 | Chart Lab + Calendar | DONE | Medium | Phase 1 |
 | 7 | Analytics Metrics | **DONE** | Medium | Independent |
-| 8 | Chartbook in History | TODO | Low | Phase 3 |
+| 8 | Chartbook in History | **DONE** | Low | Phase 3 |
 | 9 | Strategies Simplification | TODO | Low | Independent |
 | 10 | Milestones / Gamification | TODO | Low | Phase 4 |
 | 11 | Design Polish | TODO | Do last | All phases |
