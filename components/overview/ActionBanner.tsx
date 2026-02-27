@@ -36,7 +36,7 @@ export function ActionBanner({ preSessionDone, unjournalledCount, onJournalClick
               </p>
             )}
           </div>
-          <Link href="/pre-session">
+          <Link href="/diary/pre-session">
             <Button size="sm" variant="outline" className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 shrink-0">
               Start Checklist &rarr;
             </Button>

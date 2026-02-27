@@ -2,7 +2,6 @@ import { Suspense } from 'react'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { DashboardProviders } from '@/lib/contexts'
-import { Separator } from '@/components/ui/separator'
 import { StaleDataBanner } from '@/components/StaleDataBanner'
 import { LocalStorageMigration } from '@/components/LocalStorageMigration'
 
@@ -44,10 +43,6 @@ export default function DashboardLayout({
           <SidebarInset>
             <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
               <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="h-4" />
-              <span className="text-sm text-muted-foreground">
-                Journalio
-              </span>
             </header>
             <div className="flex-1 overflow-auto px-6 py-6">
               <LocalStorageMigration />
