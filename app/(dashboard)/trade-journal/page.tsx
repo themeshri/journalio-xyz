@@ -21,6 +21,8 @@ import { toast } from 'sonner'
 import { TokenWithBadge } from '@/components/chain-badge'
 import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from '@/lib/discipline'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import { ManualTradeDialog } from '@/components/ManualTradeDialog'
+import { Plus } from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -50,7 +52,7 @@ function journalKey(trade: FlattenedTrade) {
 
 export default function TradeJournalPage() {
   const {
-    flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades,
+    activeWallets, flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades,
     tradeComments, strategies, journalMap, updateJournalEntry,
     walletTokens, loadingBalances, balancesFetched, balanceError,
   } = useWallet()
@@ -59,6 +61,7 @@ export default function TradeJournalPage() {
   const [buysModalTrade, setBuysModalTrade] = useState<FlattenedTrade | null>(null)
   const [sellsModalTrade, setSellsModalTrade] = useState<FlattenedTrade | null>(null)
   const [journalModalTrade, setJournalModalTrade] = useState<FlattenedTrade | null>(null)
+  const [showManualTrade, setShowManualTrade] = useState(false)
 
   // Strategies as a Map for quick lookup
   const strategiesMap = useMemo(
@@ -403,7 +406,13 @@ export default function TradeJournalPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-6">Trade Journal</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold">Trade Journal</h1>
+        <Button size="sm" variant="outline" onClick={() => setShowManualTrade(true)}>
+          <Plus className="w-4 h-4 mr-1" />
+          Add Manual Trade
+        </Button>
+      </div>
 
       {balanceError && (
         <p className="text-xs text-destructive mb-4">{balanceError}</p>
@@ -449,6 +458,14 @@ export default function TradeJournalPage() {
           />
         )
       })()}
+      {showManualTrade && activeWallets[0] && (
+        <ManualTradeDialog
+          walletAddress={activeWallets[0].address}
+          chain={activeWallets[0].chain}
+          onClose={() => setShowManualTrade(false)}
+          onSaved={() => window.location.reload()}
+        />
+      )}
     </div>
   )
 }

@@ -44,13 +44,13 @@
 
 ---
 
-## Phase 3: Trade Journal Simplification + Enhanced Popup
+## Phase 3: Trade Journal Simplification + Enhanced Popup `[DONE]`
 
 - [x] Remove stats row (Total, Completed, Active, Win Rate, P/L, Journaled)
 - [x] Remove filter bar (Status, Journal, Sort, View dropdowns)
 - [x] Keep trade cycles table — simplified, clicking row opens popup
 - [x] Default sort by recent (no user-facing sort controls)
-- [ ] Add "Add Manual Trade" button top-right
+- [x] Add "Add Manual Trade" button top-right
 - [x] Enhanced popup: 2 tabs — Journal | Edit Trade
   - [x] Tab 1 (Journal): existing JournalModal content
   - [x] Tab 2 (Edit Trade): show all transactions, editable buy/sell values per tx
@@ -59,10 +59,10 @@
 - [x] Multi-image upload: after image uploaded, show "Upload another" below preview
   - [x] Store as JSON array of base64 strings in `attachment` field
   - [x] Thumbnail grid with individual remove buttons
-- [ ] Manual Trade Entry dialog
-  - [ ] Fields: Token (name/mint), Buy Price, Buy Amount, Sell Price, Sell Amount, Date, Notes
-  - [ ] Creates trade in DB with `source: 'manual'` flag
-- [ ] Build passes
+- [x] Manual Trade Entry dialog
+  - [x] Fields: Token (name/mint), Buy Price, Buy Amount, Sell Price, Sell Amount, Date, Notes
+  - [x] Creates trade in DB with `source: 'manual'` flag
+- [x] Build passes
 
 **Files:** `app/(dashboard)/trade-journal/page.tsx`, `components/JournalModal.tsx`, new `components/EditTradeTab.tsx`, new `components/ManualTradeDialog.tsx`, `/api/trade-edits/`
 
@@ -244,7 +244,7 @@
 |---|-------|--------|----------|------------|
 | 1 | Sidebar Redesign | **DONE** | Must do first | — |
 | 2 | Home Page Redesign | **DONE** | High | Phase 1 |
-| 3 | Journal Simplification + Popup | TODO | High | Phase 1 |
+| 3 | Journal Simplification + Popup | **DONE** | High | Phase 1 |
 | 4 | Diary (Post-Session + Notes) | TODO | High | Phase 1 |
 | 5 | Filter Bar + Dark Mode + Account | TODO | Medium | Phase 1 |
 | 6 | Chart Lab + Calendar | TODO | Medium | Phase 1 |
