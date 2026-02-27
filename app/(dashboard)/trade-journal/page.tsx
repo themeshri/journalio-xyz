@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useWallet } from '@/lib/wallet-context'
 import { saveJournal } from '@/lib/journals'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/table'
 import TransactionModal from '@/components/TransactionModal'
 import JournalModal, { JournalData } from '@/components/JournalModal'
-import { StatStripSkeleton, TableRowsSkeleton } from '@/components/skeletons'
+import { TableRowsSkeleton } from '@/components/skeletons'
 import { toast } from 'sonner'
 import { TokenWithBadge } from '@/components/chain-badge'
 import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from '@/lib/discipline'
@@ -27,10 +27,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-
-type StatusFilter = 'all' | 'completed' | 'active'
-type JournalFilter = 'all' | 'journaled' | 'not-journaled'
-type SortOption = 'recent' | 'pl-high' | 'pl-low' | 'duration'
 
 function relativeTime(timestamp: number): string {
   const now = Date.now() / 1000
@@ -54,15 +50,10 @@ function journalKey(trade: FlattenedTrade) {
 
 export default function TradeJournalPage() {
   const {
-    activeWallets, flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades,
-    tradeComments, strategies, journalMap, streak, updateJournalEntry,
+    flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades,
+    tradeComments, strategies, journalMap, updateJournalEntry,
     walletTokens, loadingBalances, balancesFetched, balanceError,
   } = useWallet()
-
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [journalFilter, setJournalFilter] = useState<JournalFilter>('all')
-  const [sortOption, setSortOption] = useState<SortOption>('recent')
-  const [viewMode, setViewMode] = useState<'merged' | 'grouped'>('merged')
 
   // Modal state
   const [buysModalTrade, setBuysModalTrade] = useState<FlattenedTrade | null>(null)
@@ -74,14 +65,6 @@ export default function TradeJournalPage() {
     () => new Map(strategies.map((s) => [s.id, s])),
     [strategies]
   )
-
-  // Load view mode from localStorage
-  useEffect(() => {
-    try {
-      const mode = localStorage.getItem('journalio_journal_view_mode')
-      if (mode === 'merged' || mode === 'grouped') setViewMode(mode)
-    } catch {}
-  }, [])
 
   // Enrich with balance data separately — baseTrades come from context (no recomputation)
   const flattenedTrades = useMemo(() => {
@@ -156,48 +139,6 @@ export default function TradeJournalPage() {
     }
   }, [journalModalTrade, journalMap, flattenedTrades, updateJournalEntry])
 
-  // Apply filters and sorting
-  const displayTrades = useMemo(() => {
-    let result = [...flattenedTrades]
-
-    if (statusFilter === 'completed') {
-      result = result.filter((t) => t.isComplete)
-    } else if (statusFilter === 'active') {
-      result = result.filter((t) => !t.isComplete)
-    }
-
-    if (journalFilter === 'journaled') {
-      result = result.filter((t) => getJournal(t) !== null)
-    } else if (journalFilter === 'not-journaled') {
-      result = result.filter((t) => getJournal(t) === null)
-    }
-
-    switch (sortOption) {
-      case 'pl-high':
-        result.sort((a, b) => b.profitLoss - a.profitLoss)
-        break
-      case 'pl-low':
-        result.sort((a, b) => a.profitLoss - b.profitLoss)
-        break
-      case 'duration':
-        result.sort((a, b) => (b.duration || 0) - (a.duration || 0))
-        break
-      case 'recent':
-      default:
-        break
-    }
-
-    return result
-  }, [flattenedTrades, statusFilter, journalFilter, sortOption, getJournal])
-
-  // Stats
-  const totalTrades = flattenedTrades.length
-  const completedTrades = flattenedTrades.filter((t) => t.isComplete).length
-  const activeTrades = totalTrades - completedTrades
-  const totalProfitLoss = flattenedTrades.reduce((sum, t) => sum + t.profitLoss, 0)
-  const profitableTrades = flattenedTrades.filter((t) => t.profitLoss > 0).length
-  const journaledCount = Object.keys(journalMap).length
-
   if (!hasActiveWallets) {
     return (
       <div className="max-w-xl pt-8">
@@ -213,7 +154,6 @@ export default function TradeJournalPage() {
     return (
       <div className="pt-8">
         <h1 className="text-xl font-semibold mb-6">Trade Journal</h1>
-        <StatStripSkeleton count={6} />
         <TableRowsSkeleton rows={5} cols={8} />
       </div>
     )
@@ -465,127 +405,6 @@ export default function TradeJournalPage() {
     <div>
       <h1 className="text-xl font-semibold mb-6">Trade Journal</h1>
 
-      {/* Stats row */}
-      <div className="flex flex-wrap gap-x-10 gap-y-2 mb-6 text-sm">
-        <div>
-          <span className="text-muted-foreground">Total</span>
-          <span className="ml-2 font-mono tabular-nums font-semibold">{totalTrades}</span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Completed</span>
-          <span className="ml-2 font-mono tabular-nums font-semibold">{completedTrades}</span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Active</span>
-          <span className="ml-2 font-mono tabular-nums font-semibold">{activeTrades}</span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Win Rate</span>
-          <span className="ml-2 font-mono tabular-nums font-semibold">
-            {totalTrades > 0 ? ((profitableTrades / totalTrades) * 100).toFixed(0) : 0}%
-          </span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">P/L</span>
-          <span
-            className={`ml-2 font-mono tabular-nums font-semibold ${
-              totalProfitLoss >= 0 ? 'text-emerald-600' : 'text-red-600'
-            }`}
-          >
-            {totalProfitLoss >= 0 ? '+' : ''}{formatValue(totalProfitLoss)}
-          </span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Journaled</span>
-          <span className="ml-2 font-mono tabular-nums font-semibold">
-            {journaledCount}/{totalTrades}
-          </span>
-        </div>
-        {streak.current > 0 && (
-          <div>
-            <span className="text-muted-foreground">Streak</span>
-            <span className="ml-2 font-mono tabular-nums font-semibold">
-              {'\ud83d\udd25'} {streak.current}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Filter bar */}
-      <div className="flex flex-wrap gap-x-6 gap-y-2 mb-6 text-xs">
-        <div className="flex items-center gap-1">
-          <span className="text-muted-foreground mr-1">Status:</span>
-          {(['all', 'completed', 'active'] as StatusFilter[]).map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setStatusFilter(opt)}
-              className={`px-2 py-1 rounded transition-colors ${
-                statusFilter === opt
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {opt === 'all' ? 'All' : opt === 'completed' ? 'Completed' : 'Active'}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-muted-foreground mr-1">Journal:</span>
-          {(['all', 'journaled', 'not-journaled'] as JournalFilter[]).map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setJournalFilter(opt)}
-              className={`px-2 py-1 rounded transition-colors ${
-                journalFilter === opt
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {opt === 'all' ? 'All' : opt === 'journaled' ? 'Journaled' : 'Not Journaled'}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-muted-foreground mr-1">Sort:</span>
-          {([
-            ['recent', 'Recent'],
-            ['pl-high', 'P/L \u2191'],
-            ['pl-low', 'P/L \u2193'],
-            ['duration', 'Duration'],
-          ] as [SortOption, string][]).map(([opt, label]) => (
-            <button
-              key={opt}
-              onClick={() => setSortOption(opt)}
-              className={`px-2 py-1 rounded transition-colors ${
-                sortOption === opt
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {activeWallets.length > 1 && (
-          <div className="flex items-center gap-1">
-            <span className="text-muted-foreground mr-1">View:</span>
-            {(['merged', 'grouped'] as const).map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setViewMode(opt)}
-                className={`px-2 py-1 rounded transition-colors ${
-                  viewMode === opt
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {opt === 'merged' ? 'Merged' : 'By Wallet'}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       {balanceError && (
         <p className="text-xs text-destructive mb-4">{balanceError}</p>
       )}
@@ -596,32 +415,7 @@ export default function TradeJournalPage() {
           Something went wrong loading the trade table. Try refreshing the page.
         </div>
       }>
-      {displayTrades.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No trades match your filters.</p>
-      ) : viewMode === 'merged' || activeWallets.length <= 1 ? (
-        renderTable(displayTrades)
-      ) : (
-        // Grouped by wallet
-        <div className="space-y-8">
-          {activeWallets.map((w) => {
-            const walletTrades = displayTrades.filter(
-              (t) => t.walletAddress === w.address && t.chain === w.chain
-            )
-            if (walletTrades.length === 0) return null
-            return (
-              <div key={`${w.chain}:${w.address}`}>
-                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-                  <span className="text-[10px] font-medium bg-muted px-1 py-0.5 rounded">
-                    {w.chain.toUpperCase()}
-                  </span>
-                  {w.nickname || truncateAddress(w.address)}
-                </h3>
-                {renderTable(walletTrades)}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {renderTable(flattenedTrades)}
       </ErrorBoundary>
 
       {/* Modals */}
