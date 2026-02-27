@@ -179,7 +179,11 @@ export default function TradeJournalPage() {
     const tokenLogo = trade.buys[0]?.tokenOut?.logoURI || trade.sells[0]?.tokenIn?.logoURI || null
 
     return (
-      <TableRow key={`${trade.tokenMint}-${trade.tradeNumber}-${trade.walletAddress}`}>
+      <TableRow
+        key={`${trade.tokenMint}-${trade.tradeNumber}-${trade.walletAddress}`}
+        className="cursor-pointer hover:bg-muted/50"
+        onClick={() => setJournalModalTrade(trade)}
+      >
         {/* Token */}
         <TableCell>
           <div className="flex items-center gap-2">
@@ -301,14 +305,14 @@ export default function TradeJournalPage() {
           <span className="font-mono tabular-nums text-sm">
             <button
               className="text-emerald-600 hover:underline underline-offset-2"
-              onClick={() => setBuysModalTrade(trade)}
+              onClick={(e) => { e.stopPropagation(); setBuysModalTrade(trade) }}
             >
               {trade.buys.length}
             </button>
             <span className="text-muted-foreground mx-1">|</span>
             <button
               className="text-red-600 hover:underline underline-offset-2"
-              onClick={() => setSellsModalTrade(trade)}
+              onClick={(e) => { e.stopPropagation(); setSellsModalTrade(trade) }}
             >
               {trade.sells.length}
             </button>
@@ -362,14 +366,11 @@ export default function TradeJournalPage() {
 
         {/* Actions */}
         <TableCell className="text-center">
-          <Button
-            variant={journal ? 'default' : 'outline'}
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => setJournalModalTrade(trade)}
-          >
-            Journal
-          </Button>
+          {journal ? (
+            <span className="text-xs text-emerald-600 font-medium">Journaled</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">Not Journaled</span>
+          )}
         </TableCell>
       </TableRow>
     )
@@ -392,7 +393,7 @@ export default function TradeJournalPage() {
               <TableHead className="text-right min-w-[100px]">Sold</TableHead>
               <TableHead className="text-center min-w-[80px]">Buys/Sells</TableHead>
               <TableHead className="text-center min-w-[80px]">Discipline</TableHead>
-              <TableHead className="text-center min-w-[70px]">Actions</TableHead>
+              <TableHead className="text-center min-w-[70px]">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
