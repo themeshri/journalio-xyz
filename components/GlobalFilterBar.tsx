@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -52,11 +52,19 @@ export function GlobalFilterBar() {
   const router = useRouter()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
 
-  // Only show on pages that use trade data
-  const filterPages = ['/', '/trade-journal', '/analytics', '/chart-lab']
-  const shouldShow = filterPages.some((p) => pathname === p || pathname.startsWith(p + '/'))
-  if (!shouldShow) return null
+  // Close panel on click outside
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
 
   const outcome = searchParams.get('outcome') || 'all'
   const month = searchParams.get('month') || 'all'
@@ -66,7 +74,6 @@ export function GlobalFilterBar() {
   const maxPl = searchParams.get('maxPl') || ''
   const lastN = searchParams.get('lastN') || ''
 
-  const hasFilters = outcome !== 'all' || month !== 'all' || day !== 'all' || search || minPl || maxPl || lastN
   const activeCount = [outcome !== 'all', month !== 'all', day !== 'all', !!search, !!minPl || !!maxPl, !!lastN].filter(Boolean).length
 
   function setParam(key: string, value: string) {
@@ -85,54 +92,39 @@ export function GlobalFilterBar() {
   }
 
   return (
-    <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* Toggle button row */}
-      <div className="flex items-center gap-2 px-4 py-1.5">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 text-xs gap-1.5"
-          onClick={() => setOpen(!open)}
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          Advanced
-          {activeCount > 0 && (
-            <span className="ml-1 bg-primary text-primary-foreground text-[10px] rounded-full px-1.5 py-0.5 leading-none font-medium">
-              {activeCount}
-            </span>
-          )}
-        </Button>
-
-        {hasFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs gap-1 text-muted-foreground"
-            onClick={clearAll}
-          >
-            <X className="h-3.5 w-3.5" />
-            Clear all
-          </Button>
+    <div className="relative" ref={panelRef}>
+      {/* Advanced toggle button — sits inline in the header */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 text-xs gap-1.5 -ml-1"
+        onClick={() => setOpen(!open)}
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        Advanced
+        {activeCount > 0 && (
+          <span className="ml-0.5 bg-primary text-primary-foreground text-[10px] rounded-full px-1.5 py-0.5 leading-none font-medium">
+            {activeCount}
+          </span>
         )}
-      </div>
+      </Button>
 
-      {/* All filters panel (collapsed by default) */}
+      {/* Dropdown filter panel */}
       {open && (
-        <div className="px-4 pb-3 space-y-3">
-          {/* Row 1: Search + Outcome + Month + Day */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
+        <div className="absolute top-full left-0 mt-1 z-50 w-[480px] rounded-md border bg-popover p-4 shadow-md space-y-3">
+          {/* Row 1: Search + Outcome */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search token..."
                 value={search}
                 onChange={(e) => setParam('search', e.target.value)}
-                className="h-8 w-40 pl-8 text-xs"
+                className="h-8 pl-8 text-xs"
               />
             </div>
-
             <Select value={outcome} onValueChange={(v) => setParam('outcome', v)}>
-              <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectTrigger className="h-8 w-36 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -141,9 +133,12 @@ export function GlobalFilterBar() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
 
+          {/* Row 2: Month + Day */}
+          <div className="flex items-center gap-2">
             <Select value={month} onValueChange={(v) => setParam('month', v)}>
-              <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectTrigger className="h-8 flex-1 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -152,9 +147,8 @@ export function GlobalFilterBar() {
                 ))}
               </SelectContent>
             </Select>
-
             <Select value={day} onValueChange={(v) => setParam('day', v)}>
-              <SelectTrigger className="h-8 w-32 text-xs">
+              <SelectTrigger className="h-8 flex-1 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -165,38 +159,52 @@ export function GlobalFilterBar() {
             </Select>
           </div>
 
-          {/* Row 2: P/L Range + Last N */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">P/L Range:</span>
+          {/* Row 3: P/L Range + Last N */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-1">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">P/L:</span>
               <Input
                 type="number"
                 placeholder="Min"
                 value={minPl}
                 onChange={(e) => setParam('minPl', e.target.value)}
-                className="h-8 w-20 text-xs"
+                className="h-8 text-xs"
               />
-              <span className="text-xs text-muted-foreground">to</span>
+              <span className="text-xs text-muted-foreground">–</span>
               <Input
                 type="number"
                 placeholder="Max"
                 value={maxPl}
                 onChange={(e) => setParam('maxPl', e.target.value)}
-                className="h-8 w-20 text-xs"
+                className="h-8 text-xs"
               />
             </div>
-
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Last N trades:</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Last N:</span>
               <Input
                 type="number"
-                placeholder="e.g. 50"
+                placeholder="50"
                 value={lastN}
                 onChange={(e) => setParam('lastN', e.target.value)}
-                className="h-8 w-20 text-xs"
+                className="h-8 w-16 text-xs"
               />
             </div>
           </div>
+
+          {/* Clear button */}
+          {activeCount > 0 && (
+            <div className="flex justify-end pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1 text-muted-foreground"
+                onClick={clearAll}
+              >
+                <X className="h-3 w-3" />
+                Clear all filters
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

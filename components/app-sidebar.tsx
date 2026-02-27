@@ -14,6 +14,7 @@ import {
   Wallet,
   Settings as SettingsIcon,
   ChevronRight,
+  Menu,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -96,7 +97,7 @@ const managementNav: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { state, setOpen } = useSidebar()
+  const { state, setOpen, toggleSidebar } = useSidebar()
   const { activeWallets, savedWallets, setWalletActive, walletSlots, streak, tradeComments, journalMap } = useWallet()
   const { preSessionDone } = useMetadata()
   const [walletsExpanded, setWalletsExpanded] = useState(false)
@@ -312,8 +313,17 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
-        <div className="text-base font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-          Journalio
+        <div className="flex items-center justify-between">
+          <div className="text-base font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+            Journalio
+          </div>
+          <button
+            onClick={() => toggleSidebar()}
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
+            title="Toggle sidebar"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
         </div>
         <div className="group-data-[collapsible=icon]:hidden">
           {renderWalletSummary()}
