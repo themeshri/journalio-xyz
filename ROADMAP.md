@@ -114,24 +114,25 @@
 
 ---
 
-## Phase 6: Chart Lab + Calendar
+## Phase 6: Chart Lab + Calendar [DONE]
 
-- [ ] Calendar page (`/chart-lab/calendar`)
-  - [ ] Monthly calendar with daily P/L color-coded cells (green profit, red loss)
-  - [ ] Click day to see trade summary
-  - [ ] Reuse existing `/api/analytics/calendar` endpoint + `PLCalendar` component
-- [ ] Exit Analysis page (`/chart-lab/exit-analysis`)
-  - [ ] Visual bars showing how close price came to stop/target
-  - [ ] Requires SL/TP data — show for trades that have it
-- [ ] Trade Management page (`/chart-lab/trade-management`)
-  - [ ] Compare actual P/L vs "set and forget" approach
-- [ ] R-Distribution: histogram of R-multiples
-- [ ] Equity Graph: enhanced with SQN overlay
-- [ ] Holding Time Analysis: scatter plot duration vs P/L
-- [ ] Chart Lab sub-tab navigation layout
-- [ ] Build passes
+- [x] Calendar page (`/chart-lab/calendar`)
+  - [x] Reuses existing PLCalendar component with full day-detail dialog
+  - [x] Monthly calendar with daily P/L color-coded cells, click for trade summary
+- [x] P/L Distribution page (`/chart-lab/distribution`)
+  - [x] Histogram of P/L buckets (green positive, red negative)
+  - [x] Stats: Avg Winner, Avg Loser, Win/Loss Ratio, Record
+- [x] Equity Curve page (`/chart-lab/equity`)
+  - [x] Cumulative P/L area chart with SQN computation
+  - [x] Stats: Total P/L, Max Drawdown, SQN rating, Trade count
+- [x] Holding Time Analysis page (`/chart-lab/holding-time`)
+  - [x] Scatter plot of duration vs P/L
+  - [x] Stats: Avg hold time, win rate for short vs long holds
+- [x] Chart Lab sub-tab navigation via sidebar
+- [x] Build passes
+- [ ] Exit Analysis + Trade Management deferred (need SL/TP data from Phase 7)
 
-**Files:** `app/(dashboard)/chart-lab/layout.tsx`, `app/(dashboard)/chart-lab/calendar/page.tsx`, new `app/(dashboard)/chart-lab/exit-analysis/page.tsx`, new `app/(dashboard)/chart-lab/trade-management/page.tsx`, new `components/chart-lab/`
+**Files:** `app/(dashboard)/chart-lab/calendar/page.tsx`, `app/(dashboard)/chart-lab/equity/page.tsx`, `app/(dashboard)/chart-lab/distribution/page.tsx`, `app/(dashboard)/chart-lab/holding-time/page.tsx`
 
 ---
 
@@ -247,7 +248,7 @@
 | 3 | Journal Simplification + Popup | **DONE** | High | Phase 1 |
 | 4 | Diary (Post-Session + Notes) | DONE | High | Phase 1 |
 | 5 | Filter Bar + Dark Mode + Account | DONE | Medium | Phase 1 |
-| 6 | Chart Lab + Calendar | TODO | Medium | Phase 1 |
+| 6 | Chart Lab + Calendar | DONE | Medium | Phase 1 |
 | 7 | Analytics Metrics | TODO | Medium | Independent |
 | 8 | Chartbook in History | TODO | Low | Phase 3 |
 | 9 | Strategies Simplification | TODO | Low | Independent |

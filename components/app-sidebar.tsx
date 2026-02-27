@@ -83,6 +83,9 @@ const mainNav: NavItem[] = [
     icon: FlaskConical,
     children: [
       { label: 'Calendar', href: '/chart-lab/calendar' },
+      { label: 'Equity Curve', href: '/chart-lab/equity' },
+      { label: 'Distribution', href: '/chart-lab/distribution' },
+      { label: 'Holding Time', href: '/chart-lab/holding-time' },
     ],
   },
 ]
