@@ -86,7 +86,7 @@ export default function OverviewPage() {
   if (!hasActiveWallets) {
     return (
       <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Overview</h1>
+        <h1 className="text-xl font-semibold mb-2">Home</h1>
         <p className="text-sm text-muted-foreground">
           Add a wallet in Wallet Management to start tracking trades.
         </p>
@@ -97,8 +97,8 @@ export default function OverviewPage() {
   if (isAnyLoading && allTrades.length === 0) {
     return (
       <div className="pt-8 space-y-6">
-        <h1 className="text-xl font-semibold">Overview</h1>
-        <StatStripSkeleton count={5} />
+        <h1 className="text-xl font-semibold">Home</h1>
+        <StatStripSkeleton count={7} />
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-3"><ChartSkeleton /></div>
           <div className="lg:col-span-2"><ChartSkeleton /></div>
@@ -124,7 +124,7 @@ export default function OverviewPage() {
   if (allTrades.length === 0) {
     return (
       <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Overview</h1>
+        <h1 className="text-xl font-semibold mb-2">Home</h1>
         <p className="text-sm text-muted-foreground">
           No transactions found for your active wallets.
         </p>
@@ -135,7 +135,7 @@ export default function OverviewPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Overview</h1>
+        <h1 className="text-xl font-semibold">Home</h1>
         <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
       </div>
 
@@ -148,12 +148,17 @@ export default function OverviewPage() {
         />
       </ErrorBoundary>
 
-      {/* Row 2: KPI Cards — horizontal strip */}
+      {/* Row 2: KPI Cards — 7-card horizontal strip */}
       <ErrorBoundary fallback={sectionErrorFallback}>
-        <KPICards trades={filteredTrades} />
+        <KPICards trades={filteredTrades} streak={streak} />
       </ErrorBoundary>
 
-      {/* Row 3: Recent Trades + P/L Calendar */}
+      {/* Row 3: Equity Curve — full width (prominent position) */}
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <EquityCurve trades={filteredTrades} />
+      </ErrorBoundary>
+
+      {/* Row 4: Recent Trades + P/L Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
           <ErrorBoundary fallback={sectionErrorFallback}>
@@ -166,11 +171,6 @@ export default function OverviewPage() {
           </ErrorBoundary>
         </div>
       </div>
-
-      {/* Row 4: Equity Curve — full width */}
-      <ErrorBoundary fallback={sectionErrorFallback}>
-        <EquityCurve trades={filteredTrades} />
-      </ErrorBoundary>
 
       {/* Row 5: Strategy Summary + Mistakes Summary — side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

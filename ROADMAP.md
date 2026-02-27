@@ -27,18 +27,20 @@
 
 ---
 
-## Phase 2: Home Page Redesign
+## Phase 2: Home Page Redesign `[DONE]`
 
-- [ ] Rename Overview label to "Home" (already done in sidebar nav)
-- [ ] Redesign KPI strip: Total Trades, Win Rate, Profit Factor, Avg P/L, Total P/L, Sharpe Ratio, Current Streak
-- [ ] Keep Action Banner (pre-session reminder, unjournaled trades)
-- [ ] Keep Equity Curve (full-width Recharts)
-- [ ] 2-column grid: P/L Calendar (left) + Recent Trades last 5 (right)
-- [ ] 2-column grid: Strategy Summary (left) + Discipline/Mistakes Summary (right)
-- [ ] Quick Stats Bar: streak, missed trades cost, weekly P/L
-- [ ] Build passes
+- [x] Rename Overview label to "Home" (page title + sidebar)
+- [x] Redesign KPI strip: Net P/L, Win Rate, Profit Factor, Avg P/L, Total Trades, Sharpe Ratio, Streak (7 cards)
+- [x] Remove Best/Worst Trade card (info already in QuickStatsBar)
+- [x] Add Sharpe Ratio computation (mean/stdDev of returns)
+- [x] Add Avg P/L card
+- [x] Add Streak card with fire emoji + best streak
+- [x] Move Equity Curve up to Row 3 (right after KPIs, more prominent)
+- [x] Keep Action Banner, P/L Calendar, Recent Trades, Strategy/Mistakes summaries, QuickStatsBar
+- [x] Build passes
 
-**Files:** `app/(dashboard)/page.tsx`, `components/overview/`
+**Commit:** `pending`
+**Files:** `app/(dashboard)/page.tsx`, `components/overview/KPICards.tsx`
 
 ---
 
@@ -241,7 +243,7 @@
 | # | Phase | Status | Priority | Depends On |
 |---|-------|--------|----------|------------|
 | 1 | Sidebar Redesign | **DONE** | Must do first | — |
-| 2 | Home Page Redesign | TODO | High | Phase 1 |
+| 2 | Home Page Redesign | **DONE** | High | Phase 1 |
 | 3 | Journal Simplification + Popup | TODO | High | Phase 1 |
 | 4 | Diary (Post-Session + Notes) | TODO | High | Phase 1 |
 | 5 | Filter Bar + Dark Mode + Account | TODO | Medium | Phase 1 |
