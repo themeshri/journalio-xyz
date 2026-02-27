@@ -58,6 +58,8 @@ model User {
   preSessions   PreSession[]
   journalEntries JournalEntry[]
   tradeComments TradeComment[]
+  postSessions  PostSession[]
+  notes         Note[]
 }
 
 model VerificationToken {
@@ -318,6 +320,42 @@ model JournalEntry {
   @@unique([userId, walletAddress, tokenMint, tradeNumber])
   @@index([userId])
   @@index([walletAddress])
+}
+
+model PostSession {
+  id              String   @id @default(cuid())
+  userId          String
+  date            String   // YYYY-MM-DD
+  rating          Int      @default(0) // 1-10
+  emotionalState  String   @default("")
+  whatWentWell    String   @default("")
+  whatWentWrong   String   @default("")
+  keyLessons      String   @default("")
+  rulesFollowed   Boolean?
+  rulesNotes      String   @default("")
+  planForTomorrow String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("")
+  content   String   @default("")
+  tagsJson  String   @default("[]") // JSON string of string[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model TradeComment {

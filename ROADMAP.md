@@ -68,23 +68,23 @@
 
 ---
 
-## Phase 4: Diary — Post-Session + Notes
+## Phase 4: Diary — Post-Session + Notes [DONE]
 
-- [ ] Pre-Session: already moved to `/diary/pre-session` (Phase 1)
-- [ ] Post-Session page (`/diary/post-session`)
-  - [ ] Prisma model: `PostSession` (userId, date, rating 1-10, emotionalState, whatWentWell, whatWentWrong, keyLessons, rulesFollowed bool + notes, planForTomorrow)
-  - [ ] API: `/api/post-sessions` (CRUD, same pattern as pre-sessions)
-  - [ ] Lib wrapper: `lib/post-sessions.ts`
-  - [ ] Component: `PostSessionForm.tsx`
-  - [ ] Fields: Date (auto-today), Rating (1-10), Emotional State, What Went Well, What Went Wrong, Key Lessons, Rules Followed?, Plan for Tomorrow
-- [ ] Notes page (`/diary/notes`)
-  - [ ] Prisma model: `Note` (userId, title, content, tags JSON, createdAt, updatedAt)
-  - [ ] API: `/api/notes` (CRUD)
-  - [ ] Lib wrapper: `lib/notes.ts`
-  - [ ] Component: `NoteEditor.tsx`
-  - [ ] List view with search/filter by tag
-- [ ] Prisma migration for PostSession + Note models
-- [ ] Build passes
+- [x] Pre-Session: already moved to `/diary/pre-session` (Phase 1)
+- [x] Post-Session page (`/diary/post-session`)
+  - [x] Prisma model: `PostSession` (userId, date, rating 1-10, emotionalState, whatWentWell, whatWentWrong, keyLessons, rulesFollowed bool + notes, planForTomorrow)
+  - [x] API: `/api/post-sessions` (CRUD, same pattern as pre-sessions)
+  - [x] Lib wrapper: `lib/post-sessions.ts`
+  - [x] Component: inline in post-session/page.tsx
+  - [x] Fields: Date (auto-today), Rating (1-10), Emotional State, What Went Well, What Went Wrong, Key Lessons, Rules Followed?, Plan for Tomorrow
+- [x] Notes page (`/diary/notes`)
+  - [x] Prisma model: `Note` (userId, title, content, tags JSON, createdAt, updatedAt)
+  - [x] API: `/api/notes` (CRUD)
+  - [x] Lib wrapper: `lib/notes.ts`
+  - [x] Component: inline in notes/page.tsx
+  - [x] List view with search/filter by tag
+- [x] Prisma migration for PostSession + Note models
+- [x] Build passes
 
 **Files:** `app/(dashboard)/diary/post-session/page.tsx`, `app/(dashboard)/diary/notes/page.tsx`, new `components/PostSessionForm.tsx`, new `components/NoteEditor.tsx`, `lib/post-sessions.ts`, `lib/notes.ts`, `prisma/schema.prisma`
 
@@ -245,7 +245,7 @@
 | 1 | Sidebar Redesign | **DONE** | Must do first | — |
 | 2 | Home Page Redesign | **DONE** | High | Phase 1 |
 | 3 | Journal Simplification + Popup | **DONE** | High | Phase 1 |
-| 4 | Diary (Post-Session + Notes) | TODO | High | Phase 1 |
+| 4 | Diary (Post-Session + Notes) | DONE | High | Phase 1 |
 | 5 | Filter Bar + Dark Mode + Account | TODO | Medium | Phase 1 |
 | 6 | Chart Lab + Calendar | TODO | Medium | Phase 1 |
 | 7 | Analytics Metrics | TODO | Medium | Independent |
