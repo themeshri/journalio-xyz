@@ -4,6 +4,9 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { DashboardProviders } from '@/lib/contexts'
 import { StaleDataBanner } from '@/components/StaleDataBanner'
 import { LocalStorageMigration } from '@/components/LocalStorageMigration'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { AccountDropdown } from '@/components/AccountDropdown'
+import { GlobalFilterBar } from '@/components/GlobalFilterBar'
 
 function DashboardSkeleton() {
   return (
@@ -43,7 +46,12 @@ export default function DashboardLayout({
           <SidebarInset>
             <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
               <SidebarTrigger className="-ml-1" />
+              <div className="ml-auto flex items-center gap-2">
+                <ThemeToggle />
+                <AccountDropdown />
+              </div>
             </header>
+            <GlobalFilterBar />
             <div className="flex-1 overflow-auto px-6 py-6">
               <LocalStorageMigration />
               <StaleDataBanner />

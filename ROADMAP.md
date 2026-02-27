@@ -90,25 +90,25 @@
 
 ---
 
-## Phase 5: Global Filter Bar + Dark Mode + Account Dropdown
+## Phase 5: Global Filter Bar + Dark Mode + Account Dropdown [DONE]
 
-- [ ] Global Filter Bar (top of dashboard, above page content)
-  - [ ] Basic Filters tab: Instrument, Outcome (Win/Loss/BE), Month, Day, Setup, Direction, Date Range
-  - [ ] Advanced Filters tab: Percentage Gain, RRR, Last N Trades, R-Multiple Gain
-  - [ ] Search by Trade ID input
-  - [ ] Filters apply globally (Journal, Analytics, Chart Lab)
-  - [ ] Store active filters in URL params + context
-- [ ] Dark Mode
-  - [ ] Install `next-themes`
-  - [ ] Add `ThemeProvider` to root layout
-  - [ ] Light/Dark toggle switch in top bar
-  - [ ] CSS variables already defined in `globals.css` (lines 90-122)
-  - [ ] Verify all components respect dark mode
-- [ ] Account Dropdown (top-right)
-  - [ ] Avatar/icon button
-  - [ ] Dropdown: Profile, Milestones (future), Settings, Logout
-  - [ ] Uses NextAuth session
-- [ ] Build passes
+- [x] Global Filter Bar (top of dashboard, above page content)
+  - [x] Basic Filters: Search token, Outcome (Win/Loss/BE), Month, Day
+  - [x] Advanced Filters: P/L Range (min/max), Last N Trades
+  - [x] Search by token name input
+  - [x] Filters stored in URL params (conditionally shown on trade-related pages)
+  - [x] Clear all button when filters active
+- [x] Dark Mode
+  - [x] `next-themes` already installed
+  - [x] `ThemeProvider` added to Providers (attribute="class", defaultTheme="dark")
+  - [x] Sun/Moon toggle in dashboard header
+  - [x] CSS variables already defined in `globals.css`
+  - [x] `suppressHydrationWarning` on html tag
+- [x] Account Dropdown (top-right)
+  - [x] User icon button
+  - [x] Dropdown: session user info, Settings link, Milestones (disabled/future), Sign Out
+  - [x] Uses NextAuth session
+- [x] Build passes
 
 **Files:** `app/(dashboard)/layout.tsx`, `app/layout.tsx`, new `components/GlobalFilterBar.tsx`, new `components/ThemeToggle.tsx`, new `components/AccountDropdown.tsx`, `globals.css`
 
@@ -246,7 +246,7 @@
 | 2 | Home Page Redesign | **DONE** | High | Phase 1 |
 | 3 | Journal Simplification + Popup | **DONE** | High | Phase 1 |
 | 4 | Diary (Post-Session + Notes) | DONE | High | Phase 1 |
-| 5 | Filter Bar + Dark Mode + Account | TODO | Medium | Phase 1 |
+| 5 | Filter Bar + Dark Mode + Account | DONE | Medium | Phase 1 |
 | 6 | Chart Lab + Calendar | TODO | Medium | Phase 1 |
 | 7 | Analytics Metrics | TODO | Medium | Independent |
 | 8 | Chartbook in History | TODO | Low | Phase 3 |
