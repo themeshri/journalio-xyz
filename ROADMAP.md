@@ -1,0 +1,253 @@
+# Journalio v2 — Redesign Roadmap
+
+> Inspired by Edgewonk. Tracking all phases and subtasks.
+> Mark tasks with `[x]` when complete.
+
+---
+
+## Phase 1: Sidebar Redesign — Icons, Collapse, Sub-tabs `[DONE]`
+
+- [x] Add shadcn Collapsible component (`components/ui/collapsible.tsx`)
+- [x] Add Lucide line icons to all nav items (Home, BookOpen, BookHeart, Clock, FlaskConical, BarChart3, Puzzle, Wallet, Settings)
+- [x] Enable `collapsible="icon"` mode — collapse to icon-only with `Cmd+B`
+- [x] Tooltips on hover in collapsed mode
+- [x] Sub-tab system for Diary (Pre-Session, Post-Session, Notes)
+- [x] Sub-tab system for History (Pre-Sessions, Journal, Transactions, Missed Trades, Chartbook)
+- [x] Sub-tab system for Chart Lab (Calendar)
+- [x] Clicking parent in collapsed mode auto-expands sidebar
+- [x] Move pre-session route to `/diary/pre-session` with redirect from old path
+- [x] Create placeholder pages: post-session, notes, chart-lab/calendar
+- [x] Simplify dashboard header (remove redundant Journalio text)
+- [x] Update `/pre-session` links to `/diary/pre-session` (ActionBanner)
+- [x] Pre-session status dot on Diary parent item
+- [x] Discipline dot on Journal item
+- [x] Build passes
+
+**Commit:** `bc0e4b0`
+
+---
+
+## Phase 2: Home Page Redesign
+
+- [ ] Rename Overview label to "Home" (already done in sidebar nav)
+- [ ] Redesign KPI strip: Total Trades, Win Rate, Profit Factor, Avg P/L, Total P/L, Sharpe Ratio, Current Streak
+- [ ] Keep Action Banner (pre-session reminder, unjournaled trades)
+- [ ] Keep Equity Curve (full-width Recharts)
+- [ ] 2-column grid: P/L Calendar (left) + Recent Trades last 5 (right)
+- [ ] 2-column grid: Strategy Summary (left) + Discipline/Mistakes Summary (right)
+- [ ] Quick Stats Bar: streak, missed trades cost, weekly P/L
+- [ ] Build passes
+
+**Files:** `app/(dashboard)/page.tsx`, `components/overview/`
+
+---
+
+## Phase 3: Trade Journal Simplification + Enhanced Popup
+
+- [ ] Remove stats row (Total, Completed, Active, Win Rate, P/L, Journaled)
+- [ ] Remove filter bar (Status, Journal, Sort, View dropdowns)
+- [ ] Keep trade cycles table — simplified, clicking row opens popup
+- [ ] Default sort by recent (no user-facing sort controls)
+- [ ] Add "Add Manual Trade" button top-right
+- [ ] Enhanced popup: 2 tabs — Journal | Edit Trade
+  - [ ] Tab 1 (Journal): existing JournalModal content
+  - [ ] Tab 2 (Edit Trade): show all transactions, editable buy/sell values per tx
+  - [ ] "Edit Whole Trade" section: override total bought/sold
+  - [ ] Save edits to TradeEdit model (override approach)
+- [ ] Multi-image upload: after image uploaded, show "Upload another" below preview
+  - [ ] Store as JSON array of base64 strings in `attachment` field
+  - [ ] Thumbnail grid with individual remove buttons
+- [ ] Manual Trade Entry dialog
+  - [ ] Fields: Token (name/mint), Buy Price, Buy Amount, Sell Price, Sell Amount, Date, Notes
+  - [ ] Creates trade in DB with `source: 'manual'` flag
+- [ ] Build passes
+
+**Files:** `app/(dashboard)/trade-journal/page.tsx`, `components/JournalModal.tsx`, new `components/EditTradeTab.tsx`, new `components/ManualTradeDialog.tsx`, `/api/trade-edits/`
+
+---
+
+## Phase 4: Diary — Post-Session + Notes
+
+- [ ] Pre-Session: already moved to `/diary/pre-session` (Phase 1)
+- [ ] Post-Session page (`/diary/post-session`)
+  - [ ] Prisma model: `PostSession` (userId, date, rating 1-10, emotionalState, whatWentWell, whatWentWrong, keyLessons, rulesFollowed bool + notes, planForTomorrow)
+  - [ ] API: `/api/post-sessions` (CRUD, same pattern as pre-sessions)
+  - [ ] Lib wrapper: `lib/post-sessions.ts`
+  - [ ] Component: `PostSessionForm.tsx`
+  - [ ] Fields: Date (auto-today), Rating (1-10), Emotional State, What Went Well, What Went Wrong, Key Lessons, Rules Followed?, Plan for Tomorrow
+- [ ] Notes page (`/diary/notes`)
+  - [ ] Prisma model: `Note` (userId, title, content, tags JSON, createdAt, updatedAt)
+  - [ ] API: `/api/notes` (CRUD)
+  - [ ] Lib wrapper: `lib/notes.ts`
+  - [ ] Component: `NoteEditor.tsx`
+  - [ ] List view with search/filter by tag
+- [ ] Prisma migration for PostSession + Note models
+- [ ] Build passes
+
+**Files:** `app/(dashboard)/diary/post-session/page.tsx`, `app/(dashboard)/diary/notes/page.tsx`, new `components/PostSessionForm.tsx`, new `components/NoteEditor.tsx`, `lib/post-sessions.ts`, `lib/notes.ts`, `prisma/schema.prisma`
+
+---
+
+## Phase 5: Global Filter Bar + Dark Mode + Account Dropdown
+
+- [ ] Global Filter Bar (top of dashboard, above page content)
+  - [ ] Basic Filters tab: Instrument, Outcome (Win/Loss/BE), Month, Day, Setup, Direction, Date Range
+  - [ ] Advanced Filters tab: Percentage Gain, RRR, Last N Trades, R-Multiple Gain
+  - [ ] Search by Trade ID input
+  - [ ] Filters apply globally (Journal, Analytics, Chart Lab)
+  - [ ] Store active filters in URL params + context
+- [ ] Dark Mode
+  - [ ] Install `next-themes`
+  - [ ] Add `ThemeProvider` to root layout
+  - [ ] Light/Dark toggle switch in top bar
+  - [ ] CSS variables already defined in `globals.css` (lines 90-122)
+  - [ ] Verify all components respect dark mode
+- [ ] Account Dropdown (top-right)
+  - [ ] Avatar/icon button
+  - [ ] Dropdown: Profile, Milestones (future), Settings, Logout
+  - [ ] Uses NextAuth session
+- [ ] Build passes
+
+**Files:** `app/(dashboard)/layout.tsx`, `app/layout.tsx`, new `components/GlobalFilterBar.tsx`, new `components/ThemeToggle.tsx`, new `components/AccountDropdown.tsx`, `globals.css`
+
+---
+
+## Phase 6: Chart Lab + Calendar
+
+- [ ] Calendar page (`/chart-lab/calendar`)
+  - [ ] Monthly calendar with daily P/L color-coded cells (green profit, red loss)
+  - [ ] Click day to see trade summary
+  - [ ] Reuse existing `/api/analytics/calendar` endpoint + `PLCalendar` component
+- [ ] Exit Analysis page (`/chart-lab/exit-analysis`)
+  - [ ] Visual bars showing how close price came to stop/target
+  - [ ] Requires SL/TP data — show for trades that have it
+- [ ] Trade Management page (`/chart-lab/trade-management`)
+  - [ ] Compare actual P/L vs "set and forget" approach
+- [ ] R-Distribution: histogram of R-multiples
+- [ ] Equity Graph: enhanced with SQN overlay
+- [ ] Holding Time Analysis: scatter plot duration vs P/L
+- [ ] Chart Lab sub-tab navigation layout
+- [ ] Build passes
+
+**Files:** `app/(dashboard)/chart-lab/layout.tsx`, `app/(dashboard)/chart-lab/calendar/page.tsx`, new `app/(dashboard)/chart-lab/exit-analysis/page.tsx`, new `app/(dashboard)/chart-lab/trade-management/page.tsx`, new `components/chart-lab/`
+
+---
+
+## Phase 7: Analytics — Advanced Metrics
+
+### Computable NOW (no new data needed):
+- [ ] Avg Winner / Avg Loser — Mean P/L of winners / losers
+- [ ] Expectancy — Total P/L / Total trades
+- [ ] Profit Factor — Sum(wins) / Sum(losses)
+- [ ] Drawdown — Max peak-to-trough in equity curve
+- [ ] Return ($) — Sum of all P/L
+- [ ] Return (%) — Total P/L / starting balance
+- [ ] Efficiency — % of trades with positive comments
+- [ ] Sharpe Ratio — Mean(returns) / StdDev(returns)
+- [ ] Sortino Ratio — Mean(returns) / StdDev(losing returns)
+- [ ] Calmar Ratio — Total return / Max drawdown
+- [ ] Gain to Pain — Total return / Sum(abs(losses))
+
+### Needing new optional fields in Journal:
+- [ ] Add optional fields to JournalModal: Stop Loss, Take Profit, Trade High, Trade Low
+- [ ] Add fields to JournalEntry Prisma model
+- [ ] MAE / MFE — Highest/lowest price during trade
+- [ ] R-Multiple — Stop-loss price at entry
+- [ ] RRR Planned — Stop-loss + take-profit at entry
+- [ ] Capital at Risk — Position size + stop-loss
+- [ ] Risk Amount — Entry price - stop-loss
+- [ ] Updraw / Drawdown % — Take-profit + stop-loss + high/low
+- [ ] Trade Price % — Entry + exit prices (already have)
+
+### Integration:
+- [ ] Compute "NOW" metrics server-side in `/api/analytics/*` endpoints
+- [ ] Display as stat cards + charts in Analytics dashboard
+- [ ] Metrics needing SL/TP show "N/A" when data not available
+- [ ] Build passes
+
+**Files:** `lib/analytics/`, `app/(dashboard)/analytics/page.tsx`, `components/JournalModal.tsx`, `prisma/schema.prisma`, `/api/analytics/*`
+
+---
+
+## Phase 8: History — Chartbook Sub-tab
+
+- [ ] Add Chartbook as 5th tab in History page
+- [ ] Gallery grid of all images from journal entries
+- [ ] Each image card: thumbnail, token name, trade date, P/L
+- [ ] Click to open full-size with journal context
+- [ ] Filter by date range
+- [ ] Reuse existing attachment data from JournalEntry model
+- [ ] Build passes
+
+**Files:** `app/(dashboard)/history/page.tsx`, new `components/ChartbookGallery.tsx`
+
+---
+
+## Phase 9: Strategies Simplification
+
+- [ ] Default view: simple mode — just Setup Name + Description + Icon/Color
+- [ ] "Advanced Mode" toggle at top of strategies page
+- [ ] Advanced ON: show full rule groups, conditions, showWhen logic (current UI)
+- [ ] Advanced OFF: hide rule groups section entirely
+- [ ] Persist toggle preference in localStorage via `safeLocalStorage`
+- [ ] Build passes
+
+**Files:** `app/(dashboard)/strategies/page.tsx`
+
+---
+
+## Phase 10: Milestones / Gamification
+
+- [ ] Prisma model: `Milestone` (id, userId, milestoneType, progress, completed, completedAt)
+- [ ] Prisma migration
+- [ ] API: `/api/milestones` (progress endpoint)
+- [ ] Lib wrapper: `lib/milestones.ts`
+- [ ] 9 milestone challenges:
+  - [ ] First Entry — Journal your first trade
+  - [ ] Streak Starter — 3-day journaling streak
+  - [ ] Week Warrior — 7-day journaling streak
+  - [ ] Month Master — 30-day journaling streak
+  - [ ] Rule Follower — 90%+ rule follow rate on 10 consecutive trades
+  - [ ] Self-Aware — Complete 10 pre-sessions
+  - [ ] Reflector — Complete 10 post-sessions
+  - [ ] Analyst — Journal 50 trades with full details
+  - [ ] Consistent — Trade within your plan for 20 consecutive trades
+- [ ] Server-side progress calculation on journal/pre-session/post-session save
+- [ ] Milestone cards in Account dropdown or dedicated page
+- [ ] Progress bars, completion badges
+- [ ] Toast notifications on milestone completion
+- [ ] Build passes
+
+**Files:** new `components/MilestoneCard.tsx`, `lib/milestones.ts`, new `app/api/milestones/`, `prisma/schema.prisma`
+
+---
+
+## Phase 11: Design Polish `[DO LAST]`
+
+- [ ] Remove card border lines, keep shadow only
+- [ ] Reduce border-radius globally (`--radius` in `globals.css`)
+- [ ] Update `components/ui/card.tsx` — remove border, ensure shadow
+- [ ] Audit all card-like components for consistent styling
+- [ ] Font combination exploration (future)
+- [ ] Consistent spacing and typography
+- [ ] Build passes
+
+**Files:** `globals.css`, `components/ui/card.tsx`, various component files
+
+---
+
+## Phase Summary
+
+| # | Phase | Status | Priority | Depends On |
+|---|-------|--------|----------|------------|
+| 1 | Sidebar Redesign | **DONE** | Must do first | — |
+| 2 | Home Page Redesign | TODO | High | Phase 1 |
+| 3 | Journal Simplification + Popup | TODO | High | Phase 1 |
+| 4 | Diary (Post-Session + Notes) | TODO | High | Phase 1 |
+| 5 | Filter Bar + Dark Mode + Account | TODO | Medium | Phase 1 |
+| 6 | Chart Lab + Calendar | TODO | Medium | Phase 1 |
+| 7 | Analytics Metrics | TODO | Medium | Independent |
+| 8 | Chartbook in History | TODO | Low | Phase 3 |
+| 9 | Strategies Simplification | TODO | Low | Independent |
+| 10 | Milestones / Gamification | TODO | Low | Phase 4 |
+| 11 | Design Polish | TODO | Do last | All phases |
