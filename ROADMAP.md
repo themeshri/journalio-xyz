@@ -225,17 +225,17 @@
 
 ---
 
-## Phase 11: Design Polish `[DO LAST]`
+## Phase 11: Design Polish [DONE]
 
-- [ ] Remove card border lines, keep shadow only
-- [ ] Reduce border-radius globally (`--radius` in `globals.css`)
-- [ ] Update `components/ui/card.tsx` — remove border, ensure shadow
-- [ ] Audit all card-like components for consistent styling
+- [x] Remove card border lines, keep shadow only
+- [x] Reduce border-radius globally (`--radius` 0.5rem → 0.375rem in `globals.css`)
+- [x] Update `components/ui/card.tsx` — remove border, use shadow-sm, rounded-lg
+- [x] Audit all card-like components for consistent styling
 - [ ] Font combination exploration (future)
-- [ ] Consistent spacing and typography
-- [ ] Build passes
+- [x] Consistent spacing and typography
+- [x] Build passes
 
-**Files:** `globals.css`, `components/ui/card.tsx`, various component files
+**Files:** `globals.css`, `components/ui/card.tsx`
 
 ---
 
@@ -253,4 +253,4 @@
 | 8 | Chartbook in History | **DONE** | Low | Phase 3 |
 | 9 | Strategies Simplification | **DONE** | Low | Independent |
 | 10 | Milestones / Gamification | TODO | Low | Phase 4 |
-| 11 | Design Polish | TODO | Do last | All phases |
+| 11 | Design Polish | **DONE** | Do last | All phases |
