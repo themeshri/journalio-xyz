@@ -69,6 +69,10 @@ export async function POST(request: NextRequest) {
       exitCommentId: body.exitCommentId || null,
       managementCommentId: body.managementCommentId || null,
       emotionTag: body.emotionTag || null,
+      stopLoss: body.stopLoss ?? null,
+      takeProfit: body.takeProfit ?? null,
+      tradeHigh: body.tradeHigh ?? null,
+      tradeLow: body.tradeLow ?? null,
       journaledAt: body.journaledAt || new Date().toISOString(),
     }
 

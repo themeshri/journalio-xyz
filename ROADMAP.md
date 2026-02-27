@@ -136,24 +136,24 @@
 
 ---
 
-## Phase 7: Analytics — Advanced Metrics
+## Phase 7: Analytics — Advanced Metrics [DONE]
 
 ### Computable NOW (no new data needed):
-- [ ] Avg Winner / Avg Loser — Mean P/L of winners / losers
-- [ ] Expectancy — Total P/L / Total trades
-- [ ] Profit Factor — Sum(wins) / Sum(losses)
-- [ ] Drawdown — Max peak-to-trough in equity curve
-- [ ] Return ($) — Sum of all P/L
-- [ ] Return (%) — Total P/L / starting balance
-- [ ] Efficiency — % of trades with positive comments
-- [ ] Sharpe Ratio — Mean(returns) / StdDev(returns)
-- [ ] Sortino Ratio — Mean(returns) / StdDev(losing returns)
-- [ ] Calmar Ratio — Total return / Max drawdown
-- [ ] Gain to Pain — Total return / Sum(abs(losses))
+- [x] Avg Winner / Avg Loser — Mean P/L of winners / losers
+- [x] Expectancy — Total P/L / Total trades
+- [x] Profit Factor — Sum(wins) / Sum(losses)
+- [x] Drawdown — Max peak-to-trough in equity curve
+- [x] Return ($) — Sum of all P/L
+- [x] Return (%) — Total P/L / starting balance
+- [x] Efficiency — % of trades with positive comments
+- [x] Sharpe Ratio — Mean(returns) / StdDev(returns)
+- [x] Sortino Ratio — Mean(returns) / StdDev(losing returns)
+- [x] Calmar Ratio — Total return / Max drawdown
+- [x] Gain to Pain — Total return / Sum(abs(losses))
 
 ### Needing new optional fields in Journal:
-- [ ] Add optional fields to JournalModal: Stop Loss, Take Profit, Trade High, Trade Low
-- [ ] Add fields to JournalEntry Prisma model
+- [x] Add optional fields to JournalModal: Stop Loss, Take Profit, Trade High, Trade Low
+- [x] Add fields to JournalEntry Prisma model
 - [ ] MAE / MFE — Highest/lowest price during trade
 - [ ] R-Multiple — Stop-loss price at entry
 - [ ] RRR Planned — Stop-loss + take-profit at entry
@@ -163,10 +163,10 @@
 - [ ] Trade Price % — Entry + exit prices (already have)
 
 ### Integration:
-- [ ] Compute "NOW" metrics server-side in `/api/analytics/*` endpoints
-- [ ] Display as stat cards + charts in Analytics dashboard
-- [ ] Metrics needing SL/TP show "N/A" when data not available
-- [ ] Build passes
+- [x] Compute "NOW" metrics server-side in `/api/analytics/*` endpoints
+- [x] Display as stat cards + charts in Analytics dashboard
+- [x] Metrics needing SL/TP show "N/A" when data not available
+- [x] Build passes
 
 **Files:** `lib/analytics/`, `app/(dashboard)/analytics/page.tsx`, `components/JournalModal.tsx`, `prisma/schema.prisma`, `/api/analytics/*`
 
@@ -249,7 +249,7 @@
 | 4 | Diary (Post-Session + Notes) | DONE | High | Phase 1 |
 | 5 | Filter Bar + Dark Mode + Account | DONE | Medium | Phase 1 |
 | 6 | Chart Lab + Calendar | DONE | Medium | Phase 1 |
-| 7 | Analytics Metrics | TODO | Medium | Independent |
+| 7 | Analytics Metrics | **DONE** | Medium | Independent |
 | 8 | Chartbook in History | TODO | Low | Phase 3 |
 | 9 | Strategies Simplification | TODO | Low | Independent |
 | 10 | Milestones / Gamification | TODO | Low | Phase 4 |

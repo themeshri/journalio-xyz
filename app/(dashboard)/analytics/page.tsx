@@ -440,6 +440,88 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Key Metrics */}
+      {(() => {
+        const winners = completedTrades.filter((t) => t.profitLoss > 0)
+        const losers = completedTrades.filter((t) => t.profitLoss < 0)
+        const avgWinner = winners.length > 0 ? winners.reduce((s, t) => s + t.profitLoss, 0) / winners.length : 0
+        const avgLoser = losers.length > 0 ? losers.reduce((s, t) => s + t.profitLoss, 0) / losers.length : 0
+        const totalCompletedPL = completedTrades.reduce((s, t) => s + t.profitLoss, 0)
+        const expectancy = completedTrades.length > 0 ? totalCompletedPL / completedTrades.length : 0
+        const winSum = winners.reduce((s, t) => s + t.profitLoss, 0)
+        const lossSum = Math.abs(losers.reduce((s, t) => s + t.profitLoss, 0))
+        const profitFactor = lossSum > 0 ? winSum / lossSum : (winSum > 0 ? Infinity : 0)
+
+        // Max drawdown from cumulative P/L
+        let peak = 0
+        let maxDD = 0
+        let cumPL = 0
+        for (const t of completedTrades) {
+          cumPL += t.profitLoss
+          if (cumPL > peak) peak = cumPL
+          const dd = peak - cumPL
+          if (dd > maxDD) maxDD = dd
+        }
+
+        // Returns array for Sharpe/Sortino
+        const returns = completedTrades.map((t) => t.profitLoss)
+        const n = returns.length
+        const meanRet = n > 0 ? returns.reduce((s, r) => s + r, 0) / n : 0
+        const variance = n > 1 ? returns.reduce((s, r) => s + (r - meanRet) ** 2, 0) / (n - 1) : 0
+        const stdDev = Math.sqrt(variance)
+        const annFactor = Math.sqrt(Math.min(n, 100))
+        const sharpe = stdDev > 0 ? (meanRet / stdDev) * annFactor : 0
+
+        // Sortino: only downside deviation
+        const negReturns = returns.filter((r) => r < 0)
+        const downVariance = negReturns.length > 1
+          ? negReturns.reduce((s, r) => s + (r - meanRet) ** 2, 0) / (negReturns.length - 1)
+          : 0
+        const downDev = Math.sqrt(downVariance)
+        const sortino = downDev > 0 ? (meanRet / downDev) * annFactor : 0
+
+        // Calmar: total return / max drawdown
+        const calmar = maxDD > 0 ? totalCompletedPL / maxDD : 0
+
+        // Gain to Pain: total return / sum(abs(losses))
+        const gainToPain = lossSum > 0 ? totalCompletedPL / lossSum : (totalCompletedPL > 0 ? Infinity : 0)
+
+        const metrics = [
+          { label: 'Avg Winner', value: avgWinner, isCurrency: true },
+          { label: 'Avg Loser', value: avgLoser, isCurrency: true },
+          { label: 'Expectancy', value: expectancy, isCurrency: true },
+          { label: 'Profit Factor', value: profitFactor, isCurrency: false },
+          { label: 'Max Drawdown', value: -maxDD, isCurrency: true },
+          { label: 'Sharpe Ratio', value: sharpe, isCurrency: false },
+          { label: 'Sortino Ratio', value: sortino, isCurrency: false },
+          { label: 'Calmar Ratio', value: calmar, isCurrency: false },
+          { label: 'Gain to Pain', value: gainToPain, isCurrency: false },
+        ]
+
+        return completedTrades.length > 0 ? (
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mb-8">
+            {metrics.map((m) => (
+              <div key={m.label} className="rounded-lg border bg-card p-3 text-center">
+                <div
+                  className={`text-sm font-mono tabular-nums font-semibold ${
+                    m.isCurrency
+                      ? m.value >= 0 ? 'text-emerald-600' : 'text-red-600'
+                      : ''
+                  }`}
+                >
+                  {m.value === Infinity
+                    ? '\u221e'
+                    : m.isCurrency
+                      ? `${m.value >= 0 ? '+' : ''}${formatValue(m.value)}`
+                      : m.value.toFixed(2)}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        ) : null
+      })()}
+
       {/* Tab navigation */}
       <div className="flex gap-1 mb-8 text-xs">
         {([
