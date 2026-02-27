@@ -44,6 +44,7 @@ import {
   deleteRule,
 } from '@/lib/rules'
 import { useWallet } from '@/lib/wallet-context'
+import { safeLocalStorage } from '@/lib/local-storage'
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -442,12 +443,14 @@ function StrategyCard({
   onArchive,
   onDelete,
   disabled,
+  advancedMode,
 }: {
   strategy: Strategy
   onEdit: () => void
   onArchive: () => void
   onDelete: () => void
   disabled: boolean
+  advancedMode: boolean
 }) {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const totalRules = strategy.ruleGroups.reduce((acc, g) => acc + g.rules.length, 0)
@@ -526,41 +529,45 @@ function StrategyCard({
         <p className="text-xs text-muted-foreground mb-2">{strategy.description}</p>
       )}
 
-      <div className="text-xs text-muted-foreground mb-2">
-        {strategy.ruleGroups.length} group{strategy.ruleGroups.length !== 1 ? 's' : ''},{' '}
-        {totalRules} rule{totalRules !== 1 ? 's' : ''} ({requiredRules} required)
-      </div>
+      {advancedMode && (
+        <>
+          <div className="text-xs text-muted-foreground mb-2">
+            {strategy.ruleGroups.length} group{strategy.ruleGroups.length !== 1 ? 's' : ''},{' '}
+            {totalRules} rule{totalRules !== 1 ? 's' : ''} ({requiredRules} required)
+          </div>
 
-      <Accordion type="multiple" className="w-full">
-        {strategy.ruleGroups
-          .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((group) => (
-            <AccordionItem key={group.id} value={group.id} className="border-b-0">
-              <AccordionTrigger className="py-1.5 text-xs font-medium text-muted-foreground hover:no-underline">
-                {group.name} ({group.rules.length})
-              </AccordionTrigger>
-              <AccordionContent className="pb-2">
-                <ul className="space-y-0.5">
-                  {group.rules
-                    .sort((a, b) => a.sortOrder - b.sortOrder)
-                    .map((rule) => (
-                      <li key={rule.id} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className={`mt-0.5 ${rule.isRequired ? 'text-foreground' : 'text-muted-foreground/50'}`}>
-                          {rule.isRequired ? '●' : '○'}
-                        </span>
-                        <span>
-                          {rule.text}
-                          {!rule.isRequired && (
-                            <span className="text-muted-foreground/50 ml-1">(optional)</span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-      </Accordion>
+          <Accordion type="multiple" className="w-full">
+            {strategy.ruleGroups
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((group) => (
+                <AccordionItem key={group.id} value={group.id} className="border-b-0">
+                  <AccordionTrigger className="py-1.5 text-xs font-medium text-muted-foreground hover:no-underline">
+                    {group.name} ({group.rules.length})
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-2">
+                    <ul className="space-y-0.5">
+                      {group.rules
+                        .sort((a, b) => a.sortOrder - b.sortOrder)
+                        .map((rule) => (
+                          <li key={rule.id} className="text-sm text-muted-foreground flex items-start gap-2">
+                            <span className={`mt-0.5 ${rule.isRequired ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                              {rule.isRequired ? '●' : '○'}
+                            </span>
+                            <span>
+                              {rule.text}
+                              {!rule.isRequired && (
+                                <span className="text-muted-foreground/50 ml-1">(optional)</span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+          </Accordion>
+        </>
+      )}
     </div>
   )
 }
@@ -572,6 +579,9 @@ export default function StrategiesPage() {
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [rules, setRules] = useState<GlobalRule[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [advancedMode, setAdvancedMode] = useState(() => {
+    return safeLocalStorage.getItem<boolean>('journalio_strategies_advanced', false)
+  })
 
   // Form state
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -778,11 +788,35 @@ export default function StrategiesPage() {
             Define trading strategies with organized rule groups and checklists
           </p>
         </div>
-        {!showForm && (
-          <Button size="sm" onClick={openAdd}>
-            + New Strategy
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+            <span>Advanced</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={advancedMode}
+              onClick={() => {
+                const next = !advancedMode
+                setAdvancedMode(next)
+                safeLocalStorage.setItem('journalio_strategies_advanced', next)
+              }}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors ${
+                advancedMode ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span
+                className={`pointer-events-none block h-3.5 w-3.5 rounded-full bg-background shadow-sm transition-transform ${
+                  advancedMode ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </label>
+          {!showForm && (
+            <Button size="sm" onClick={openAdd}>
+              + New Strategy
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Strategy Form ── */}
@@ -812,30 +846,34 @@ export default function StrategiesPage() {
             className="resize-none"
           />
 
-          <Separator />
+          {advancedMode && (
+            <>
+              <Separator />
 
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground mb-2 block">Rule Groups</Label>
-            <div className="space-y-3">
-              {formGroups.map((group) => (
-                <RuleGroupEditor
-                  key={group.id}
-                  group={group}
-                  onUpdate={(g) => updateFormGroup(group.id, g)}
-                  onRemove={() => removeGroup(group.id)}
-                />
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addGroup}
-              className="mt-3 text-xs"
-            >
-              + Add Rule Group
-            </Button>
-          </div>
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground mb-2 block">Rule Groups</Label>
+                <div className="space-y-3">
+                  {formGroups.map((group) => (
+                    <RuleGroupEditor
+                      key={group.id}
+                      group={group}
+                      onUpdate={(g) => updateFormGroup(group.id, g)}
+                      onRemove={() => removeGroup(group.id)}
+                    />
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addGroup}
+                  className="mt-3 text-xs"
+                >
+                  + Add Rule Group
+                </Button>
+              </div>
+            </>
+          )}
 
           <div className="flex gap-2 pt-2">
             <Button size="sm" onClick={handleSave} disabled={!formName.trim()}>
@@ -870,6 +908,7 @@ export default function StrategiesPage() {
             onArchive={() => toggleArchive(s.id)}
             onDelete={() => handleDelete(s.id)}
             disabled={showForm}
+            advancedMode={advancedMode}
           />
         ))}
       </div>
@@ -890,6 +929,7 @@ export default function StrategiesPage() {
                 onArchive={() => toggleArchive(s.id)}
                 onDelete={() => handleDelete(s.id)}
                 disabled={showForm}
+                advancedMode={advancedMode}
               />
             ))}
           </div>

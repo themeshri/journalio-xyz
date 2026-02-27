@@ -186,14 +186,14 @@
 
 ---
 
-## Phase 9: Strategies Simplification
+## Phase 9: Strategies Simplification [DONE]
 
-- [ ] Default view: simple mode — just Setup Name + Description + Icon/Color
-- [ ] "Advanced Mode" toggle at top of strategies page
-- [ ] Advanced ON: show full rule groups, conditions, showWhen logic (current UI)
-- [ ] Advanced OFF: hide rule groups section entirely
-- [ ] Persist toggle preference in localStorage via `safeLocalStorage`
-- [ ] Build passes
+- [x] Default view: simple mode — just Setup Name + Description + Icon/Color
+- [x] "Advanced Mode" toggle at top of strategies page
+- [x] Advanced ON: show full rule groups, conditions, showWhen logic (current UI)
+- [x] Advanced OFF: hide rule groups section entirely (both cards and form)
+- [x] Persist toggle preference in localStorage via `safeLocalStorage`
+- [x] Build passes
 
 **Files:** `app/(dashboard)/strategies/page.tsx`
 
@@ -251,6 +251,6 @@
 | 6 | Chart Lab + Calendar | DONE | Medium | Phase 1 |
 | 7 | Analytics Metrics | **DONE** | Medium | Independent |
 | 8 | Chartbook in History | **DONE** | Low | Phase 3 |
-| 9 | Strategies Simplification | TODO | Low | Independent |
+| 9 | Strategies Simplification | **DONE** | Low | Independent |
 | 10 | Milestones / Gamification | TODO | Low | Phase 4 |
 | 11 | Design Polish | TODO | Do last | All phases |
