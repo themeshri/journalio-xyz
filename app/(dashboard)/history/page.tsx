@@ -26,6 +26,7 @@ import { Separator } from '@/components/ui/separator'
 import { TableRowsSkeleton } from '@/components/skeletons'
 
 import { loadPreSessions, type PreSessionData } from '@/lib/pre-sessions'
+import { loadPostSessions, type PostSessionData } from '@/lib/post-sessions'
 import { loadJournals, type JournalRecord } from '@/lib/journals'
 import { formatValue } from '@/lib/formatters'
 
@@ -412,28 +413,141 @@ function JournalDetailDialog({
   )
 }
 
+// --- Post-Session Detail Dialog ---
+
+function PostSessionDetailDialog({
+  session,
+  onClose,
+}: {
+  session: PostSessionData | null
+  onClose: () => void
+}) {
+  if (!session) return null
+
+  return (
+    <Dialog open={!!session} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Post-Session — {formatDate(session.date)}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          <DetailRow label="Rating">
+            {session.rating > 0 ? (
+              <span className="font-mono tabular-nums font-medium">{session.rating}/10</span>
+            ) : (
+              '-'
+            )}
+          </DetailRow>
+
+          <Separator />
+
+          <DetailRow label="Emotional State">{session.emotionalState || '-'}</DetailRow>
+
+          <Separator />
+
+          {session.whatWentWell && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">What Went Well</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{session.whatWentWell}</p>
+            </div>
+          )}
+
+          {session.whatWentWrong && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">What Went Wrong</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{session.whatWentWrong}</p>
+            </div>
+          )}
+
+          {session.keyLessons && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">Key Lessons</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{session.keyLessons}</p>
+            </div>
+          )}
+
+          <Separator />
+
+          <DetailRow label="Rules Followed">
+            {session.rulesFollowed === true ? (
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Yes</Badge>
+            ) : session.rulesFollowed === false ? (
+              <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">No</Badge>
+            ) : (
+              '-'
+            )}
+          </DetailRow>
+          {session.rulesNotes && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">Rules Notes</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{session.rulesNotes}</p>
+            </div>
+          )}
+
+          {session.planForTomorrow && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-sm font-medium mb-2">Plan for Tomorrow</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{session.planForTomorrow}</p>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // --- Sub-tab components ---
 
-function PreSessionsTab() {
-  const [sessions, setSessions] = useState<PreSessionFull[]>([])
+type SessionRow = {
+  date: string
+  type: 'pre' | 'post'
+  preSession?: PreSessionFull
+  postSession?: PostSessionData
+}
+
+function SessionsTab() {
+  const [preSessions, setPreSessions] = useState<PreSessionFull[]>([])
+  const [postSessions, setPostSessions] = useState<PostSessionData[]>([])
   const [loaded, setLoaded] = useState(false)
-  const [selectedSession, setSelectedSession] = useState<PreSessionFull | null>(null)
+  const [selectedPreSession, setSelectedPreSession] = useState<PreSessionFull | null>(null)
+  const [selectedPostSession, setSelectedPostSession] = useState<PostSessionData | null>(null)
 
   useEffect(() => {
-    loadPreSessions().then((data) => {
-      setSessions(data.sort((a, b) => b.date.localeCompare(a.date)))
+    Promise.all([loadPreSessions(), loadPostSessions()]).then(([pre, post]) => {
+      setPreSessions(pre.sort((a, b) => b.date.localeCompare(a.date)))
+      setPostSessions(post.sort((a, b) => b.date.localeCompare(a.date)))
       setLoaded(true)
     })
   }, [])
 
+  const rows = useMemo(() => {
+    const result: SessionRow[] = []
+    const preByDate = new Map(preSessions.map(s => [s.date, s]))
+    const postByDate = new Map(postSessions.map(s => [s.date, s]))
+    const allDates = new Set([...preByDate.keys(), ...postByDate.keys()])
+    const sorted = Array.from(allDates).sort((a, b) => b.localeCompare(a))
+
+    for (const date of sorted) {
+      const pre = preByDate.get(date)
+      const post = postByDate.get(date)
+      if (pre) result.push({ date, type: 'pre', preSession: pre })
+      if (post) result.push({ date, type: 'post', postSession: post })
+    }
+    return result
+  }, [preSessions, postSessions])
+
   if (!loaded) {
-    return <div className="py-4"><TableRowsSkeleton rows={3} cols={9} /></div>
+    return <div className="py-4"><TableRowsSkeleton rows={3} cols={7} /></div>
   }
 
-  if (sessions.length === 0) {
+  if (rows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-4">
-        No pre-session entries yet. Complete your first pre-session to see
+        No session entries yet. Complete your first pre-session or post-session to see
         history here.
       </p>
     )
@@ -441,93 +555,139 @@ function PreSessionsTab() {
 
   return (
     <>
+      <div className="flex items-center gap-3 mt-4 mb-4 text-sm text-muted-foreground">
+        <span>{preSessions.length} pre-session{preSessions.length !== 1 ? 's' : ''}</span>
+        <span>&middot;</span>
+        <span>{postSessions.length} post-session{postSessions.length !== 1 ? 's' : ''}</span>
+      </div>
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[100px]">Date</TableHead>
-              <TableHead className="min-w-[70px]">Time</TableHead>
-              <TableHead className="text-center min-w-[60px]">Energy</TableHead>
+              <TableHead className="min-w-[80px]">Type</TableHead>
               <TableHead className="min-w-[100px]">Emotional State</TableHead>
-              <TableHead className="text-center min-w-[80px]">Sentiment</TableHead>
-              <TableHead className="text-center min-w-[80px]">SOL Trend</TableHead>
-              <TableHead className="text-center min-w-[70px]">Max Trades</TableHead>
-              <TableHead className="min-w-[70px]">Max Loss</TableHead>
-              <TableHead className="min-w-[150px]">Session Intent</TableHead>
+              <TableHead className="text-center min-w-[60px]">Energy / Rating</TableHead>
+              <TableHead className="text-center min-w-[80px]">Sentiment / Rules</TableHead>
+              <TableHead className="min-w-[200px]">Summary</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sessions.map((s) => (
-              <TableRow
-                key={s.date}
-                className="cursor-pointer"
-                onClick={() => setSelectedSession(s)}
-              >
-                <TableCell className="text-sm font-mono tabular-nums">
-                  {formatDate(s.date)}
-                </TableCell>
-                <TableCell className="text-sm font-mono tabular-nums text-muted-foreground">
-                  {formatTime(s.time)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <span
-                    className={`inline-flex items-center justify-center w-7 h-7 rounded-md text-xs font-semibold border ${energyColor(
-                      s.energyLevel
-                    )}`}
+            {rows.map((row, i) => {
+              if (row.type === 'pre' && row.preSession) {
+                const s = row.preSession
+                return (
+                  <TableRow
+                    key={`pre-${s.date}-${i}`}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedPreSession(s)}
                   >
-                    {s.energyLevel}
-                  </span>
-                </TableCell>
-                <TableCell className="text-sm">
-                  {s.emotionalState || '-'}
-                </TableCell>
-                <TableCell className="text-center">
-                  {s.marketSentiment ? (
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium border ${sentimentColor(
-                        s.marketSentiment
-                      )}`}
+                    <TableCell className="text-sm font-mono tabular-nums">
+                      {formatDate(s.date)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-xs">
+                        Pre
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {s.emotionalState || '-'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span
+                        className={`inline-flex items-center justify-center w-7 h-7 rounded-md text-xs font-semibold border ${energyColor(
+                          s.energyLevel
+                        )}`}
+                      >
+                        {s.energyLevel}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {s.marketSentiment ? (
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium border ${sentimentColor(
+                            s.marketSentiment
+                          )}`}
+                        >
+                          {capitalize(s.marketSentiment)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell
+                      className="text-sm text-muted-foreground max-w-[250px]"
+                      title={s.sessionIntent}
                     >
-                      {capitalize(s.marketSentiment)}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">-</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-center">
-                  {s.solTrend ? (
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium border ${solTrendColor(
-                        s.solTrend
-                      )}`}
+                      {s.sessionIntent ? truncateText(s.sessionIntent, 60) : '-'}
+                    </TableCell>
+                  </TableRow>
+                )
+              }
+
+              if (row.type === 'post' && row.postSession) {
+                const s = row.postSession
+                return (
+                  <TableRow
+                    key={`post-${s.date}-${i}`}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedPostSession(s)}
+                  >
+                    <TableCell className="text-sm font-mono tabular-nums">
+                      {formatDate(s.date)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-xs">
+                        Post
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {s.emotionalState || '-'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {s.rating > 0 ? (
+                        <span className="font-mono tabular-nums text-sm font-medium">{s.rating}/10</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {s.rulesFollowed === true ? (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs">
+                          Rules ✓
+                        </Badge>
+                      ) : s.rulesFollowed === false ? (
+                        <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30 text-xs">
+                          Rules ✗
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell
+                      className="text-sm text-muted-foreground max-w-[250px]"
+                      title={s.whatWentWell}
                     >
-                      {capitalize(s.solTrend)}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">-</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-center font-mono tabular-nums text-sm">
-                  {s.maxTrades || '-'}
-                </TableCell>
-                <TableCell className="text-sm font-mono tabular-nums">
-                  {s.maxLoss || '-'}
-                </TableCell>
-                <TableCell
-                  className="text-sm text-muted-foreground max-w-[200px]"
-                  title={s.sessionIntent}
-                >
-                  {s.sessionIntent ? truncateText(s.sessionIntent, 50) : '-'}
-                </TableCell>
-              </TableRow>
-            ))}
+                      {s.whatWentWell ? truncateText(s.whatWentWell, 60) : s.keyLessons ? truncateText(s.keyLessons, 60) : '-'}
+                    </TableCell>
+                  </TableRow>
+                )
+              }
+
+              return null
+            })}
           </TableBody>
         </Table>
       </div>
 
       <PreSessionDetailDialog
-        session={selectedSession}
-        onClose={() => setSelectedSession(null)}
+        session={selectedPreSession}
+        onClose={() => setSelectedPreSession(null)}
+      />
+      <PostSessionDetailDialog
+        session={selectedPostSession}
+        onClose={() => setSelectedPostSession(null)}
       />
     </>
   )
@@ -1113,7 +1273,7 @@ export default function HistoryPage() {
   const { allTrades, isAnyLoading, hasActiveWallets, refreshAll } = useWallet()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const activeTab = searchParams.get('tab') || 'pre-sessions'
+  const activeTab = searchParams.get('tab') || 'sessions'
 
   function handleTabChange(value: string) {
     router.replace(`/history?tab=${value}`, { scroll: false })
@@ -1127,15 +1287,15 @@ export default function HistoryPage() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="pre-sessions">Pre-Sessions</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="journal">Journal</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="missed-trades">Missed Trades</TabsTrigger>
           <TabsTrigger value="chartbook">Chartbook</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pre-sessions">
-          <PreSessionsTab />
+        <TabsContent value="sessions">
+          <SessionsTab />
         </TabsContent>
 
         <TabsContent value="journal">
