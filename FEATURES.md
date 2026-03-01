@@ -3,7 +3,7 @@
 <!-- This file is auto-timestamped on every commit via .git/hooks/post-commit. -->
 <!-- When adding or changing features, update the relevant section below. -->
 
-Last updated: 2026-02-22
+Last updated: 2026-03-01
 
 ---
 
@@ -11,16 +11,18 @@ Last updated: 2026-02-22
 
 1. [Overview Dashboard](#1-overview-dashboard)
 2. [Pre-Session Checklist](#2-pre-session-checklist)
-3. [Trade Journal](#3-trade-journal)
-4. [History](#4-history)
-5. [Analytics](#5-analytics)
-6. [Missed Trades](#6-missed-trades)
-7. [Strategies](#7-strategies)
-8. [Wallet Management](#8-wallet-management)
-9. [Settings](#9-settings)
-10. [API Endpoints](#10-api-endpoints)
-11. [Core Libraries](#11-core-libraries)
-12. [Data Storage](#12-data-storage)
+3. [Post-Session Review](#3-post-session-review)
+4. [Notes](#4-notes)
+5. [Trade Journal](#5-trade-journal)
+6. [History](#6-history)
+7. [Analytics](#7-analytics)
+8. [Missed Trades](#8-missed-trades)
+9. [Strategies](#9-strategies)
+10. [Wallet Management](#10-wallet-management)
+11. [Settings](#11-settings)
+12. [API Endpoints](#12-api-endpoints)
+13. [Core Libraries](#13-core-libraries)
+14. [Data Storage](#14-data-storage)
 
 ---
 
@@ -28,20 +30,57 @@ Last updated: 2026-02-22
 
 **Route:** `/`
 
+### Daily Checklist (Gamified)
+
 | Feature | Description |
 |---------|-------------|
-| Stats row | Total cycles, win rate, total P/L, active (open) cycles |
-| Mini P/L calendar | Last 7 days with color-coded daily P/L bars and trade counts |
-| Hesitation cost card | Missed profit from papered plays, would-be win rate, ratio to actual trades |
-| Recent trades table | Last 10 raw transactions — time, type (buy/sell), from/to tokens, USD value, DEX |
+| Progress bar | Visual completion percentage (0/3 to 3/3) with emerald fill |
+| Pre-Session item | Done/to-do status, links to `/diary/pre-session` |
+| Post-Session item | Done/to-do status, links to `/diary/post-session` |
+| Journals item | Shows "X of Y trades" journaled from last 48h, links to journal or opens first unjournaled trade |
+| All done state | Emerald accent with "All caught up" message when all 3 complete |
 
-**Data sources:** `useWallet()` hook (all active wallets), `/api/papered-plays` (hesitation cost).
+### KPI Cards (7 metrics)
+
+| Card | Description |
+|------|-------------|
+| Net P/L | Total profit/loss (emerald/red) |
+| Win Rate | Percentage of winning trades |
+| Profit Factor | Gross profit / gross loss |
+| Avg P/L | Average per trade |
+| Total Trades | Completed count + active indicator |
+| Sharpe Ratio | Risk-adjusted return |
+| Streak | Current journal streak with fire emoji, best streak |
+
+### Activity Calendar (GitHub-style)
+
+| Feature | Description |
+|---------|-------------|
+| Yearly heatmap | 52×7 grid showing trading activity for the year |
+| Scoring (0-5) | +1 traded, +1 pre-session, +1 post-session, +1 all journaled, +1 rule adherence ≥70% |
+| Color scale | Zinc (no activity) → Emerald shades (more complete) |
+| Hover tooltips | Date, trade count, P/L, pre/post session status, journal %, rules %, score |
+| Info tooltip | Explains how scoring works |
+| Year navigation | Previous/next year arrows |
+| Stats | Active days count + perfect days count |
+
+### Other Sections
+
+| Feature | Description |
+|---------|-------------|
+| Recent Cycles | Last 8 completed trades with journal status, click to journal |
+| Strategy Summary | Best performing strategy, most used, rule compliance bar |
+| Mistakes Summary | Rolling discipline score (last 20), top mistake, emotion tags |
+| Quick Stats Bar | Avg win/loss, avg hold, best hour, best/worst trade, top token, win/loss streak, journal streak, hesitation cost |
+| Time Range Filter | 1D/7D/30D/90D/All presets + custom date range picker (top right) |
+
+**Data sources:** `useWallet()` hook (all active wallets), `useMetadata()` (pre/post session status, strategies, trade comments, missed trades), `/api/pre-sessions` and `/api/post-sessions` (yearly data for activity calendar).
 
 ---
 
 ## 2. Pre-Session Checklist
 
-**Route:** `/pre-session`
+**Route:** `/diary/pre-session`
 
 | Feature | Description |
 |---------|-------------|
@@ -52,12 +91,48 @@ Last updated: 2026-02-22
 | Session limits | Inputs for max trades, max loss ($), time limit, default position size, open-positions toggle |
 | Market context | Sentiment buttons (Bullish/Neutral/Bearish), SOL trend (Up/Sideways/Down), major-news toggle with note, normal-volume toggle |
 | Rules reminder | Checkbox list of global rules from Strategies page; links to Strategies if none exist |
+| Timezone-aware | Uses user's configured timezone + trading start time to determine "today" |
 
-**Storage:** `journalio_pre_session_{YYYY-MM-DD}` and `journalio_pre_sessions` index in localStorage.
+**Storage:** `PreSession` model in database via `/api/pre-sessions`.
 
 ---
 
-## 3. Trade Journal
+## 3. Post-Session Review
+
+**Route:** `/diary/post-session`
+
+| Feature | Description |
+|---------|-------------|
+| Overall rating | 1-10 scale with visual buttons |
+| Emotional state | Dropdown: Calm, Satisfied, Anxious, Frustrated, Euphoric, Exhausted, Neutral |
+| What went well | Textarea for best decisions |
+| What went wrong | Textarea for mistakes/improvements |
+| Key lessons | Textarea for learnings |
+| Rules followed | Yes/No toggle with notes textarea |
+| Plan for tomorrow | Textarea for next session planning |
+| Auto-load | Loads existing entry for today if available |
+| Timezone-aware | Uses user's configured timezone + trading start time to determine "today" |
+
+**Storage:** `PostSession` model in database via `/api/post-sessions`.
+
+---
+
+## 4. Notes
+
+**Route:** `/diary/notes`
+
+| Feature | Description |
+|---------|-------------|
+| Note list | Searchable list with tag filtering |
+| Rich editor | Title, content textarea, tags |
+| Tags | JSON array of string tags per note |
+| CRUD | Full create/read/update/delete via API |
+
+**Storage:** `Note` model in database via `/api/notes`.
+
+---
+
+## 5. Trade Journal
 
 **Route:** `/trade-journal`
 
@@ -81,14 +156,15 @@ Last updated: 2026-02-22
 | Emotional state | Dropdown (Confident, Anxious, FOMO, Revenge, Neutral) + 11 emoji emotion-tag buttons (multi-select) |
 | Entry analysis | Entry comment dropdown (positive/neutral/negative tags), buy notes textarea, entry rating 1–10, exit plan textarea |
 | Exit analysis | Exit rating 1–10, exit comment dropdown, "followed exit rule?" Yes/No, 13 mistake checkboxes, management comment dropdown, sell notes textarea |
+| Advanced fields | Stop loss, take profit, trade high, trade low (optional numeric inputs) |
 | Attachment | Drag-drop or click image upload (max 5 MB), preview + remove |
 | Save options | Save, Save & Next (auto-advances to next unjournaled trade) |
 
-**Storage:** `journalio_journal_{wallet}_{mint}_{tradeNum}` in localStorage.
+**Storage:** `JournalEntry` model in database via `/api/journals`.
 
 ---
 
-## 4. History
+## 6. History
 
 **Route:** `/history`
 
@@ -97,10 +173,11 @@ Last updated: 2026-02-22
 | Pre-Sessions | Table (date, time, energy badge, emotion, sentiment, SOL trend, max trades, max loss, intent); click row → detail dialog |
 | Journal | Table (token, trade #, strategy, emotion badge, buy rating, exit plan, sell rating, followed exit badge, mistakes); click row → detail dialog |
 | Transactions | Raw transaction table (paginated, 50/page) with refresh button for force re-fetch |
+| Chartbook | Image gallery of trade screenshots/attachments from journal entries |
 
 ---
 
-## 5. Analytics
+## 7. Analytics
 
 **Route:** `/analytics`
 
@@ -125,11 +202,11 @@ Last updated: 2026-02-22
 | Discipline vs P/L | Composed chart | Dual-axis overlay — equity curve (left) + discipline score area (right) |
 | What-If scenario | Collapsible | Filters: exclude undisciplined, specific comments, emotions, strategies; actual vs what-if comparison cards (trades, P/L, WR, PF, avg P/L); impact summary; equity curve comparison |
 
-**Data sources:** `useWallet()` → `flattenedTrades`, journal data from localStorage, trade comments from localStorage, papered plays from API, strategies from localStorage. All analytics computed in `lib/analytics.ts`.
+**Data sources:** `useWallet()` → `flattenedTrades`, journal data from DB, trade comments from DB, papered plays from API, strategies from DB. All analytics computed in `lib/analytics/` modules.
 
 ---
 
-## 6. Missed Trades
+## 8. Missed Trades
 
 **Route:** `/missed-trades`
 
@@ -150,7 +227,7 @@ Last updated: 2026-02-22
 
 ---
 
-## 7. Strategies
+## 9. Strategies
 
 **Route:** `/strategies`
 
@@ -161,14 +238,15 @@ Last updated: 2026-02-22
 | Templates | 3 one-click templates: Solana Momentum (high-volume meme plays), Sniper Entry (fresh deployments), Swing / Narrative Play (catalyst-driven) |
 | Strategy cards | Left-border colored by strategy; icon + name + archived badge; description; group/rule counts; accordion expanding to show rules |
 | Archive/restore | Toggle strategy between active and archived |
+| Advanced mode | Toggle to show/hide advanced strategy editing features |
 | Auto-migration | Detects old flat format (`entryConditions/exitConditions/stopLossConditions`) and auto-converts to rule groups on first load |
 | Global rules | Separate CRUD section; these rules appear in the Pre-Session checklist; each rule has text + optional rating |
 
-**Storage:** `journalio_strategies` and `journalio_rules` in localStorage. Shared interfaces in `lib/strategies.ts`.
+**Storage:** `Strategy` and `GlobalRule` models in database via `/api/strategies` and `/api/rules`.
 
 ---
 
-## 8. Wallet Management
+## 10. Wallet Management
 
 **Route:** `/wallet-management`
 
@@ -184,7 +262,7 @@ Last updated: 2026-02-22
 
 ---
 
-## 9. Settings
+## 11. Settings
 
 **Route:** `/settings`
 
@@ -193,26 +271,50 @@ Last updated: 2026-02-22
 | Profile | Display name input, email (read-only); requires auth |
 | Transaction limit | Dropdown: 25 / 50 / 100 / 200 |
 | Show USD values | Toggle |
-| Journal view mode | Merged List / By Wallet buttons |
-| Trade comments library | Tabbed by category (Entry/Exit/Management); each comment has label + rating (positive/neutral/negative); full CRUD; "Reset to Default" with confirmation |
-| Save | Syncs to `/api/settings` if authenticated, otherwise localStorage only |
+| Timezone | Searchable combobox with all IANA timezones; pre-filled with browser-detected timezone; controls when trading day starts |
+| Trading start time | Time input (HH:mm); determines when pre-session/post-session resets for a new day |
+| Journal view mode | Merged List / By Wallet buttons (localStorage) |
+| Trade comments library | Tabbed by category (Entry/Exit/Management); each comment has label + rating (positive/neutral/negative); full CRUD |
+| Reset to default | Confirmation dialog, resets all settings including timezone |
+| Save | Syncs to `/api/settings` if authenticated |
 
-**Storage:** `UserSettings` model (DB) for auth users; `journalio_trade_comments` and `journalio_journal_view_mode` in localStorage.
+**Storage:** `UserSettings` model (DB) for auth users; `journalio_journal_view_mode` in localStorage.
 
 ---
 
-## 10. API Endpoints
+## 12. API Endpoints
 
 ### Active
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
+| GET | `/api/dashboard?addresses=&chains=&dexes=` | No | Combined: trades, strategies, journals, comments, streak, pre/post session status, missed trades |
 | GET | `/api/trades?address=&chain=&refresh=` | No | Fetch trades with 5-min DB cache, stale fallback on API failure |
-| GET | `/api/papered-plays?missReason=&strategyId=&outcome=&from=&to=` | No | List missed trades with optional filters |
+| GET | `/api/analytics/overview?...&startDate=&endDate=` | No | Cumulative P/L, duration buckets, trading hours |
+| GET | `/api/analytics/calendar?...&year=&month=` | No | Monthly P/L calendar data |
+| GET | `/api/analytics/time?...&startDate=&endDate=` | No | Hourly, day-of-week, session performance |
+| GET | `/api/analytics/missed?...` | No | Missed trade stats + hesitation cost |
+| POST | `/api/analytics/discipline?...` | No | Comment performance, efficiency, what-if analysis |
+| POST | `/api/analytics/strategy?...` | No | Strategy performance, rule impact |
+| GET | `/api/papered-plays` | No | List missed trades |
 | POST | `/api/papered-plays` | No | Create missed trade (requires `coinName`) |
-| PATCH | `/api/papered-plays/[id]` | No | Update any field on a missed trade |
-| DELETE | `/api/papered-plays/[id]` | No | Delete a missed trade |
-| GET/PATCH | `/api/settings` | Session | User preferences |
+| PATCH | `/api/papered-plays/[id]` | No | Update missed trade |
+| DELETE | `/api/papered-plays/[id]` | No | Delete missed trade |
+| GET/POST | `/api/rules` | No | List/create global rules |
+| PATCH/DELETE | `/api/rules/[id]` | No | Update/delete global rule |
+| GET/POST | `/api/trade-comments` | No | List (auto-seeds defaults)/create trade comments |
+| PATCH/DELETE | `/api/trade-comments/[id]` | No | Update/delete trade comment |
+| GET/POST | `/api/strategies` | No | List/create strategies |
+| GET/PATCH/DELETE | `/api/strategies/[id]` | No | Get/update/delete strategy |
+| GET/POST | `/api/pre-sessions` | No | List (with `from`/`to` range)/upsert pre-sessions |
+| GET/DELETE | `/api/pre-sessions/[date]` | No | Get/delete pre-session by date |
+| GET/POST | `/api/post-sessions` | No | List (with `from`/`to` range)/upsert post-sessions |
+| GET/DELETE | `/api/post-sessions/[date]` | No | Get/delete post-session by date |
+| GET/POST | `/api/journals` | No | List/upsert journal entries |
+| GET/DELETE | `/api/journals/[id]` | No | Get/delete journal entry |
+| GET/POST | `/api/notes` | No | List/create notes |
+| GET/PATCH/DELETE | `/api/notes/[id]` | No | Get/update/delete note |
+| GET/PATCH | `/api/settings` | Session | User preferences (timezone, tradingStartTime, etc.) |
 | GET/POST | `/api/wallets` | Session | Wallet CRUD |
 | DELETE/PATCH | `/api/wallets/[id]` | Session | Wallet operations |
 | GET/POST/DELETE | `/api/trade-edits` | Session | Trade edit overrides |
@@ -227,45 +329,42 @@ Last updated: 2026-02-22
 |-------|-------------|
 | `/api/zerion/wallets/[address]/transactions` | Zerion proxy |
 | `/api/zerion/wallets/[address]/portfolio` | Zerion proxy |
-| `/api/evm/wallet/[address]/trades` | EVM chain trades |
-| `/api/evm/wallet/[address]/balances` | EVM chain balances |
 
 ---
 
-## 11. Core Libraries
+## 13. Core Libraries
 
 | Module | Key Exports | Purpose |
 |--------|-------------|---------|
-| `lib/wallet-context.tsx` | `WalletProvider`, `useWallet` | Multi-wallet state, parallel trade fetching, trade cycle computation |
+| `lib/wallet-context.tsx` | `WalletProvider`, `useWallet`, `useMetadata` | Multi-wallet state, barrel re-export of split contexts |
+| `lib/trading-day.ts` | `getTradingDay`, `getCalendarDate`, `getTradingDayForDate` | Timezone-aware trading day calculation using user's timezone + start time |
 | `lib/tradeCycles.ts` | `calculateTradeCycles`, `flattenTradeCycles` | Groups raw txs by token → splits into buy/sell cycles by balance changes |
-| `lib/analytics.ts` | 20+ functions | Computation for all charts: cumulative P/L, duration, calendar, hourly, day-of-week, sessions, missed trades, strategy perf, rule impact, what-if, patterns, efficiency, discipline |
-| `lib/strategies.ts` | `loadStrategies`, `saveStrategies`, `Strategy`, `RuleGroup`, `StrategyRule` | Strategy CRUD from localStorage with auto-migration from legacy format |
-| `lib/trade-comments.ts` | `loadTradeComments`, `saveTradeComments` | Comment library CRUD |
-| `lib/discipline.ts` | `computeTradeDiscipline` | Per-trade discipline score from journal comments |
-| `lib/streaks.ts` | `computeJournalingStreak` | Consecutive journaling day count |
+| `lib/analytics.ts` → `lib/analytics/` | 20+ functions | Computation for all charts: cumulative P/L, duration, calendar (incl. yearly heatmap), hourly, day-of-week, sessions, missed trades, strategy perf, rule impact, what-if, patterns, efficiency, discipline |
+| `lib/strategies.ts` | `loadStrategies`, `createStrategy`, `updateStrategy`, `deleteStrategy` | Async strategy CRUD via API |
+| `lib/trade-comments.ts` | `loadTradeComments`, `getCommentsByCategory` | Comment library CRUD via API |
+| `lib/pre-sessions.ts` | `loadPreSessions`, `loadPreSession`, `savePreSession` | Async pre-session CRUD via API |
+| `lib/post-sessions.ts` | `loadPostSessions`, `loadPostSession`, `savePostSession` | Async post-session CRUD via API |
+| `lib/journals.ts` | `loadJournals`, `saveJournal` | Async journal entry CRUD via API |
+| `lib/rules.ts` | `loadRules`, `createRule`, `updateRule`, `deleteRule` | Async global rule CRUD via API |
 | `lib/formatters.ts` | `formatDuration`, `formatValue`, `formatPrice`, `formatPercentage`, `formatTokenAmount`, `formatMarketCap` | Display formatting |
 | `lib/solana-tracker.ts` | `getWalletTrades`, `getWalletTokens`, `getTokenData`, `isValidSolanaAddress` | Solana Tracker API client; browser requests proxy through `/api/solana/*` |
+| `lib/contexts/` | `DashboardProviders`, `MetadataContext`, `TradeContext`, `WalletIdentityContext`, `BalanceContext` | Split contexts for identity, trades, metadata (incl. post-session status), balances |
 | `lib/chains.ts` | `CHAIN_CONFIG`, `detectChainFromAddress` | Multi-chain support (Solana, Base, BNB) |
 | `lib/auth.ts` | `authOptions` | NextAuth config (credentials provider, JWT) |
 | `lib/prisma.ts` | `prisma` | Prisma client singleton |
 
 ---
 
-## 12. Data Storage
+## 14. Data Storage
 
 ### localStorage Keys
 
 | Key | Used By | Content |
 |-----|---------|---------|
-| `journalio_strategies` | Strategies, JournalModal, Trade Journal, Analytics, Missed Trades | Array of Strategy objects (rule groups, color, icon) |
-| `journalio_rules` | Strategies, Pre-Session, Sidebar | Array of global rule objects |
-| `journalio_pre_session_{YYYY-MM-DD}` | Pre-Session, History | Full pre-session checklist data for a date |
-| `journalio_pre_sessions` | Pre-Session, History, Sidebar | Index of pre-session summaries |
-| `journalio_journal_{wallet}_{mint}_{tradeNum}` | Trade Journal, History, Analytics | Journal entry per trade cycle |
 | `journalio_saved_wallets` | Wallet Management | Saved wallet objects |
 | `journalio_active_wallets` | Wallet Management, WalletProvider | Currently active wallet list |
-| `journalio_trade_comments` | Settings, JournalModal, Analytics | Discipline comment library |
 | `journalio_journal_view_mode` | Trade Journal, Settings | UI preference (merged/grouped) |
+| `journalio_migration_v1_complete` | LocalStorageMigration | Migration flag |
 
 ### Database Models (Prisma + SQLite)
 
@@ -273,11 +372,18 @@ Last updated: 2026-02-22
 |-------|---------|
 | `User` | User accounts (NextAuth) |
 | `Account` / `Session` / `VerificationToken` | NextAuth internals |
-| `Wallet` | Multi-chain wallet storage (address, chain, nickname) |
+| `Wallet` | Multi-chain wallet storage (address, chain, nickname, dex) |
 | `Trade` | Cached transactions with 5-min TTL on `indexedAt` |
 | `TradeEdit` | Manual overrides for trade data |
 | `PaperedPlay` | Missed trades with hypothetical trade details, miss reasons, outcome, strategy link |
-| `UserSettings` | Display name, tx limit, USD toggle, dark mode |
+| `UserSettings` | Display name, tx limit, USD toggle, dark mode, timezone, trading start time |
+| `Strategy` | Named strategies with rule groups (JSON) |
+| `GlobalRule` | Global trading rules shown in pre-session checklist |
+| `PreSession` | Daily pre-session checklist data (one per user per day) |
+| `PostSession` | Daily post-session review data (one per user per day) |
+| `JournalEntry` | Per-trade journal entry with strategy, rules, emotions, notes, ratings, attachments |
+| `TradeComment` | Discipline comment library (entry/exit/management categories) |
+| `Note` | General notes with title, content, and tags |
 
 ---
 
@@ -290,10 +396,12 @@ Activates wallet → WalletProvider fetches via /api/trades → cached in DB (5-
        ↓
 Trade cycles computed client-side (tradeCycles.ts)
        ↓
-User journals trades → localStorage per cycle
-User does pre-session → localStorage per day
+User does pre-session → DB via /api/pre-sessions (timezone-aware "today")
+User journals trades → DB via /api/journals
+User does post-session → DB via /api/post-sessions (timezone-aware "today")
 User logs missed trades → DB via /api/papered-plays
-User manages strategies → localStorage
+User manages strategies → DB via /api/strategies
        ↓
+Home page: DailyChecklist shows pre/post/journal status; ActivityCalendar shows yearly heatmap
 Analytics page computes everything from: flattenedTrades + journals + comments + strategies + missed trades
 ```

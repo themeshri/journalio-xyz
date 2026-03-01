@@ -17,6 +17,7 @@ import {
   loadPreSession,
   savePreSession,
 } from '@/lib/pre-sessions'
+import { getTradingDay } from '@/lib/trading-day'
 
 const emotionalOptions = [
   'Calm',
@@ -39,8 +40,19 @@ function getEnergyDescription(level: number): { text: string; className: string 
   return null
 }
 
-function getTodayDate(): string {
+function getTodayDateUTC(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+async function fetchTradingDay(): Promise<string> {
+  try {
+    const res = await fetch('/api/settings')
+    if (res.ok) {
+      const settings = await res.json()
+      return getTradingDay(settings.timezone || 'UTC', settings.tradingStartTime || '09:00')
+    }
+  } catch {}
+  return getTodayDateUTC()
 }
 
 function formatDisplayDate(date: Date): string {
@@ -75,9 +87,9 @@ export default function PreSessionPage() {
     setDisplayDate(formatDisplayDate(now))
     setDisplayTime(formatDisplayTime(now))
 
-    const today = getTodayDate()
-
-    Promise.all([loadPreSession(today), loadRules()]).then(([session, loadedRules]) => {
+    Promise.all([fetchTradingDay(), loadRules()]).then(async ([today, loadedRules]) => {
+      if (stale) return
+      const session = await loadPreSession(today)
       if (stale) return
       if (session) {
         setData({ ...defaultPreSessionData, ...session })
@@ -98,7 +110,7 @@ export default function PreSessionPage() {
 
   async function handleSave() {
     const now = new Date()
-    const todayDate = getTodayDate()
+    const todayDate = await fetchTradingDay()
     const savedData: PreSessionData = {
       ...data,
       date: todayDate,

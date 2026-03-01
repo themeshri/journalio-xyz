@@ -6,7 +6,7 @@
 
 ## Overview
 
-Solana trading journal with pre-session checklists, trade cycle analysis, strategy management, and missed trade tracking. Dashboard-based UI with sidebar navigation.
+Solana trading journal with pre-session checklists, post-session reviews, trade cycle analysis, strategy management, and missed trade tracking. Dashboard-based UI with sidebar navigation. Gamified daily checklist and GitHub-style activity calendar on the home page.
 
 ## Tech Stack
 
@@ -25,15 +25,18 @@ app/
 ├── layout.tsx                 # Root layout (fonts, ErrorBoundary, SessionProvider)
 ├── (dashboard)/
 │   ├── layout.tsx             # Dashboard layout (WalletProvider, SidebarProvider, AppSidebar)
-│   ├── page.tsx               # Overview — stat cards + recent transactions
-│   ├── pre-session/           # Daily pre-trading checklist
+│   ├── page.tsx               # Overview — daily checklist, KPIs, activity calendar, recent trades
+│   ├── diary/
+│   │   ├── pre-session/       # Daily pre-trading checklist
+│   │   ├── post-session/      # End-of-day review
+│   │   └── notes/             # General notes with tagging
 │   ├── trade-journal/         # Trade cycle table with journal modals
 │   ├── history/               # Tabbed: Transactions | Pre-Sessions | Journal
 │   ├── analytics/             # Charts (Cumulative P/L, Duration, Trading Hours)
 │   ├── missed-trades/         # Papered plays tracker (API-backed)
-│   ├── strategies/            # Strategy CRUD + global rules (localStorage)
+│   ├── strategies/            # Strategy CRUD + global rules (DB-backed)
 │   ├── wallet-management/     # Saved wallets CRUD (localStorage)
-│   └── settings/              # User preferences (API-backed)
+│   └── settings/              # User preferences incl. timezone + trading start time (API-backed)
 ├── api/                       # API routes (see below)
 └── auth/signin/               # NextAuth sign-in page
 ```
@@ -51,21 +54,30 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 
 | Route | Page | Storage | Description |
 |-------|------|---------|-------------|
-| `/` | Overview | API | Stat cards, equity curve, calendar, insights — time-range filtered |
-| `/pre-session` | Pre-Session | API (DB) | Daily checklist: energy, mindset, limits, market context, rules |
+| `/` | Overview | API | Daily checklist, KPI cards, activity calendar, recent trades, strategy/mistakes summaries — time-range filtered |
+| `/diary/pre-session` | Pre-Session | API (DB) | Daily checklist: energy, mindset, limits, market context, rules |
+| `/diary/post-session` | Post-Session | API (DB) | End-of-day review: rating, emotions, lessons, rules adherence, plan for tomorrow |
+| `/diary/notes` | Notes | API (DB) | General notes with title, content, and tags |
 | `/trade-journal` | Trade Journal | API (DB) | Trade cycles table with JournalModal for per-cycle notes |
 | `/history` | History | API (DB) | 3 tabs: Transactions (API), Pre-Sessions (API), Journal (API) |
 | `/analytics` | Analytics | API | Recharts: cumulative P/L, duration, hours, discipline — time-range filtered |
 | `/missed-trades` | Missed Trades | API (DB) | Track tokens you saw but didn't trade, with potential multiplier |
 | `/strategies` | Strategies | API (DB) | Named strategies (entry/exit/stop-loss conditions) + global rules |
 | `/wallet-management` | Wallet Mgmt | localStorage | Add/remove/switch saved wallets |
-| `/settings` | Settings | API (DB) | Display name, tx limit, USD toggle, trade comments |
+| `/settings` | Settings | API (DB) | Display name, tx limit, USD toggle, timezone, trading start time, trade comments |
 
 ## Key Components
 
 | Component | File | Description |
 |-----------|------|-------------|
 | `AppSidebar` | `components/app-sidebar.tsx` | Sidebar nav with wallet display, pre-session status dot (reads from MetadataContext) |
+| `DailyChecklist` | `components/overview/DailyChecklist.tsx` | Gamified 3-item checklist (pre-session, post-session, journals) with progress bar |
+| `ActivityCalendar` | `components/overview/ActivityCalendar.tsx` | GitHub-style yearly heatmap with 0-5 activity score per day |
+| `KPICards` | `components/overview/KPICards.tsx` | 7-card horizontal strip (P/L, win rate, profit factor, avg P/L, trades, Sharpe, streak) |
+| `RecentCycles` | `components/overview/RecentCycles.tsx` | Last 8 completed trades with journal status |
+| `StrategySummary` | `components/overview/StrategySummary.tsx` | Best strategy performance + rule compliance |
+| `MistakesSummary` | `components/overview/MistakesSummary.tsx` | Discipline score + top mistakes + emotion tags |
+| `QuickStatsBar` | `components/overview/QuickStatsBar.tsx` | Horizontal stats bar (avg win/loss, best hour, top token, streaks) |
 | `TimeRangeFilter` | `components/TimeRangeFilter.tsx` | Shared time filter: 1D/7D/30D/90D/All presets + custom date range picker |
 | `TradesTable` | `components/TradesTable.tsx` | Paginated raw transaction table (50/page) |
 | `JournalModal` | `components/JournalModal.tsx` | Dialog for journaling buy/sell analysis per trade cycle |
@@ -82,10 +94,11 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | Module | Exports | Description |
 |--------|---------|-------------|
 | `wallet-context.tsx` | `WalletProvider`, `useWallet`, `useMetadata` | Barrel re-export of split contexts; `useWallet()` for compat, `useMetadata()` for metadata-only |
+| `trading-day.ts` | `getTradingDay`, `getCalendarDate`, `getTradingDayForDate` | Timezone-aware trading day calculation; respects user's timezone + trading start time |
 | `time-filters.ts` | `TimePreset`, `TimeRange`, `presetToRange`, `filterTradesByRange` | Shared time filter types + utilities (client and server) |
 | `solana-tracker.ts` | `isValidSolanaAddress`, `getWalletTrades`, `getWalletTokens`, `getTokenData` | Solana Tracker API client; browser requests proxy through `/api/solana/*` |
 | `tradeCycles.ts` | `calculateTradeCycles`, `flattenTradeCycles` | Groups txs by token → splits into buy/sell cycles by balance |
-| `contexts/` | `DashboardProviders`, `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext` | Split context: identity, trades, metadata (strategies/journals/streak/time-filter/pre-session/missed-trades), balances |
+| `contexts/` | `DashboardProviders`, `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext` | Split context: identity, trades, metadata (strategies/journals/streak/time-filter/pre-session/post-session/missed-trades), balances |
 | `analytics.ts` → `analytics/` | Re-export barrel; modules: `core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`, `types`, `helpers` | Analytics computation split by domain |
 | `server/resolve-trades.ts` | `resolveFlattenedTrades`, `applyDateFilter`, `parseWalletParams`, `sanitizeForJSON` | Server-side trade resolution with TTL cache, dedup, date filtering |
 | `local-storage.ts` | `safeLocalStorage` | Safe localStorage wrapper with quota error handling and toast notifications |
@@ -93,6 +106,7 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | `trade-comments.ts` | `loadTradeComments`, `getCommentsByCategory`, `getCommentById` | Async trade comment loading + pure helpers |
 | `rules.ts` | `loadRules`, `createRule`, `updateRule`, `deleteRule` | Async global rule CRUD via API |
 | `pre-sessions.ts` | `loadPreSessions`, `loadPreSession`, `savePreSession` | Async pre-session CRUD via API |
+| `post-sessions.ts` | `loadPostSessions`, `loadPostSession`, `savePostSession` | Async post-session CRUD via API |
 | `journals.ts` | `loadJournals`, `saveJournal` | Async journal entry CRUD via API |
 | `formatters.ts` | `formatDuration`, `formatTime`, `formatValue`, `formatTokenAmount`, `formatMarketCap`, `formatPrice`, `formatPercentage` | Display formatting |
 | `utils.ts` | `cn` | Tailwind class merge (clsx + tailwind-merge) |
@@ -108,7 +122,7 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| GET | `/api/dashboard?addresses=&chains=&dexes=` | No | Combined endpoint: trades, strategies, journals, comments, streak, pre-session status, missed trades |
+| GET | `/api/dashboard?addresses=&chains=&dexes=` | No | Combined endpoint: trades, strategies, journals, comments, streak, pre-session + post-session status, missed trades |
 | GET | `/api/trades?address=&refresh=` | No | Fetch trades with 5-min DB cache, fallback to stale |
 | GET | `/api/analytics/overview?...&startDate=&endDate=` | No | Cumulative P/L, duration buckets, trading hours |
 | GET | `/api/analytics/calendar?...&year=&month=` | No | Monthly P/L calendar data |
@@ -125,11 +139,15 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | PATCH/DELETE | `/api/trade-comments/[id]` | No | Update/delete trade comment |
 | GET/POST | `/api/strategies` | No | List/create strategies |
 | GET/PATCH/DELETE | `/api/strategies/[id]` | No | Get/update/delete strategy |
-| GET/POST | `/api/pre-sessions` | No | List/upsert pre-sessions |
+| GET/POST | `/api/pre-sessions` | No | List/upsert pre-sessions (supports `from`/`to` date range) |
 | GET/DELETE | `/api/pre-sessions/[date]` | No | Get/delete pre-session by date |
+| GET/POST | `/api/post-sessions` | No | List/upsert post-sessions (supports `from`/`to` date range) |
+| GET/DELETE | `/api/post-sessions/[date]` | No | Get/delete post-session by date |
 | GET/POST | `/api/journals` | No | List/upsert journal entries |
 | GET/DELETE | `/api/journals/[id]` | No | Get/delete journal entry |
-| GET/PATCH | `/api/settings` | Session | User preferences |
+| GET/POST | `/api/notes` | No | List/create notes |
+| GET/PATCH/DELETE | `/api/notes/[id]` | No | Get/update/delete note |
+| GET/PATCH | `/api/settings` | Session | User preferences (incl. timezone, tradingStartTime) |
 | GET/POST | `/api/wallets` | Session | List/create wallets |
 | DELETE/PATCH | `/api/wallets/[id]` | Session | Delete/update wallet |
 | GET/POST/DELETE | `/api/trade-edits` | Session | Trade edit overrides |
@@ -157,13 +175,43 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 
 ### Database (Prisma)
 
-Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`, `Strategy`, `GlobalRule`, `PreSession`, `JournalEntry`, `TradeComment`
+Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`, `Strategy`, `GlobalRule`, `PreSession`, `PostSession`, `JournalEntry`, `TradeComment`, `Note`
 
 Trade cache: 5-minute TTL on `Trade.indexedAt`, force refresh bypasses cache, stale fallback on API failure.
 
-Dashboard data flow: `/api/dashboard` returns trades + strategies + journals + comments + streak + pre-session status + missed trades in one call. `MetadataContext` holds pre-session status, missed trades, time range filter, and provides reload callbacks. `AppSidebar` and `InsightsPanel` read from context (no individual fetches).
+Dashboard data flow: `/api/dashboard` returns trades + strategies + journals + comments + streak + pre-session status + post-session status + missed trades in one call. Uses timezone-aware `getTradingDay()` to determine "today". `MetadataContext` holds pre-session/post-session status, missed trades, time range filter, and provides reload callbacks. `AppSidebar` reads from context (no individual fetches).
 
 Analytics data flow: 6 server-side endpoints (`/api/analytics/*`) accept optional `startDate`/`endDate` query params (UNIX seconds). `applyDateFilter()` in `lib/server/resolve-trades.ts` filters after trade resolution. SWR hooks in `lib/hooks/use-analytics.ts` auto-refetch when URL params change.
+
+### Trading Day / Timezone
+
+- `UserSettings.timezone` (IANA string, default "UTC") and `UserSettings.tradingStartTime` (HH:mm, default "09:00") control when a new trading day begins
+- `lib/trading-day.ts` provides `getTradingDay(timezone, tradingStartTime)` — if current time is before start time, returns previous calendar day
+- Dashboard API, pre-session page, post-session page, and context reload callbacks all use this to determine "today"
+- Settings page has a searchable timezone combobox and time input
+
+### Home Page Layout
+
+```
+Row 1: Header + TimeRangeFilter
+Row 2: DailyChecklist (pre-session, post-session, journals — gamified with progress bar)
+Row 3: KPICards (7 metrics)
+Row 4: RecentCycles (left 3 cols) + ActivityCalendar (right 2 cols)
+Row 5: StrategySummary + MistakesSummary
+Row 6: QuickStatsBar
+```
+
+### Activity Calendar Scoring (0-5 per day)
+
+| Metric | Score |
+|--------|-------|
+| Traded | +1 |
+| Pre-session done | +1 |
+| Post-session done | +1 |
+| All trades journaled | +1 |
+| Rule adherence >= 70% | +1 |
+
+Color: emerald scale from zinc-800 (0) to emerald-400 (5).
 
 ## Styling Notes
 
@@ -227,4 +275,4 @@ NEXTAUTH_URL="http://localhost:3000"
 
 ---
 <!-- Auto-updated by post-commit hook -->
-Last updated: 2026-02-22
+Last updated: 2026-03-01

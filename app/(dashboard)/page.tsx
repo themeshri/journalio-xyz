@@ -1,14 +1,13 @@
 'use client'
 
-import { useMemo, useCallback, useState } from 'react'
-import dynamic from 'next/dynamic'
+import { useMemo, useCallback, useState, useEffect } from 'react'
 import { useWallet, useMetadata } from '@/lib/wallet-context'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import { KPICards } from '@/components/overview/KPICards'
-import { PLCalendar } from '@/components/overview/PLCalendar'
 import { RecentCycles } from '@/components/overview/RecentCycles'
-import { ActionBanner } from '@/components/overview/ActionBanner'
+import { DailyChecklist } from '@/components/overview/DailyChecklist'
+import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
 import { StrategySummary } from '@/components/overview/StrategySummary'
 import { MistakesSummary } from '@/components/overview/MistakesSummary'
 import { QuickStatsBar } from '@/components/overview/QuickStatsBar'
@@ -17,11 +16,6 @@ import { filterTradesByRange } from '@/lib/time-filters'
 import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
-
-const EquityCurve = dynamic(
-  () => import('@/components/overview/EquityCurve').then((m) => ({ default: m.EquityCurve })),
-  { ssr: false, loading: () => <ChartSkeleton /> }
-)
 
 const sectionErrorFallback = (
   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
@@ -35,7 +29,27 @@ function journalKey(t: { tokenMint: string; tradeNumber: number; walletAddress: 
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, updateJournalEntry, streak } = useWallet()
-  const { preSessionDone, missedTrades, timeRange, timePreset, setTimeFilter, strategies, tradeComments } = useMetadata()
+  const { preSessionDone, postSessionDone, missedTrades, timeRange, timePreset, setTimeFilter, strategies, tradeComments } = useMetadata()
+
+  // Fetch pre/post sessions for ActivityCalendar (current year)
+  const [yearPreSessions, setYearPreSessions] = useState<{ date: string; savedAt?: string }[]>([])
+  const [yearPostSessions, setYearPostSessions] = useState<{ date: string }[]>([])
+
+  useEffect(() => {
+    const year = new Date().getFullYear()
+    const from = `${year}-01-01`
+    const to = `${year}-12-31`
+
+    fetch(`/api/pre-sessions?from=${from}&to=${to}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setYearPreSessions(Array.isArray(data) ? data : []))
+      .catch(() => {})
+
+    fetch(`/api/post-sessions?from=${from}&to=${to}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setYearPostSessions(Array.isArray(data) ? data : []))
+      .catch(() => {})
+  }, [])
 
   const filteredTrades = useMemo(
     () => filterTradesByRange(flattenedTrades, timeRange),
@@ -47,6 +61,16 @@ export default function OverviewPage() {
     const unjournaled = completed.filter(t => !journalMap[journalKey(t)])
     return { unjournalledCount: unjournaled.length, firstUnjournaled: unjournaled[0] || null }
   }, [filteredTrades, journalMap])
+
+  // Journal progress for last 48h (for DailyChecklist)
+  const journalProgress = useMemo(() => {
+    const cutoff = Date.now() / 1000 - 48 * 3600
+    const recentCompleted = flattenedTrades.filter(
+      t => t.isComplete && t.endDate && t.endDate >= cutoff
+    )
+    const journaledCount = recentCompleted.filter(t => !!journalMap[journalKey(t)]).length
+    return { done: journaledCount, total: recentCompleted.length }
+  }, [flattenedTrades, journalMap])
 
   // State for ActionBanner-triggered journal modal
   const [bannerJournalTrade, setBannerJournalTrade] = useState<FlattenedTrade | null>(null)
@@ -139,11 +163,12 @@ export default function OverviewPage() {
         <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
       </div>
 
-      {/* Row 1: Action Banner */}
+      {/* Row 1: Daily Checklist */}
       <ErrorBoundary fallback={sectionErrorFallback}>
-        <ActionBanner
+        <DailyChecklist
           preSessionDone={preSessionDone}
-          unjournalledCount={unjournalledCount}
+          postSessionDone={postSessionDone}
+          journalProgress={journalProgress}
           onJournalClick={handleJournalClick}
         />
       </ErrorBoundary>
@@ -153,12 +178,7 @@ export default function OverviewPage() {
         <KPICards trades={filteredTrades} streak={streak} />
       </ErrorBoundary>
 
-      {/* Row 3: Equity Curve — full width (prominent position) */}
-      <ErrorBoundary fallback={sectionErrorFallback}>
-        <EquityCurve trades={filteredTrades} />
-      </ErrorBoundary>
-
-      {/* Row 4: Recent Trades + P/L Calendar */}
+      {/* Row 3: Recent Trades + Activity Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
           <ErrorBoundary fallback={sectionErrorFallback}>
@@ -167,7 +187,12 @@ export default function OverviewPage() {
         </div>
         <div className="lg:col-span-2">
           <ErrorBoundary fallback={sectionErrorFallback}>
-            <PLCalendar trades={filteredTrades} journalMap={journalMap} />
+            <ActivityCalendar
+              trades={flattenedTrades}
+              journalMap={journalMap}
+              preSessions={yearPreSessions}
+              postSessions={yearPostSessions}
+            />
           </ErrorBoundary>
         </div>
       </div>

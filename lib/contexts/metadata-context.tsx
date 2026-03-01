@@ -12,12 +12,14 @@ export interface MetadataContextValue {
   journalMap: Record<string, any>
   streak: { current: number; longest: number }
   preSessionDone: boolean
+  postSessionDone: boolean
   missedTrades: MissedTradeEntry[]
   updateJournalEntry: (key: string, data: any) => void
   reloadStrategies: () => Promise<void>
   reloadTradeComments: () => Promise<void>
   reloadJournals: () => Promise<void>
   reloadPreSessionStatus: () => Promise<void>
+  reloadPostSessionStatus: () => Promise<void>
   reloadMissedTrades: () => Promise<void>
   timeRange: TimeRange
   timePreset: TimePreset

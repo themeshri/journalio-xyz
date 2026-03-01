@@ -16,6 +16,7 @@ import { loadJournals, type JournalRecord } from '../journals'
 import { getWalletTokens } from '../solana-tracker'
 import { APP_FEE_RATES } from '../constants'
 import { type TimePreset, type TimeRange } from '../time-filters'
+import { getTradingDay } from '../trading-day'
 
 import {
   WalletIdentityContext,
@@ -150,6 +151,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [journalMap, setJournalMap] = useState<Record<string, any>>({})
   const [streak, setStreak] = useState<{ current: number; longest: number }>({ current: 0, longest: 0 })
   const [preSessionDone, setPreSessionDone] = useState(false)
+  const [postSessionDone, setPostSessionDone] = useState(false)
   const [missedTrades, setMissedTrades] = useState<any[]>([])
   const [timeRange, setTimeRange] = useState<TimeRange>({ startDate: null, endDate: null })
   const [timePreset, setTimePreset] = useState<TimePreset>('all')
@@ -315,6 +317,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
           }
           if (data.streak) setStreak(data.streak)
           if (data.preSessionDone !== undefined) setPreSessionDone(data.preSessionDone)
+          if (data.postSessionDone !== undefined) setPostSessionDone(data.postSessionDone)
           if (data.missedTrades) setMissedTrades(data.missedTrades)
 
           // Trigger external fetch for wallets with no cached trades
@@ -446,10 +449,47 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
 
   const reloadPreSessionStatus = useCallback(async () => {
     try {
-      const today = new Date().toISOString().slice(0, 10)
+      let today: string
+      try {
+        const settingsRes = await fetch('/api/settings')
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json()
+          today = getTradingDay(settings.timezone || 'UTC', settings.tradingStartTime || '09:00')
+        } else {
+          today = new Date().toISOString().slice(0, 10)
+        }
+      } catch {
+        today = new Date().toISOString().slice(0, 10)
+      }
       const res = await fetch(`/api/pre-sessions/${today}`)
       const data = await res.json()
       setPreSessionDone(data !== null && !!data?.savedAt)
+    } catch {
+      // keep existing state on error
+    }
+  }, [])
+
+  const reloadPostSessionStatus = useCallback(async () => {
+    try {
+      let today: string
+      try {
+        const settingsRes = await fetch('/api/settings')
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json()
+          today = getTradingDay(settings.timezone || 'UTC', settings.tradingStartTime || '09:00')
+        } else {
+          today = new Date().toISOString().slice(0, 10)
+        }
+      } catch {
+        today = new Date().toISOString().slice(0, 10)
+      }
+      const res = await fetch(`/api/post-sessions/${today}`)
+      if (res.ok) {
+        const data = await res.json()
+        setPostSessionDone(data !== null && !!data?.id)
+      } else {
+        setPostSessionDone(false)
+      }
     } catch {
       // keep existing state on error
     }
@@ -552,17 +592,19 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     journalMap,
     streak,
     preSessionDone,
+    postSessionDone,
     missedTrades,
     updateJournalEntry,
     reloadStrategies,
     reloadTradeComments,
     reloadJournals,
     reloadPreSessionStatus,
+    reloadPostSessionStatus,
     reloadMissedTrades,
     timeRange,
     timePreset,
     setTimeFilter,
-  }), [tradeComments, strategies, journalMap, streak, preSessionDone, missedTrades, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter])
+  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter])
 
   const balanceValue = useMemo(() => ({
     walletTokens,

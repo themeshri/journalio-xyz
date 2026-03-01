@@ -44,7 +44,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { displayName, transactionLimit, showUSDValues, darkMode } = body
+    const { displayName, transactionLimit, showUSDValues, darkMode, timezone, tradingStartTime } = body
 
     // Find or create settings
     let settings = await prisma.userSettings.findUnique({
@@ -71,6 +71,8 @@ export async function PATCH(request: NextRequest) {
         ...(transactionLimit !== undefined && { transactionLimit }),
         ...(showUSDValues !== undefined && { showUSDValues }),
         ...(darkMode !== undefined && { darkMode }),
+        ...(timezone !== undefined && { timezone }),
+        ...(tradingStartTime !== undefined && { tradingStartTime }),
       },
     })
 

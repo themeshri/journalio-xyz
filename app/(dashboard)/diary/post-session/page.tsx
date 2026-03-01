@@ -13,12 +13,14 @@ import {
 } from '@/components/ui/select'
 import { FormSkeleton } from '@/components/skeletons'
 import { toast } from 'sonner'
+import { useMetadata } from '@/lib/wallet-context'
 import {
   type PostSessionData,
   defaultPostSessionData,
   loadPostSession,
   savePostSession,
 } from '@/lib/post-sessions'
+import { getTradingDay } from '@/lib/trading-day'
 
 const emotionalOptions = [
   'Calm',
@@ -30,26 +32,41 @@ const emotionalOptions = [
   'Neutral',
 ]
 
-function getTodayDate() {
+function getTodayDateUTC() {
   return new Date().toISOString().split('T')[0]
 }
 
+async function fetchTradingDay(): Promise<string> {
+  try {
+    const res = await fetch('/api/settings')
+    if (res.ok) {
+      const settings = await res.json()
+      return getTradingDay(settings.timezone || 'UTC', settings.tradingStartTime || '09:00')
+    }
+  } catch {}
+  return getTodayDateUTC()
+}
+
 export default function PostSessionPage() {
-  const [data, setData] = useState<PostSessionData>({ ...defaultPostSessionData, date: getTodayDate() })
+  const { reloadPostSessionStatus } = useMetadata()
+  const [data, setData] = useState<PostSessionData>({ ...defaultPostSessionData, date: getTodayDateUTC() })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [existingId, setExistingId] = useState<string | null>(null)
 
   useEffect(() => {
     let stale = false
-    const date = getTodayDate()
-    loadPostSession(date).then((existing) => {
+    fetchTradingDay().then((date) => {
       if (stale) return
-      if (existing) {
-        setData({ ...existing, date })
-        setExistingId(existing.id || null)
-      }
-      setLoading(false)
+      setData((prev) => ({ ...prev, date }))
+      loadPostSession(date).then((existing) => {
+        if (stale) return
+        if (existing) {
+          setData({ ...existing, date })
+          setExistingId(existing.id || null)
+        }
+        setLoading(false)
+      })
     })
     return () => { stale = true }
   }, [])
@@ -60,6 +77,7 @@ export default function PostSessionPage() {
     if (saved) {
       setExistingId(saved.id || null)
       toast.success('Post-session saved')
+      reloadPostSessionStatus()
     } else {
       toast.error('Failed to save post-session')
     }

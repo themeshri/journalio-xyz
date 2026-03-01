@@ -221,6 +221,8 @@ model UserSettings {
   transactionLimit  Int     @default(50)
   showUSDValues     Boolean @default(true)
   darkMode          Boolean @default(false)
+  timezone          String  @default("UTC")
+  tradingStartTime  String  @default("09:00")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

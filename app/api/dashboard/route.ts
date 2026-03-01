@@ -5,6 +5,7 @@ import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
 import { type Chain } from '@/lib/chains'
+import { getTradingDay } from '@/lib/trading-day'
 
 const defaultUserId = 'default-user'
 
@@ -137,14 +138,23 @@ export async function GET(request: NextRequest) {
         journals: [],
         streak: { current: 0, longest: 0 },
         preSessionDone: false,
+        postSessionDone: false,
         missedTrades: [],
       })
     }
 
-    const todayDate = new Date().toISOString().slice(0, 10)
+    // Fetch user settings for timezone-aware trading day
+    const userSettings = await prisma.userSettings.findUnique({
+      where: { userId: defaultUserId },
+      select: { timezone: true, tradingStartTime: true },
+    })
+    const todayDate = getTradingDay(
+      userSettings?.timezone || 'UTC',
+      userSettings?.tradingStartTime || '09:00'
+    )
 
     // Run all queries in parallel
-    const [walletTradeResults, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, missedTrades] = await Promise.all([
+    const [walletTradeResults, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, todayPostSession, missedTrades] = await Promise.all([
       // Trades per wallet
       Promise.all(
         params.addresses.map((address, i) => {
@@ -202,6 +212,11 @@ export async function GET(request: NextRequest) {
         where: { userId: defaultUserId, date: todayDate },
         select: { savedAt: true },
       }),
+      // Today's post-session status
+      prisma.postSession.findFirst({
+        where: { userId: defaultUserId, date: todayDate },
+        select: { id: true },
+      }),
       // Missed trades (papered plays)
       prisma.paperedPlay.findMany({
         where: { userId: defaultUserId },
@@ -236,6 +251,7 @@ export async function GET(request: NextRequest) {
       journals: allJournals,
       streak,
       preSessionDone: !!(todayPreSession?.savedAt),
+      postSessionDone: !!todayPostSession,
       missedTrades,
     }
 

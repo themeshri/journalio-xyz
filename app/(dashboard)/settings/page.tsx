@@ -12,6 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 import { Switch } from '@/components/ui/switch'
 import {
   AlertDialog,
@@ -36,6 +49,10 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState('')
   const [transactionLimit, setTransactionLimit] = useState('50')
   const [showUSDValues, setShowUSDValues] = useState(true)
+  const [timezone, setTimezone] = useState('')
+  const [tradingStartTime, setTradingStartTime] = useState('09:00')
+  const [tzSearch, setTzSearch] = useState('')
+  const [tzOpen, setTzOpen] = useState(false)
   const [journalViewMode, setJournalViewMode] = useState<'merged' | 'grouped'>('merged')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>(
     'idle'
@@ -139,6 +156,8 @@ export default function SettingsPage() {
         setDisplayName(data.displayName || '')
         setTransactionLimit(String(data.transactionLimit || 50))
         setShowUSDValues(data.showUSDValues ?? true)
+        setTimezone(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
+        setTradingStartTime(data.tradingStartTime || '09:00')
       }
     } catch {
       console.error('Failed to fetch settings')
@@ -158,6 +177,8 @@ export default function SettingsPage() {
           transactionLimit: parseInt(transactionLimit),
           showUSDValues,
           darkMode: false,
+          timezone,
+          tradingStartTime,
         }),
       })
       if (res.ok) {
@@ -185,12 +206,16 @@ export default function SettingsPage() {
           transactionLimit: 50,
           showUSDValues: true,
           darkMode: false,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          tradingStartTime: '09:00',
         }),
       })
       if (res.ok) {
         setDisplayName('')
         setTransactionLimit('50')
         setShowUSDValues(true)
+        setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+        setTradingStartTime('09:00')
         setSaveStatus('saved')
         setTimeout(() => setSaveStatus('idle'), 2000)
       }
@@ -288,6 +313,80 @@ export default function SettingsPage() {
             <Switch
               checked={showUSDValues}
               onCheckedChange={setShowUSDValues}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="timezone" className="text-xs mb-1.5">
+              Timezone
+            </Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Used to determine when your trading day starts
+            </p>
+            <Popover open={tzOpen} onOpenChange={setTzOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={tzOpen}
+                  className="w-full justify-between text-xs font-normal"
+                >
+                  {timezone || 'Select timezone...'}
+                  <svg className="ml-2 h-3 w-3 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <Command>
+                  <CommandInput
+                    placeholder="Search timezone..."
+                    value={tzSearch}
+                    onValueChange={setTzSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No timezone found.</CommandEmpty>
+                    <CommandGroup>
+                      {(() => {
+                        try {
+                          return Intl.supportedValuesOf('timeZone')
+                            .filter((tz: string) => tz.toLowerCase().includes(tzSearch.toLowerCase()))
+                            .slice(0, 50)
+                            .map((tz: string) => (
+                              <CommandItem
+                                key={tz}
+                                value={tz}
+                                onSelect={() => {
+                                  setTimezone(tz)
+                                  setTzOpen(false)
+                                  setTzSearch('')
+                                }}
+                              >
+                                <span className={timezone === tz ? 'font-medium' : ''}>{tz.replace(/_/g, ' ')}</span>
+                              </CommandItem>
+                            ))
+                        } catch {
+                          return <CommandItem disabled>Timezone list unavailable</CommandItem>
+                        }
+                      })()}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div>
+            <Label htmlFor="tradingStartTime" className="text-xs mb-1.5">
+              Trading Start Time
+            </Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              When your trading day begins (pre-session resets at this time)
+            </p>
+            <input
+              id="tradingStartTime"
+              type="time"
+              value={tradingStartTime}
+              onChange={(e) => setTradingStartTime(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
 
