@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, memo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, memo } from 'react';
 import { FlattenedTrade } from '@/lib/tradeCycles';
 import { formatDuration, formatTime, formatValue, formatMarketCap } from '@/lib/formatters';
 import { getCommentsByCategory, type TradeComment } from '@/lib/trade-comments';
@@ -68,8 +68,8 @@ interface JournalModalProps {
   trade: FlattenedTrade;
   initialData: JournalData | null;
   tokenLogo?: string | null;
-  onSave: (data: JournalData) => void;
-  onSaveAndNext?: (data: JournalData) => void;
+  onSave: (data: JournalData) => void | Promise<void>;
+  onSaveAndNext?: (data: JournalData) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -158,9 +158,44 @@ const JournalModal = memo(function JournalModal({
   const [takeProfit, setTakeProfit] = useState<number | null>(initialData?.takeProfit ?? null);
   const [tradeHigh, setTradeHigh] = useState<number | null>(initialData?.tradeHigh ?? null);
   const [tradeLow, setTradeLow] = useState<number | null>(initialData?.tradeLow ?? null);
+  const [saving, setSaving] = useState(false);
   const [riskMgmtOpen, setRiskMgmtOpen] = useState(
     !!(initialData?.stopLoss || initialData?.takeProfit || initialData?.tradeHigh || initialData?.tradeLow)
   );
+
+  // Track if form has been modified
+  const initialSnapshot = useRef({
+    strategy: initialStrategy,
+    emotionalState: initialData?.emotionalState || '',
+    buyNotes: initialData?.buyNotes || '',
+    buyRating: initialData?.buyRating || 0,
+    sellRating: initialData?.sellRating || 0,
+    sellNotes: initialData?.sellNotes || '',
+    exitPlan: initialData?.exitPlan || '',
+    strategyId: initialData?.strategyId ?? null,
+    entryCommentId: initialData?.entryCommentId ?? null,
+    exitCommentId: initialData?.exitCommentId ?? null,
+    managementCommentId: initialData?.managementCommentId ?? null,
+    emotionTag: initialData?.emotionTag ?? null,
+  });
+  const isDirty =
+    strategy !== initialSnapshot.current.strategy ||
+    emotionalState !== initialSnapshot.current.emotionalState ||
+    buyNotes !== initialSnapshot.current.buyNotes ||
+    buyRating !== initialSnapshot.current.buyRating ||
+    sellRating !== initialSnapshot.current.sellRating ||
+    sellNotes !== initialSnapshot.current.sellNotes ||
+    exitPlan !== initialSnapshot.current.exitPlan ||
+    strategyId !== initialSnapshot.current.strategyId ||
+    entryCommentId !== initialSnapshot.current.entryCommentId ||
+    exitCommentId !== initialSnapshot.current.exitCommentId ||
+    managementCommentId !== initialSnapshot.current.managementCommentId ||
+    emotionTag !== initialSnapshot.current.emotionTag;
+
+  const handleClose = useCallback(() => {
+    if (isDirty && !window.confirm('You have unsaved changes. Discard them?')) return;
+    onClose();
+  }, [isDirty, onClose]);
 
   const entryComments = getCommentsByCategory(tradeComments, 'entry');
   const exitComments = getCommentsByCategory(tradeComments, 'exit');
@@ -190,8 +225,13 @@ const JournalModal = memo(function JournalModal({
     journaledAt: initialData?.journaledAt || new Date().toISOString(),
   }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachments, entryCommentId, exitCommentId, managementCommentId, emotionTag, stopLoss, takeProfit, tradeHigh, tradeLow, initialData?.journaledAt]);
 
-  const handleSave = useCallback(() => {
-    onSave(buildData());
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      await onSave(buildData());
+    } finally {
+      setSaving(false);
+    }
   }, [buildData, onSave]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -336,7 +376,7 @@ const JournalModal = memo(function JournalModal({
   }
 
   return (
-    <Dialog open onOpenChange={() => onClose()}>
+    <Dialog open onOpenChange={() => handleClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
@@ -414,7 +454,7 @@ const JournalModal = memo(function JournalModal({
                     ))}
                     {activeStrategies.length > 0 && <Separator className="my-1" />}
                     <SelectItem value="__add_new" className="text-muted-foreground">
-                      + Add new strategy...
+                      + Manage strategies &#x2197;
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -571,7 +611,7 @@ const JournalModal = memo(function JournalModal({
                 <div className="flex gap-2 mt-1">
                   <button
                     type="button"
-                    onClick={() => setFollowedExitRule(true)}
+                    onClick={() => setFollowedExitRule(prev => prev === true ? null : true)}
                     className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
                       followedExitRule === true
                         ? 'bg-emerald-600 text-white border-emerald-600'
@@ -582,7 +622,7 @@ const JournalModal = memo(function JournalModal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFollowedExitRule(false)}
+                    onClick={() => setFollowedExitRule(prev => prev === false ? null : false)}
                     className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
                       followedExitRule === false
                         ? 'bg-red-600 text-white border-red-600'
@@ -761,16 +801,23 @@ const JournalModal = memo(function JournalModal({
         </Tabs>
 
         <DialogFooter className="pt-4">
-          <Button variant="outline" size="sm" onClick={onClose}>
+          <Button variant="outline" size="sm" onClick={handleClose}>
             Cancel
           </Button>
           {onSaveAndNext && (
-            <Button variant="outline" size="sm" onClick={() => onSaveAndNext(buildData())}>
-              Save & Next
+            <Button variant="outline" size="sm" disabled={saving} onClick={async () => {
+              setSaving(true);
+              try {
+                await onSaveAndNext(buildData());
+              } finally {
+                setSaving(false);
+              }
+            }}>
+              {saving ? 'Saving...' : 'Save & Next'}
             </Button>
           )}
-          <Button size="sm" onClick={handleSave}>
-            Save Journal
+          <Button size="sm" disabled={saving} onClick={handleSave}>
+            {saving ? 'Saving...' : 'Save Journal'}
           </Button>
         </DialogFooter>
       </DialogContent>

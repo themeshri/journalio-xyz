@@ -70,7 +70,7 @@ export function DailyChecklist({
             {completedCount}/3
           </span>
         </div>
-        <div className="h-1 bg-muted rounded-full overflow-hidden">
+        <div className="h-1 bg-muted rounded-full overflow-hidden" role="progressbar" aria-valuenow={completedCount} aria-valuemin={0} aria-valuemax={3} aria-label={`Daily checklist: ${completedCount} of 3 complete`}>
           <div
             className={`h-full rounded-full transition-all duration-500 ${
               allDone ? 'bg-emerald-500' : 'bg-emerald-500/70'

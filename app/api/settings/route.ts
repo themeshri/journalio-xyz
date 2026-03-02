@@ -3,27 +3,26 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+const defaultUserId = 'default-user'
+
+async function resolveUserId(): Promise<string> {
+  const session = await getServerSession(authOptions)
+  return session?.user?.id || defaultUserId
+}
+
 // GET - Get user settings
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await resolveUserId()
 
     let settings = await prisma.userSettings.findUnique({
-      where: {
-        userId: session.user.id,
-      },
+      where: { userId },
     })
 
     // Create default settings if they don't exist
     if (!settings) {
       settings = await prisma.userSettings.create({
-        data: {
-          userId: session.user.id,
-        },
+        data: { userId },
       })
     }
 
@@ -37,35 +36,25 @@ export async function GET(request: NextRequest) {
 // PATCH - Update user settings
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await resolveUserId()
 
     const body = await request.json()
     const { displayName, transactionLimit, showUSDValues, darkMode, timezone, tradingStartTime } = body
 
     // Find or create settings
     let settings = await prisma.userSettings.findUnique({
-      where: {
-        userId: session.user.id,
-      },
+      where: { userId },
     })
 
     if (!settings) {
       settings = await prisma.userSettings.create({
-        data: {
-          userId: session.user.id,
-        },
+        data: { userId },
       })
     }
 
     // Update settings
     const updatedSettings = await prisma.userSettings.update({
-      where: {
-        userId: session.user.id,
-      },
+      where: { userId },
       data: {
         ...(displayName !== undefined && { displayName }),
         ...(transactionLimit !== undefined && { transactionLimit }),

@@ -49,7 +49,7 @@ export function KPICards({ trades, streak }: KPICardsProps) {
               stats.totalPL >= 0 ? 'text-emerald-500' : 'text-red-500'
             }`}
           >
-            {stats.totalPL >= 0 ? '+' : ''}{formatValue(stats.totalPL)}
+            {formatValue(stats.totalPL, true)}
           </p>
         </CardContent>
       </Card>
@@ -85,7 +85,7 @@ export function KPICards({ trades, streak }: KPICardsProps) {
               stats.avgPL >= 0 ? 'text-emerald-500' : 'text-red-500'
             }`}
           >
-            {stats.avgPL >= 0 ? '+' : ''}{formatValue(stats.avgPL)}
+            {formatValue(stats.avgPL, true)}
           </p>
         </CardContent>
       </Card>

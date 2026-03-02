@@ -34,8 +34,8 @@ export function formatTime(timestamp: number): string {
   });
 }
 
-// Format number as USD currency
-export function formatValue(amount: number): string {
+// Format number as USD currency with sign prefix
+export function formatValue(amount: number, showSign: boolean = false): string {
   const isNegative = amount < 0;
   const absAmount = Math.abs(amount);
 
@@ -44,7 +44,9 @@ export function formatValue(amount: number): string {
     maximumFractionDigits: 2
   });
 
-  return isNegative ? `-$${formatted}` : `$${formatted}`;
+  if (isNegative) return `-$${formatted}`;
+  if (showSign && amount > 0) return `+$${formatted}`;
+  return `$${formatted}`;
 }
 
 // Format token amount with appropriate decimal places

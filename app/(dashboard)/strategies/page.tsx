@@ -26,6 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { StrategyCardSkeleton } from '@/components/skeletons'
 import {
   type Strategy,
@@ -45,6 +49,7 @@ import {
 } from '@/lib/rules'
 import { useWallet } from '@/lib/wallet-context'
 import { safeLocalStorage } from '@/lib/local-storage'
+import { toast } from 'sonner'
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -441,18 +446,17 @@ function StrategyCard({
   strategy,
   onEdit,
   onArchive,
-  onDelete,
+  onRequestDelete,
   disabled,
   advancedMode,
 }: {
   strategy: Strategy
   onEdit: () => void
   onArchive: () => void
-  onDelete: () => void
+  onRequestDelete: () => void
   disabled: boolean
   advancedMode: boolean
 }) {
-  const [deleteConfirm, setDeleteConfirm] = useState(false)
   const totalRules = strategy.ruleGroups.reduce((acc, g) => acc + g.rules.length, 0)
   const requiredRules = strategy.ruleGroups.reduce(
     (acc, g) => acc + g.rules.filter((r) => r.isRequired).length,
@@ -492,36 +496,15 @@ function StrategyCard({
           >
             Edit
           </Button>
-          {deleteConfirm ? (
-            <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2 text-xs text-destructive"
-                onClick={onDelete}
-              >
-                Confirm
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2 text-xs text-muted-foreground"
-                onClick={() => setDeleteConfirm(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-              onClick={() => setDeleteConfirm(true)}
-              disabled={disabled}
-            >
-              Delete
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+            onClick={onRequestDelete}
+            disabled={disabled}
+          >
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -591,12 +574,17 @@ export default function StrategiesPage() {
   const [formColor, setFormColor] = useState(PRESET_COLORS[0])
   const [formIcon, setFormIcon] = useState('🚀')
   const [formGroups, setFormGroups] = useState<RuleGroup[]>([])
+  const [formDirty, setFormDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Delete confirm state
+  const [deleteStrategyId, setDeleteStrategyId] = useState<string | null>(null)
+  const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null)
 
   // Rule form state
   const [newRule, setNewRule] = useState('')
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [editingRuleText, setEditingRuleText] = useState('')
-  const [deleteRuleConfirm, setDeleteRuleConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([loadStrategies(true), loadRules()]).then(([strats, loadedRules]) => {
@@ -609,28 +597,34 @@ export default function StrategiesPage() {
   // ─── Strategy CRUD ──────────────────────────────────────────
 
   function openAdd() {
+    if (showForm && formDirty && !window.confirm('You have unsaved changes. Discard them?')) return
     setEditingId(null)
     setFormName('')
     setFormDescription('')
     setFormColor(PRESET_COLORS[0])
     setFormIcon('🚀')
     setFormGroups([])
+    setFormDirty(false)
     setShowForm(true)
   }
 
   function openEdit(s: Strategy) {
+    if (showForm && formDirty && !window.confirm('You have unsaved changes. Discard them?')) return
     setEditingId(s.id)
     setFormName(s.name)
     setFormDescription(s.description)
     setFormColor(s.color)
     setFormIcon(s.icon)
     setFormGroups(JSON.parse(JSON.stringify(s.ruleGroups)))
+    setFormDirty(false)
     setShowForm(true)
   }
 
   function cancelForm() {
+    if (formDirty && !window.confirm('You have unsaved changes. Discard them?')) return
     setShowForm(false)
     setEditingId(null)
+    setFormDirty(false)
   }
 
   function applyTemplate(t: StrategyTemplate) {
@@ -651,40 +645,52 @@ export default function StrategiesPage() {
     const name = formName.trim()
     if (!name) return
 
-    const cleanGroups = formGroups
-      .map((g) => ({
-        ...g,
-        name: g.name.trim() || 'Untitled Group',
-        rules: g.rules.filter((r) => r.text.trim()),
-      }))
-      .filter((g) => g.rules.length > 0)
+    setSaving(true)
+    try {
+      const cleanGroups = formGroups
+        .map((g) => ({
+          ...g,
+          name: g.name.trim() || 'Untitled Group',
+          rules: g.rules.filter((r) => r.text.trim()),
+        }))
+        .filter((g) => g.rules.length > 0)
 
-    if (editingId) {
-      const updated = await updateStrategy(editingId, {
-        name,
-        description: formDescription.trim(),
-        color: formColor,
-        icon: formIcon,
-        ruleGroups: cleanGroups,
-      })
-      if (updated) {
-        setStrategies((prev) => prev.map((s) => (s.id === editingId ? updated : s)))
-        reloadCtxStrategies()
+      if (editingId) {
+        const updated = await updateStrategy(editingId, {
+          name,
+          description: formDescription.trim(),
+          color: formColor,
+          icon: formIcon,
+          ruleGroups: cleanGroups,
+        })
+        if (updated) {
+          setStrategies((prev) => prev.map((s) => (s.id === editingId ? updated : s)))
+          reloadCtxStrategies()
+          toast.success('Strategy updated')
+        } else {
+          toast.error('Failed to update strategy')
+        }
+      } else {
+        const created = await createStrategy({
+          name,
+          description: formDescription.trim(),
+          color: formColor,
+          icon: formIcon,
+          ruleGroups: cleanGroups,
+        })
+        if (created) {
+          setStrategies((prev) => [...prev, created])
+          reloadCtxStrategies()
+          toast.success('Strategy created')
+        } else {
+          toast.error('Failed to create strategy')
+        }
       }
-    } else {
-      const created = await createStrategy({
-        name,
-        description: formDescription.trim(),
-        color: formColor,
-        icon: formIcon,
-        ruleGroups: cleanGroups,
-      })
-      if (created) {
-        setStrategies((prev) => [...prev, created])
-        reloadCtxStrategies()
-      }
+      setFormDirty(false)
+      cancelForm()
+    } finally {
+      setSaving(false)
     }
-    cancelForm()
   }
 
   async function handleDelete(id: string) {
@@ -692,7 +698,11 @@ export default function StrategiesPage() {
     if (ok) {
       setStrategies((prev) => prev.filter((s) => s.id !== id))
       reloadCtxStrategies()
+      toast.success('Strategy deleted')
+    } else {
+      toast.error('Failed to delete strategy')
     }
+    setDeleteStrategyId(null)
   }
 
   async function toggleArchive(id: string) {
@@ -702,6 +712,9 @@ export default function StrategiesPage() {
     if (updated) {
       setStrategies((prev) => prev.map((x) => (x.id === id ? updated : x)))
       reloadCtxStrategies()
+      toast.success(updated.isArchived ? 'Strategy archived' : 'Strategy restored')
+    } else {
+      toast.error('Failed to update strategy')
     }
   }
 
@@ -709,14 +722,17 @@ export default function StrategiesPage() {
 
   function addGroup() {
     setFormGroups([...formGroups, createBlankGroup(formGroups.length)])
+    setFormDirty(true)
   }
 
   function updateFormGroup(groupId: string, updated: RuleGroup) {
     setFormGroups(formGroups.map((g) => (g.id === groupId ? updated : g)))
+    setFormDirty(true)
   }
 
   function removeGroup(groupId: string) {
     setFormGroups(formGroups.filter((g) => g.id !== groupId))
+    setFormDirty(true)
   }
 
   // ─── Global Rule CRUD ──────────────────────────────────────
@@ -728,6 +744,9 @@ export default function StrategiesPage() {
     if (created) {
       setRules((prev) => [...prev, created])
       setNewRule('')
+      toast.success('Rule added')
+    } else {
+      toast.error('Failed to add rule')
     }
   }
 
@@ -735,8 +754,11 @@ export default function StrategiesPage() {
     const ok = await deleteRule(id)
     if (ok) {
       setRules((prev) => prev.filter((r) => r.id !== id))
-      setDeleteRuleConfirm(null)
+      toast.success('Rule deleted')
+    } else {
+      toast.error('Failed to delete rule')
     }
+    setDeleteRuleId(null)
   }
 
   function startEditRule(rule: GlobalRule) {
@@ -751,6 +773,9 @@ export default function StrategiesPage() {
     const updated = await updateRule(editingRuleId, { text })
     if (updated) {
       setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updated : r)))
+      toast.success('Rule updated')
+    } else {
+      toast.error('Failed to update rule')
     }
     setEditingRuleId(null)
     setEditingRuleText('')
@@ -832,7 +857,7 @@ export default function StrategiesPage() {
             <ColorPicker value={formColor} onChange={setFormColor} />
             <Input
               value={formName}
-              onChange={(e) => setFormName(e.target.value)}
+              onChange={(e) => { setFormName(e.target.value); setFormDirty(true) }}
               placeholder="Strategy name"
               className="flex-1"
             />
@@ -840,7 +865,7 @@ export default function StrategiesPage() {
 
           <Textarea
             value={formDescription}
-            onChange={(e) => setFormDescription(e.target.value)}
+            onChange={(e) => { setFormDescription(e.target.value); setFormDirty(true) }}
             placeholder="Brief description of this strategy..."
             rows={2}
             className="resize-none"
@@ -876,8 +901,8 @@ export default function StrategiesPage() {
           )}
 
           <div className="flex gap-2 pt-2">
-            <Button size="sm" onClick={handleSave} disabled={!formName.trim()}>
-              {editingId ? 'Update Strategy' : 'Save Strategy'}
+            <Button size="sm" onClick={handleSave} disabled={!formName.trim() || saving}>
+              {saving ? 'Saving...' : editingId ? 'Update Strategy' : 'Save Strategy'}
             </Button>
             <Button size="sm" variant="ghost" onClick={cancelForm}>
               Cancel
@@ -906,7 +931,7 @@ export default function StrategiesPage() {
             strategy={s}
             onEdit={() => openEdit(s)}
             onArchive={() => toggleArchive(s.id)}
-            onDelete={() => handleDelete(s.id)}
+            onRequestDelete={() => setDeleteStrategyId(s.id)}
             disabled={showForm}
             advancedMode={advancedMode}
           />
@@ -927,7 +952,7 @@ export default function StrategiesPage() {
                 strategy={s}
                 onEdit={() => openEdit(s)}
                 onArchive={() => toggleArchive(s.id)}
-                onDelete={() => handleDelete(s.id)}
+                onRequestDelete={() => setDeleteStrategyId(s.id)}
                 disabled={showForm}
                 advancedMode={advancedMode}
               />
@@ -1002,41 +1027,48 @@ export default function StrategiesPage() {
                   >
                     Edit
                   </Button>
-                  {deleteRuleConfirm === rule.id ? (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs text-destructive"
-                        onClick={() => handleDeleteRule(rule.id)}
-                      >
-                        Confirm
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs text-muted-foreground"
-                        onClick={() => setDeleteRuleConfirm(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteRuleConfirm(rule.id)}
-                    >
-                      Delete
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={() => setDeleteRuleId(rule.id)}
+                  >
+                    Delete
+                  </Button>
                 </>
               )}
             </div>
           ))}
         </div>
       )}
+
+      {/* ── Delete Strategy Confirmation ── */}
+      <AlertDialog open={!!deleteStrategyId} onOpenChange={(open) => !open && setDeleteStrategyId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this strategy?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone. The strategy and all its rules will be permanently deleted.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleteStrategyId) handleDelete(deleteStrategyId) }}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Delete Rule Confirmation ── */}
+      <AlertDialog open={!!deleteRuleId} onOpenChange={(open) => !open && setDeleteRuleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this rule?</AlertDialogTitle>
+            <AlertDialogDescription>This rule will be permanently removed from your global rules list.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleteRuleId) handleDeleteRule(deleteRuleId) }}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

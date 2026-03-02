@@ -6,6 +6,11 @@ import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
 
 interface ApiWallet {
   id: string
@@ -38,6 +43,7 @@ export default function WalletManagementPage() {
   const [selectedDex, setSelectedDex] = useState('other')
   const [error, setError] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [removeWalletIdx, setRemoveWalletIdx] = useState<number | null>(null)
 
   const fetchWallets = useCallback(async () => {
     try {
@@ -107,6 +113,7 @@ export default function WalletManagementPage() {
 
       // Auto-toggle new wallet active
       setWalletActive(trimmed, selectedChain, true)
+      toast.success('Wallet added')
     } catch {
       setError('Failed to add wallet')
     }
@@ -114,12 +121,18 @@ export default function WalletManagementPage() {
 
   async function handleRemove(wallet: ApiWallet) {
     try {
-      await fetch(`/api/wallets/${wallet.id}`, { method: 'DELETE' })
-      await fetchWallets()
-      await reloadWallets()
-      // Deactivate if active
-      setWalletActive(wallet.address, wallet.chain, false)
-    } catch { /* ignore */ }
+      const res = await fetch(`/api/wallets/${wallet.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        await fetchWallets()
+        await reloadWallets()
+        setWalletActive(wallet.address, wallet.chain, false)
+        toast.success('Wallet removed')
+      } else {
+        toast.error('Failed to remove wallet')
+      }
+    } catch {
+      toast.error('Failed to remove wallet')
+    }
   }
 
   function isActive(addr: string, chain: Chain) {
@@ -131,6 +144,7 @@ export default function WalletManagementPage() {
   }
 
   return (
+    <>
     <div className="max-w-2xl pt-8 space-y-8">
       <div>
         <h1 className="text-xl font-semibold mb-1">Wallet Management</h1>
@@ -280,7 +294,7 @@ export default function WalletManagementPage() {
                     variant="ghost"
                     size="sm"
                     className="text-xs text-destructive"
-                    onClick={() => handleRemove(w)}
+                    onClick={() => setRemoveWalletIdx(wallets.indexOf(w))}
                   >
                     Remove
                   </Button>
@@ -291,5 +305,19 @@ export default function WalletManagementPage() {
         </div>
       </div>
     </div>
+
+    <AlertDialog open={removeWalletIdx !== null} onOpenChange={(open) => !open && setRemoveWalletIdx(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove this wallet?</AlertDialogTitle>
+          <AlertDialogDescription>This will remove the wallet from your saved list.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { if (removeWalletIdx !== null) handleRemove(wallets[removeWalletIdx]); setRemoveWalletIdx(null) }}>Remove</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

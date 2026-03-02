@@ -18,6 +18,7 @@ import {
   savePreSession,
 } from '@/lib/pre-sessions'
 import { getTradingDay } from '@/lib/trading-day'
+import { toast } from 'sonner'
 
 const emotionalOptions = [
   'Calm',
@@ -75,6 +76,7 @@ export default function PreSessionPage() {
   const { reloadPreSessionStatus } = useMetadata()
   const [data, setData] = useState<PreSessionData>(defaultPreSessionData)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [globalRules, setGlobalRules] = useState<GlobalRule[]>([])
   const [isCompletedToday, setIsCompletedToday] = useState(false)
@@ -109,23 +111,31 @@ export default function PreSessionPage() {
   }
 
   async function handleSave() {
-    const now = new Date()
-    const todayDate = await fetchTradingDay()
-    const savedData: PreSessionData = {
-      ...data,
-      date: todayDate,
-      time: now.toTimeString().slice(0, 5),
-      savedAt: now.toISOString(),
-      marketSnapshot: data.marketSnapshot || defaultMarketSnapshot,
-    }
+    setSaving(true)
+    try {
+      const now = new Date()
+      const todayDate = await fetchTradingDay()
+      const savedData: PreSessionData = {
+        ...data,
+        date: todayDate,
+        time: now.toTimeString().slice(0, 5),
+        savedAt: now.toISOString(),
+        marketSnapshot: data.marketSnapshot || defaultMarketSnapshot,
+      }
 
-    const result = await savePreSession(savedData)
-    if (result) {
-      setData(savedData)
-      setIsCompletedToday(true)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      reloadPreSessionStatus()
+      const result = await savePreSession(savedData)
+      if (result) {
+        setData(savedData)
+        setIsCompletedToday(true)
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+        reloadPreSessionStatus()
+        toast.success('Pre-session saved')
+      } else {
+        toast.error('Failed to save pre-session')
+      }
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -180,36 +190,41 @@ export default function PreSessionPage() {
       <div className="space-y-6">
         {/* Market Snapshot */}
         <section>
-          <Label className="text-sm font-medium mb-1 block">Market Snapshot</Label>
-          <p className="text-xs text-muted-foreground mb-3">
-            Auto-captured when you save (coming soon)
-          </p>
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <Label className="text-sm font-medium cursor-pointer">Market Snapshot</Label>
+              <span className="text-xs text-muted-foreground">(coming soon)</span>
+              <svg className="w-3.5 h-3.5 text-muted-foreground transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </summary>
 
-          <div className="border border-border rounded-lg p-4 space-y-3">
-            <p className="text-sm text-foreground font-medium">
-              {displayDate} &middot; {displayTime}
-            </p>
+            <div className="border border-border rounded-lg p-4 space-y-3 mt-2">
+              <p className="text-sm text-foreground font-medium">
+                {displayDate} &middot; {displayTime}
+              </p>
 
-            <div className="grid grid-cols-4 gap-3">
-              {(['BTC', 'ETH', 'SOL', 'BNB'] as const).map((symbol) => (
-                <div key={symbol}>
-                  <p className="text-xs text-muted-foreground">{symbol}</p>
+              <div className="grid grid-cols-4 gap-3">
+                {(['BTC', 'ETH', 'SOL', 'BNB'] as const).map((symbol) => (
+                  <div key={symbol}>
+                    <p className="text-xs text-muted-foreground">{symbol}</p>
+                    <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Fear & Greed</p>
                   <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
                 </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Fear & Greed</p>
-                <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">24h Volume</p>
-                <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+                <div>
+                  <p className="text-xs text-muted-foreground">24h Volume</p>
+                  <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+                </div>
               </div>
             </div>
-          </div>
+          </details>
         </section>
 
         <Separator />
@@ -320,9 +335,10 @@ export default function PreSessionPage() {
                 <Input
                   id="max-trades"
                   type="number"
+                  min="0"
                   value={data.maxTrades}
                   onChange={(e) => update('maxTrades', e.target.value)}
-                  placeholder="e.g., 3"
+                  placeholder="e.g., 3 trades"
                 />
               </div>
               <div>
@@ -541,6 +557,7 @@ export default function PreSessionPage() {
               {globalRules.map((rule) => (
                 <label
                   key={rule.id}
+                  htmlFor={`rule-${rule.id}`}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors ${
                     data.rulesChecked.includes(rule.id)
                       ? 'border-emerald-500 bg-emerald-500/5 text-foreground'
@@ -548,10 +565,12 @@ export default function PreSessionPage() {
                   }`}
                 >
                   <input
+                    id={`rule-${rule.id}`}
                     type="checkbox"
                     checked={data.rulesChecked.includes(rule.id)}
                     onChange={() => toggleArrayItem('rulesChecked', rule.id)}
                     className="sr-only"
+                    aria-label={`Acknowledge rule: ${rule.text}`}
                   />
                   <span className="text-sm">{rule.text}</span>
                 </label>
@@ -563,8 +582,8 @@ export default function PreSessionPage() {
         <Separator />
 
         <div className="flex items-center gap-3">
-          <Button size="sm" onClick={handleSave}>
-            Save
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
           </Button>
           {saved && (
             <span className="text-xs text-emerald-600 font-medium">Saved</span>

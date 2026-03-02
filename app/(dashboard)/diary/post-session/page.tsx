@@ -114,7 +114,8 @@ export default function PostSessionPage() {
       {/* Rating */}
       <div>
         <Label className="text-sm mb-2">Overall Session Rating</Label>
-        <div className="flex gap-1 mt-1.5">
+        <div className="flex items-center gap-1 mt-1.5">
+          <span className="text-xs text-muted-foreground mr-1">Poor</span>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
             <button
               key={n}
@@ -129,6 +130,7 @@ export default function PostSessionPage() {
               {n}
             </button>
           ))}
+          <span className="text-xs text-muted-foreground ml-1">Excellent</span>
           {data.rating > 0 && (
             <span className="ml-2 text-sm text-muted-foreground self-center font-mono">
               {data.rating}/10

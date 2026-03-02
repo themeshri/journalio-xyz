@@ -146,7 +146,7 @@ export const RecentCycles = forwardRef<RecentCyclesHandle, RecentCyclesProps>(
                             t.profitLoss >= 0 ? 'text-emerald-500' : 'text-red-500'
                           }`}
                         >
-                          {t.profitLoss >= 0 ? '+' : ''}{formatValue(t.profitLoss)}
+                          {formatValue(t.profitLoss, true)}
                         </TableCell>
                         <TableCell className="text-xs py-1.5 text-center">
                           {isJournaled ? (

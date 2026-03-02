@@ -394,7 +394,7 @@ export function AppSidebar() {
         <div className="group-data-[collapsible=icon]:hidden">
           {streak.current > 0 && (
             <p className="text-xs text-muted-foreground mb-1">
-              🔥 {streak.current}-day streak
+              <span aria-hidden="true">🔥</span> {streak.current}-day streak
             </p>
           )}
           <p className="text-xs text-muted-foreground">

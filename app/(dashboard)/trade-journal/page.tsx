@@ -55,6 +55,7 @@ export default function TradeJournalPage() {
     activeWallets, flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades,
     tradeComments, strategies, journalMap, updateJournalEntry,
     walletTokens, loadingBalances, balancesFetched, balanceError,
+    refreshAll,
   } = useWallet()
 
   // Modal state
@@ -217,7 +218,7 @@ export default function TradeJournalPage() {
               trade.profitLoss >= 0 ? 'text-emerald-600' : 'text-red-600'
             }`}
           >
-            {trade.profitLoss >= 0 ? '+' : ''}{formatValue(trade.profitLoss)}
+            {formatValue(trade.profitLoss, true)}
           </div>
           <div
             className={`font-mono tabular-nums text-xs ${
@@ -415,11 +416,15 @@ export default function TradeJournalPage() {
         </Button>
       </div>
 
+      {loadingBalances && (
+        <p className="text-xs text-muted-foreground mb-4">Loading balances...</p>
+      )}
       {balanceError && (
         <p className="text-xs text-destructive mb-4">{balanceError}</p>
       )}
 
       {/* Table */}
+      <p className="text-xs text-muted-foreground mb-2 md:hidden">Scroll horizontally to see all columns</p>
       <ErrorBoundary fallback={
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
           Something went wrong loading the trade table. Try refreshing the page.
@@ -434,6 +439,7 @@ export default function TradeJournalPage() {
           trades={buysModalTrade.buys}
           title={`${buysModalTrade.token} - Buy Transactions (${buysModalTrade.buys.length})`}
           onClose={() => setBuysModalTrade(null)}
+          chain={buysModalTrade.chain}
         />
       )}
       {sellsModalTrade && (
@@ -441,6 +447,7 @@ export default function TradeJournalPage() {
           trades={sellsModalTrade.sells}
           title={`${sellsModalTrade.token} - Sell Transactions (${sellsModalTrade.sells.length})`}
           onClose={() => setSellsModalTrade(null)}
+          chain={sellsModalTrade.chain}
         />
       )}
       {journalModalTrade && (() => {
@@ -464,7 +471,7 @@ export default function TradeJournalPage() {
           walletAddress={activeWallets[0].address}
           chain={activeWallets[0].chain}
           onClose={() => setShowManualTrade(false)}
-          onSaved={() => window.location.reload()}
+          onSaved={() => { setShowManualTrade(false); refreshAll() }}
         />
       )}
     </div>

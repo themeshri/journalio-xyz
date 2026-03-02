@@ -86,15 +86,19 @@ export function QuickStatsBar({ trades, streak, missedTrades = [] }: QuickStatsB
     [missedTrades, trades]
   )
 
-  if (!stats) return null
+  if (!stats) return (
+    <div className="flex items-center justify-center rounded-lg border p-3 text-xs text-muted-foreground">
+      Not enough trade data for statistics.
+    </div>
+  )
 
   const items: { label: string; value: string; className: string; href?: string }[] = [
-    { label: 'Avg Win', value: `+${formatValue(stats.avgWin)}`, className: 'text-emerald-500' },
-    { label: 'Avg Loss', value: formatValue(stats.avgLoss), className: 'text-red-500' },
+    { label: 'Avg Win', value: formatValue(stats.avgWin, true), className: 'text-emerald-500' },
+    { label: 'Avg Loss', value: formatValue(stats.avgLoss, true), className: 'text-red-500' },
     { label: 'Avg Hold', value: stats.avgHoldTime > 0 ? formatDuration(stats.avgHoldTime) : '-', className: '' },
     { label: 'Best Hour', value: stats.bestHourPL > -Infinity ? HOUR_LABELS[stats.bestHour] : '-', className: '' },
-    { label: 'Best', value: `+${formatValue(stats.bestTrade)}`, className: 'text-emerald-500' },
-    { label: 'Worst', value: formatValue(stats.worstTrade), className: 'text-red-500' },
+    { label: 'Best', value: formatValue(stats.bestTrade, true), className: 'text-emerald-500' },
+    { label: 'Worst', value: formatValue(stats.worstTrade, true), className: 'text-red-500' },
     { label: 'Top Token', value: `${stats.topToken} (${stats.topTokenCount})`, className: '' },
     {
       label: stats.tradeStreakType === 'win' ? 'Win Streak' : stats.tradeStreakType === 'loss' ? 'Loss Streak' : 'Streak',

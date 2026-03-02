@@ -47,12 +47,19 @@ const DAY_OPTIONS = [
   { value: '6', label: 'Saturday' },
 ]
 
+const FILTER_PAGES = ['/', '/trade-journal', '/history', '/chart-lab']
+
 export function GlobalFilterBar() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+
+  // Only show on pages that actually consume filters
+  const showFilter = FILTER_PAGES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  if (!showFilter) return null
   const panelRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   // Close panel on click outside
   useEffect(() => {
@@ -64,6 +71,19 @@ export function GlobalFilterBar() {
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  // Close panel on Escape key
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open])
 
   const outcome = searchParams.get('outcome') || 'all'
@@ -95,6 +115,7 @@ export function GlobalFilterBar() {
     <div className="relative" ref={panelRef}>
       {/* Advanced toggle button — sits inline in the header */}
       <Button
+        ref={triggerRef}
         variant="ghost"
         size="sm"
         className="h-8 text-xs gap-1.5 -ml-1"
@@ -103,7 +124,7 @@ export function GlobalFilterBar() {
         <SlidersHorizontal className="h-3.5 w-3.5" />
         Advanced
         {activeCount > 0 && (
-          <span className="ml-0.5 bg-primary text-primary-foreground text-[10px] rounded-full px-1.5 py-0.5 leading-none font-medium">
+          <span className="ml-0.5 bg-primary text-primary-foreground text-[10px] rounded-full px-1.5 py-0.5 leading-none font-medium" aria-label={`${activeCount} active filter${activeCount !== 1 ? 's' : ''}`}>
             {activeCount}
           </span>
         )}

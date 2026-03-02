@@ -100,6 +100,7 @@ export default function MissedTradesPage() {
   const [formStrategyId, setFormStrategyId] = useState<string>('')
   const [formNotes, setFormNotes] = useState('')
   const [isFetching, setIsFetching] = useState(false)
+  const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => {
     fetchPlays()
@@ -109,9 +110,13 @@ export default function MissedTradesPage() {
   async function fetchPlays() {
     try {
       const res = await fetch('/api/papered-plays')
-      if (res.ok) setPlays(await res.json())
+      if (res.ok) {
+        setPlays(await res.json())
+        setFetchError(false)
+      }
     } catch (err) {
       console.error('Failed to fetch:', err)
+      setFetchError(true)
     } finally {
       setIsLoading(false)
     }
@@ -218,6 +223,7 @@ export default function MissedTradesPage() {
       const res = await fetch(`/api/papered-plays/${id}`, { method: 'DELETE' })
       if (res.ok) {
         setPlays(plays.filter((p) => p.id !== id))
+        toast.success('Missed trade deleted')
       } else {
         toast.error('Failed to delete')
       }
@@ -250,6 +256,20 @@ export default function MissedTradesPage() {
       <div className="pt-8">
         <h1 className="text-xl font-semibold mb-6">Missed Trades</h1>
         <TableRowsSkeleton rows={3} cols={7} />
+      </div>
+    )
+  }
+
+  if (fetchError) {
+    return (
+      <div className="pt-8">
+        <h1 className="text-xl font-semibold mb-6">Missed Trades</h1>
+        <div className="border border-dashed rounded-lg p-6 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">Failed to load missed trades.</p>
+          <Button size="sm" variant="outline" onClick={() => { setFetchError(false); setIsLoading(true); fetchPlays() }}>
+            Retry
+          </Button>
+        </div>
       </div>
     )
   }
@@ -315,6 +335,9 @@ export default function MissedTradesPage() {
                 {formTokenSymbol && <span className="text-muted-foreground/50">({formTokenSymbol})</span>}
               </div>
             )}
+            {isFetching && (
+              <p className="text-xs text-muted-foreground mt-2 animate-pulse">Fetching token data...</p>
+            )}
           </div>
 
           <Separator />
@@ -352,6 +375,7 @@ export default function MissedTradesPage() {
                 <Input
                   type="number"
                   step="any"
+                  min="0"
                   value={formEntryPrice}
                   onChange={(e) => setFormEntryPrice(e.target.value)}
                   placeholder="0.000034"
@@ -362,6 +386,7 @@ export default function MissedTradesPage() {
                 <Input
                   type="number"
                   step="any"
+                  min="0"
                   value={formPositionSize}
                   onChange={(e) => setFormPositionSize(e.target.value)}
                   placeholder="100"
@@ -372,6 +397,7 @@ export default function MissedTradesPage() {
                 <Input
                   type="number"
                   step="any"
+                  min="0"
                   value={formExitPrice}
                   onChange={(e) => setFormExitPrice(e.target.value)}
                   placeholder="0.000102"
@@ -384,6 +410,7 @@ export default function MissedTradesPage() {
                 <Input
                   type="number"
                   step="any"
+                  min="0"
                   value={formPeakPrice}
                   onChange={(e) => setFormPeakPrice(e.target.value)}
                   placeholder="0.000145"
