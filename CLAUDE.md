@@ -32,6 +32,7 @@ app/
 │   │   └── notes/             # General notes with tagging
 │   ├── trade-journal/         # Trade cycle table with journal modals
 │   ├── history/               # Tabbed: Transactions | Pre-Sessions | Journal
+│   ├── chart-lab/             # Advanced charts (calendar, distribution, equity, holding-time)
 │   ├── analytics/             # Charts (Cumulative P/L, Duration, Trading Hours)
 │   ├── missed-trades/         # Papered plays tracker (API-backed)
 │   ├── strategies/            # Strategy CRUD + global rules (DB-backed)
@@ -60,6 +61,7 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 | `/diary/notes` | Notes | API (DB) | General notes with title, content, and tags |
 | `/trade-journal` | Trade Journal | API (DB) | Trade cycles table with JournalModal for per-cycle notes |
 | `/history` | History | API (DB) | 3 tabs: Transactions (API), Pre-Sessions (API), Journal (API) |
+| `/chart-lab` | Chart Lab | API | Advanced charts: calendar P/L, distribution, equity curve, holding time — sub-routed |
 | `/analytics` | Analytics | API | Recharts: cumulative P/L, duration, hours, discipline — time-range filtered |
 | `/missed-trades` | Missed Trades | API (DB) | Track tokens you saw but didn't trade, with potential multiplier |
 | `/strategies` | Strategies | API (DB) | Named strategies (entry/exit/stop-loss conditions) + global rules |
@@ -108,6 +110,11 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | `pre-sessions.ts` | `loadPreSessions`, `loadPreSession`, `savePreSession` | Async pre-session CRUD via API |
 | `post-sessions.ts` | `loadPostSessions`, `loadPostSession`, `savePostSession` | Async post-session CRUD via API |
 | `journals.ts` | `loadJournals`, `saveJournal` | Async journal entry CRUD via API |
+| `notes.ts` | `NoteData`, `loadNotes`, `createNote`, `updateNote`, `deleteNote` | Notes types and async API helpers |
+| `chains.ts` | `Chain`, `ChainConfig`, chain configs | Multi-chain config (solana, base, bnb) with address patterns and token lists |
+| `constants.ts` | `APP_FEE_RATES` | Shared constants (DEX/app fee rates) used by client and server |
+| `discipline.ts` | `ratingToScore`, `DisciplineResult` | Discipline scoring from trade comments and journal ratings |
+| `streaks.ts` | `StreakResult`, streak computation | Journaling streak calculation (current + longest) |
 | `formatters.ts` | `formatDuration`, `formatTime`, `formatValue`, `formatTokenAmount`, `formatMarketCap`, `formatPrice`, `formatPercentage` | Display formatting |
 | `utils.ts` | `cn` | Tailwind class merge (clsx + tailwind-merge) |
 | `auth.ts` | `authOptions` | NextAuth config (credentials provider, JWT strategy) |
@@ -151,6 +158,8 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | GET/POST | `/api/wallets` | Session | List/create wallets |
 | DELETE/PATCH | `/api/wallets/[id]` | Session | Delete/update wallet |
 | GET/POST/DELETE | `/api/trade-edits` | Session | Trade edit overrides |
+| POST | `/api/manual-trades` | No | Create manual trade entries |
+| GET | `/api/evm/wallet/[address]/*` | No | EVM wallet data proxy |
 | GET | `/api/solana/wallet/[address]/trades` | No | Proxy to Solana Tracker trades API |
 | GET | `/api/solana/wallet/[address]/balances` | No | Proxy to Solana Tracker balances API |
 | GET | `/api/solana/token/[mint]` | No | Proxy to Solana Tracker token data |
@@ -251,7 +260,10 @@ In Tailwind v4 this must be `w-(--sidebar-width)` (parentheses, not brackets).
 ```bash
 npm run dev          # Start dev server
 npm run build        # Production build
+npm run lint         # Next.js linting
 npm run test         # Run Jest tests
+npm run test:watch   # Jest watch mode
+npm run test:coverage # Jest with coverage report
 npx prisma studio    # Database GUI
 npx prisma migrate dev --name <name>  # Create migration
 npx prisma generate  # Regenerate client after schema change
