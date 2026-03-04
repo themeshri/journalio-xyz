@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
 import { computeYearlyHeatmap } from '@/lib/analytics/calendar'
+import { Card, CardContent } from '@/components/ui/card'
 import { Info } from 'lucide-react'
 import {
   Tooltip,
@@ -205,6 +206,7 @@ export function ActivityCalendar({
   postSessions,
 }: ActivityCalendarProps) {
   const currentYear = new Date().getFullYear()
+  const minYear = 2024
   const [year, setYear] = useState(currentYear)
 
   const activityData = useMemo(
@@ -222,7 +224,8 @@ export function ActivityCalendar({
   const perfectDays = Array.from(activityData.values()).filter(d => d.score === 5).length
 
   return (
-    <div>
+    <Card>
+      <CardContent className="p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           <h3 className="text-sm font-semibold">Activity</h3>
@@ -252,8 +255,9 @@ export function ActivityCalendar({
           </span>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setYear(y => y - 1)}
-              className="text-xs text-muted-foreground hover:text-foreground px-1"
+              onClick={() => setYear(y => Math.max(y - 1, minYear))}
+              className="text-xs text-muted-foreground hover:text-foreground px-1 disabled:opacity-30 disabled:cursor-not-allowed"
+              disabled={year <= minYear}
             >
               &larr;
             </button>
@@ -281,7 +285,7 @@ export function ActivityCalendar({
                   <span
                     key={`${label}-${col}`}
                     className="text-[10px] text-muted-foreground"
-                    style={{ width: `${span * 12}px` }}
+                    style={{ width: `${span * 16}px` }}
                   >
                     {label}
                   </span>
@@ -294,7 +298,7 @@ export function ActivityCalendar({
               {/* Day labels */}
               <div className="flex flex-col gap-[2px] mr-1 pt-0">
                 {DAYS.map((d, i) => (
-                  <span key={i} className="text-[10px] text-muted-foreground h-[10px] leading-[10px] w-6 text-right pr-1">
+                  <span key={i} className="text-[10px] text-muted-foreground h-[14px] leading-[14px] w-6 text-right pr-1">
                     {d}
                   </span>
                 ))}
@@ -306,7 +310,7 @@ export function ActivityCalendar({
                   <div key={wi} className="flex flex-col gap-[2px]">
                     {week.map((date, di) => {
                       if (!date) {
-                        return <div key={di} className="w-[10px] h-[10px]" />
+                        return <div key={di} className="w-[14px] h-[14px] flex items-center justify-center" />
                       }
 
                       const activity = activityData.get(date)
@@ -316,11 +320,16 @@ export function ActivityCalendar({
                       return (
                         <Tooltip key={date}>
                           <TooltipTrigger asChild>
-                            <div
-                              className={`w-[10px] h-[10px] rounded-[2px] ${getScoreColor(score)} ${
+                            <button
+                              type="button"
+                              tabIndex={0}
+                              aria-label={`${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: ${score} ${score === 1 ? 'activity' : 'activities'}`}
+                              className={`w-[14px] h-[14px] flex items-center justify-center p-0.5`}
+                            >
+                              <span className={`block w-[10px] h-[10px] rounded-[2px] ${getScoreColor(score)} ${
                                 isToday ? 'ring-1 ring-zinc-400' : ''
-                              }`}
-                            />
+                              }`} />
+                            </button>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="text-xs space-y-1">
                             <p className="font-medium">{date}</p>
@@ -368,6 +377,7 @@ export function ActivityCalendar({
           </div>
         </TooltipProvider>
       </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

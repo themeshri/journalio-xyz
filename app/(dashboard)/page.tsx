@@ -8,14 +8,13 @@ import { KPICards } from '@/components/overview/KPICards'
 import { RecentCycles } from '@/components/overview/RecentCycles'
 import { DailyChecklist } from '@/components/overview/DailyChecklist'
 import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
-import { StrategySummary } from '@/components/overview/StrategySummary'
-import { MistakesSummary } from '@/components/overview/MistakesSummary'
-import { QuickStatsBar } from '@/components/overview/QuickStatsBar'
+import { Evaluation } from '@/components/overview/Evaluation'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 import { filterTradesByRange } from '@/lib/time-filters'
 import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
+import Link from 'next/link'
 
 const sectionErrorFallback = (
   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
@@ -28,8 +27,13 @@ function journalKey(t: { tokenMint: string; tradeNumber: number; walletAddress: 
 }
 
 export default function OverviewPage() {
-  const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, updateJournalEntry, streak } = useWallet()
-  const { preSessionDone, postSessionDone, missedTrades, timeRange, timePreset, setTimeFilter, strategies, tradeComments } = useMetadata()
+  const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
+  const { preSessionDone, postSessionDone, timeRange, timePreset, setTimeFilter } = useMetadata()
+
+  // Set page title
+  useEffect(() => {
+    document.title = 'Overview | Journalio'
+  }, [])
 
   // Fetch pre/post sessions for ActivityCalendar (current year)
   const [yearPreSessions, setYearPreSessions] = useState<{ date: string; savedAt?: string }[]>([])
@@ -112,7 +116,7 @@ export default function OverviewPage() {
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Home</h1>
         <p className="text-sm text-muted-foreground">
-          Add a wallet in Wallet Management to start tracking trades.
+          <Link href="/wallet-management" className="text-emerald-600 hover:underline">Add a wallet</Link> in Wallet Management to start tracking trades.
         </p>
       </div>
     )
@@ -175,10 +179,10 @@ export default function OverviewPage() {
 
       {/* Row 2: KPI Cards — 7-card horizontal strip */}
       <ErrorBoundary fallback={sectionErrorFallback}>
-        <KPICards trades={filteredTrades} streak={streak} />
+        <KPICards trades={filteredTrades} />
       </ErrorBoundary>
 
-      {/* Row 3: Recent Trades + Activity Calendar */}
+      {/* Row 3: Recent Trades + Evaluation */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
           <ErrorBoundary fallback={sectionErrorFallback}>
@@ -187,29 +191,19 @@ export default function OverviewPage() {
         </div>
         <div className="lg:col-span-2">
           <ErrorBoundary fallback={sectionErrorFallback}>
-            <ActivityCalendar
-              trades={flattenedTrades}
-              journalMap={journalMap}
-              preSessions={yearPreSessions}
-              postSessions={yearPostSessions}
-            />
+            <Evaluation trades={filteredTrades} />
           </ErrorBoundary>
         </div>
       </div>
 
-      {/* Row 5: Strategy Summary + Mistakes Summary — side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ErrorBoundary fallback={sectionErrorFallback}>
-          <StrategySummary trades={filteredTrades} journalMap={journalMap} strategies={strategies} />
-        </ErrorBoundary>
-        <ErrorBoundary fallback={sectionErrorFallback}>
-          <MistakesSummary trades={filteredTrades} journalMap={journalMap} tradeComments={tradeComments} />
-        </ErrorBoundary>
-      </div>
-
-      {/* Row 6: Quick Stats Bar */}
+      {/* Row 4: Activity Calendar — full width */}
       <ErrorBoundary fallback={sectionErrorFallback}>
-        <QuickStatsBar trades={filteredTrades} streak={streak} missedTrades={missedTrades} />
+        <ActivityCalendar
+          trades={flattenedTrades}
+          journalMap={journalMap}
+          preSessions={yearPreSessions}
+          postSessions={yearPostSessions}
+        />
       </ErrorBoundary>
 
       {/* Journal Modal triggered from ActionBanner */}
