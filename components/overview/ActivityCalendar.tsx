@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
 import { computeYearlyHeatmap } from '@/lib/analytics/calendar'
+import { computeCalendarData, type CalendarDay } from '@/lib/analytics'
 import { Card, CardContent } from '@/components/ui/card'
 import { Info } from 'lucide-react'
 import {
@@ -11,6 +12,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { DayDetailModal } from '@/components/DayDetailModal'
+import { useWallet } from '@/lib/wallet-context'
 
 interface PreSessionRecord {
   date: string
@@ -181,9 +184,10 @@ function buildWeekGrid(year: number): string[][] {
   return weeks
 }
 
-function getMonthLabels(weeks: string[][]): { label: string; col: number }[] {
-  const labels: { label: string; col: number }[] = []
+function getMonthLabels(weeks: string[][]): { label: string; col: number; colSpan: number }[] {
+  const labels: { label: string; col: number; colSpan: number }[] = []
   let lastMonth = -1
+  let lastCol = -1
 
   for (let w = 0; w < weeks.length; w++) {
     // Find first valid date in week
@@ -191,9 +195,19 @@ function getMonthLabels(weeks: string[][]): { label: string; col: number }[] {
     if (!firstDate) continue
     const month = parseInt(firstDate.split('-')[1]) - 1
     if (month !== lastMonth) {
-      labels.push({ label: MONTHS[month], col: w })
+      if (labels.length > 0) {
+        // Set span for previous label
+        labels[labels.length - 1].colSpan = w - lastCol
+      }
+      labels.push({ label: MONTHS[month], col: w, colSpan: 1 })
       lastMonth = month
+      lastCol = w
     }
+  }
+  
+  // Set span for last label
+  if (labels.length > 0) {
+    labels[labels.length - 1].colSpan = weeks.length - lastCol
   }
 
   return labels
@@ -205,9 +219,11 @@ export function ActivityCalendar({
   preSessions,
   postSessions,
 }: ActivityCalendarProps) {
+  const { tradeComments } = useWallet()
   const currentYear = new Date().getFullYear()
   const minYear = 2024
   const [year, setYear] = useState(currentYear)
+  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null)
 
   const activityData = useMemo(
     () => buildActivityData(trades, journalMap, preSessions, postSessions, year),
@@ -223,10 +239,28 @@ export function ActivityCalendar({
   const totalActiveDays = Array.from(activityData.values()).filter(d => d.score > 0).length
   const perfectDays = Array.from(activityData.values()).filter(d => d.score === 5).length
 
+  // Handle day click
+  const handleDayClick = useCallback((date: string) => {
+    const activity = activityData.get(date)
+    if (!activity || activity.tradeCount === 0) return
+    
+    // Find month for this date
+    const [y, m, d] = date.split('-').map(Number)
+    const dayCalData = computeCalendarData(trades, y, m - 1)
+    const dayObj = dayCalData.weeks
+      .flatMap(w => w.days)
+      .find(day => day?.date === date)
+    
+    if (dayObj) {
+      setSelectedDay(dayObj)
+    }
+  }, [activityData, trades])
+
   return (
+    <>
     <Card>
       <CardContent className="p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <div className="flex items-center gap-1.5">
           <h3 className="text-sm font-semibold">Activity</h3>
           <TooltipProvider delayDuration={200}>
@@ -248,10 +282,13 @@ export function ActivityCalendar({
             </Tooltip>
           </TooltipProvider>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-xs text-muted-foreground hidden sm:inline">
             {totalActiveDays} active day{totalActiveDays !== 1 ? 's' : ''}
             {perfectDays > 0 && ` · ${perfectDays} perfect`}
+          </span>
+          <span className="text-xs text-muted-foreground sm:hidden">
+            {totalActiveDays} active{perfectDays > 0 && ` · ${perfectDays} perfect`}
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -273,22 +310,30 @@ export function ActivityCalendar({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
         <TooltipProvider delayDuration={100}>
-          <div className="inline-block">
+          <div className="inline-block min-w-full sm:min-w-0">
             {/* Month labels */}
-            <div className="flex ml-7 mb-1">
-              {monthLabels.map(({ label, col }, i) => {
-                const nextCol = monthLabels[i + 1]?.col ?? weeks.length
-                const span = nextCol - col
+            <div className="flex ml-5 sm:ml-7 mb-1 gap-[1px]">
+              {weeks.map((_, weekIndex) => {
+                // Find which month this week belongs to
+                const firstDateInWeek = weeks[weekIndex].find(d => d !== '')
+                if (!firstDateInWeek) return <div key={weekIndex} className="w-[12px] sm:w-[14px]" />
+                
+                const month = parseInt(firstDateInWeek.split('-')[1]) - 1
+                const monthLabel = MONTHS[month]
+                
+                // Only show label at the start of each month
+                const prevWeek = weekIndex > 0 ? weeks[weekIndex - 1] : null
+                const prevDate = prevWeek ? prevWeek.find(d => d !== '') : null
+                const prevMonth = prevDate ? parseInt(prevDate.split('-')[1]) - 1 : -1
+                
+                const showLabel = month !== prevMonth
+                
                 return (
-                  <span
-                    key={`${label}-${col}`}
-                    className="text-[10px] text-muted-foreground"
-                    style={{ width: `${span * 16}px` }}
-                  >
-                    {label}
-                  </span>
+                  <div key={weekIndex} className="w-[12px] sm:w-[14px] text-[9px] sm:text-[10px] text-muted-foreground overflow-hidden">
+                    {showLabel ? monthLabel.slice(0, 3) : ''}
+                  </div>
                 )
               })}
             </div>
@@ -296,21 +341,21 @@ export function ActivityCalendar({
             {/* Grid */}
             <div className="flex gap-0">
               {/* Day labels */}
-              <div className="flex flex-col gap-[2px] mr-1 pt-0">
+              <div className="flex flex-col gap-[1px] mr-0.5 sm:mr-1 pt-0">
                 {DAYS.map((d, i) => (
-                  <span key={i} className="text-[10px] text-muted-foreground h-[14px] leading-[14px] w-6 text-right pr-1">
+                  <span key={i} className="text-[9px] sm:text-[10px] text-muted-foreground h-[12px] sm:h-[14px] flex items-center justify-end w-4 sm:w-6 pr-0.5 sm:pr-1">
                     {d}
                   </span>
                 ))}
               </div>
 
               {/* Weeks */}
-              <div className="flex gap-[2px]">
+              <div className="flex gap-[1px]">
                 {weeks.map((week, wi) => (
-                  <div key={wi} className="flex flex-col gap-[2px]">
+                  <div key={wi} className="flex flex-col gap-[1px]">
                     {week.map((date, di) => {
                       if (!date) {
-                        return <div key={di} className="w-[14px] h-[14px] flex items-center justify-center" />
+                        return <div key={di} className="w-[12px] h-[12px] sm:w-[14px] sm:h-[14px] flex items-center justify-center" />
                       }
 
                       const activity = activityData.get(date)
@@ -323,10 +368,13 @@ export function ActivityCalendar({
                             <button
                               type="button"
                               tabIndex={0}
+                              onClick={() => handleDayClick(date)}
                               aria-label={`${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: ${score} ${score === 1 ? 'activity' : 'activities'}`}
-                              className={`w-[14px] h-[14px] flex items-center justify-center p-0.5`}
+                              className={`w-[12px] h-[12px] sm:w-[14px] sm:h-[14px] flex items-center justify-center p-0 touch-manipulation ${
+                                activity?.tradeCount > 0 ? 'cursor-pointer hover:ring-2 hover:ring-zinc-400 hover:ring-offset-1' : ''
+                              }`}
                             >
-                              <span className={`block w-[10px] h-[10px] rounded-[2px] ${getScoreColor(score)} ${
+                              <span className={`block w-[11px] h-[11px] sm:w-[13px] sm:h-[13px] rounded-[1px] sm:rounded-[2px] ${getScoreColor(score)} ${
                                 isToday ? 'ring-1 ring-zinc-400' : ''
                               }`} />
                             </button>
@@ -367,17 +415,29 @@ export function ActivityCalendar({
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-1 mt-2 ml-7">
-              <span className="text-[10px] text-muted-foreground mr-1">Less</span>
+            <div className="flex items-center gap-0.5 sm:gap-1 mt-1.5 sm:mt-2 ml-5 sm:ml-7">
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground mr-0.5 sm:mr-1">Less</span>
               {[0, 1, 2, 3, 4, 5].map(s => (
-                <div key={s} className={`w-[10px] h-[10px] rounded-[2px] ${getScoreColor(s)}`} />
+                <div key={s} className={`w-[10px] h-[10px] sm:w-[11px] sm:h-[11px] rounded-[1px] sm:rounded-[2px] ${getScoreColor(s)}`} />
               ))}
-              <span className="text-[10px] text-muted-foreground ml-1">More</span>
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground ml-0.5 sm:ml-1">More</span>
             </div>
           </div>
         </TooltipProvider>
       </div>
       </CardContent>
     </Card>
+
+    {/* Shared Day Detail Modal */}
+    <DayDetailModal
+      selectedDay={selectedDay}
+      onClose={() => setSelectedDay(null)}
+      trades={trades}
+      journalMap={journalMap}
+      tradeComments={tradeComments}
+      preSessions={preSessions}
+      postSessions={postSessions}
+    />
+    </>
   )
 }
