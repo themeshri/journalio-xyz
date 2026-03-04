@@ -55,8 +55,6 @@ export interface JournalData {
   emotionTag?: string | null;
   stopLoss?: number | null;
   takeProfit?: number | null;
-  tradeHigh?: number | null;
-  tradeLow?: number | null;
   journaledAt?: string;
   // Legacy fields preserved for backward compat when reading old data
   buyCategory?: string;
@@ -73,13 +71,6 @@ interface JournalModalProps {
   onClose: () => void;
 }
 
-const emotionalStates = [
-  'Confident',
-  'Anxious',
-  'FOMO',
-  'Revenge',
-  'Neutral',
-];
 
 const mistakeOptions = [
   'Entered too early',
@@ -130,14 +121,14 @@ const JournalModal = memo(function JournalModal({
   // Migrate old buyCategory -> strategy if needed
   const initialStrategy = initialData?.strategy || initialData?.buyCategory || '';
   const [strategy, setStrategy] = useState(initialStrategy);
-  const [emotionalState, setEmotionalState] = useState(initialData?.emotionalState || '');
-  const [buyNotes, setBuyNotes] = useState(initialData?.buyNotes || '');
+  const [emotionalState] = useState('');
+  const [buyNotes] = useState('');
   const [buyRating, setBuyRating] = useState(initialData?.buyRating || 0);
   const [exitPlan, setExitPlan] = useState(initialData?.exitPlan || '');
   const [sellRating, setSellRating] = useState(initialData?.sellRating || 0);
   const [followedExitRule, setFollowedExitRule] = useState<boolean | null>(initialData?.followedExitRule ?? null);
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
-  const [sellNotes, setSellNotes] = useState(initialData?.sellNotes || '');
+  const [sellNotes] = useState('');
   // Multi-image: stored as JSON array string in DB, backward-compat with single base64 string
   const [attachments, setAttachments] = useState<string[]>(() => {
     const raw = initialData?.attachment;
@@ -156,21 +147,13 @@ const JournalModal = memo(function JournalModal({
   const [emotionTag, setEmotionTag] = useState<string | null>(initialData?.emotionTag ?? null);
   const [stopLoss, setStopLoss] = useState<number | null>(initialData?.stopLoss ?? null);
   const [takeProfit, setTakeProfit] = useState<number | null>(initialData?.takeProfit ?? null);
-  const [tradeHigh, setTradeHigh] = useState<number | null>(initialData?.tradeHigh ?? null);
-  const [tradeLow, setTradeLow] = useState<number | null>(initialData?.tradeLow ?? null);
   const [saving, setSaving] = useState(false);
-  const [riskMgmtOpen, setRiskMgmtOpen] = useState(
-    !!(initialData?.stopLoss || initialData?.takeProfit || initialData?.tradeHigh || initialData?.tradeLow)
-  );
 
   // Track if form has been modified
   const initialSnapshot = useRef({
     strategy: initialStrategy,
-    emotionalState: initialData?.emotionalState || '',
-    buyNotes: initialData?.buyNotes || '',
     buyRating: initialData?.buyRating || 0,
     sellRating: initialData?.sellRating || 0,
-    sellNotes: initialData?.sellNotes || '',
     exitPlan: initialData?.exitPlan || '',
     strategyId: initialData?.strategyId ?? null,
     entryCommentId: initialData?.entryCommentId ?? null,
@@ -180,11 +163,8 @@ const JournalModal = memo(function JournalModal({
   });
   const isDirty =
     strategy !== initialSnapshot.current.strategy ||
-    emotionalState !== initialSnapshot.current.emotionalState ||
-    buyNotes !== initialSnapshot.current.buyNotes ||
     buyRating !== initialSnapshot.current.buyRating ||
     sellRating !== initialSnapshot.current.sellRating ||
-    sellNotes !== initialSnapshot.current.sellNotes ||
     exitPlan !== initialSnapshot.current.exitPlan ||
     strategyId !== initialSnapshot.current.strategyId ||
     entryCommentId !== initialSnapshot.current.entryCommentId ||
@@ -220,10 +200,8 @@ const JournalModal = memo(function JournalModal({
     emotionTag,
     stopLoss,
     takeProfit,
-    tradeHigh,
-    tradeLow,
     journaledAt: initialData?.journaledAt || new Date().toISOString(),
-  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachments, entryCommentId, exitCommentId, managementCommentId, emotionTag, stopLoss, takeProfit, tradeHigh, tradeLow, initialData?.journaledAt]);
+  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachments, entryCommentId, exitCommentId, managementCommentId, emotionTag, stopLoss, takeProfit, initialData?.journaledAt]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -461,23 +439,6 @@ const JournalModal = memo(function JournalModal({
               </div>
 
               {/* Strategy Rule Checklist */}
-              <div>
-                <Label className="text-xs mb-1.5">
-                  Emotional State
-                </Label>
-                <Select value={emotionalState} onValueChange={setEmotionalState}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="How are you feeling?" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {emotionalStates.map((state) => (
-                      <SelectItem key={state} value={state}>
-                        {state}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* Emotion Tag Grid */}
               <div>
@@ -509,18 +470,6 @@ const JournalModal = memo(function JournalModal({
                 setEntryCommentId
               )}
 
-              <div>
-                <Label htmlFor="buy-notes" className="text-xs mb-1.5">
-                  Notes
-                </Label>
-                <Textarea
-                  id="buy-notes"
-                  value={buyNotes}
-                  onChange={(e) => setBuyNotes(e.target.value)}
-                  placeholder="Why did you enter this trade? What was your thesis?"
-                  rows={3}
-                />
-              </div>
 
               <div>
                 <Label className="text-xs mb-1.5">Rate the entry execution</Label>
@@ -556,9 +505,35 @@ const JournalModal = memo(function JournalModal({
                   id="exit-plan"
                   value={exitPlan}
                   onChange={(e) => setExitPlan(e.target.value)}
-                  placeholder="What's your target? When will you sell? What's your stop loss?"
+                  placeholder="What's your target? When will you sell?"
                   rows={3}
                 />
+              </div>
+              
+              {/* Stop Loss and Take Profit */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="stop-loss" className="text-xs mb-1.5">Stop Loss (MC)</Label>
+                  <Input
+                    id="stop-loss"
+                    type="number"
+                    step="any"
+                    placeholder="0.00"
+                    value={stopLoss ?? ''}
+                    onChange={(e) => setStopLoss(e.target.value === '' ? null : parseFloat(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="take-profit" className="text-xs mb-1.5">Take Profit (MC)</Label>
+                  <Input
+                    id="take-profit"
+                    type="number"
+                    step="any"
+                    placeholder="0.00"
+                    value={takeProfit ?? ''}
+                    onChange={(e) => setTakeProfit(e.target.value === '' ? null : parseFloat(e.target.value))}
+                  />
+                </div>
               </div>
             </div>
           </section>
@@ -667,84 +642,9 @@ const JournalModal = memo(function JournalModal({
                 setManagementCommentId
               )}
 
-              {/* Sell Notes */}
-              <div>
-                <Label htmlFor="sell-notes" className="text-xs mb-1.5">
-                  Additional Notes
-                </Label>
-                <Textarea
-                  id="sell-notes"
-                  value={sellNotes}
-                  onChange={(e) => setSellNotes(e.target.value)}
-                  placeholder="What did you learn? What would you do differently?"
-                  rows={3}
-                />
-              </div>
             </div>
           </section>
 
-          <Separator />
-
-          {/* Risk Management (optional) */}
-          <section>
-            <button
-              type="button"
-              onClick={() => setRiskMgmtOpen(!riskMgmtOpen)}
-              className="flex items-center gap-2 text-sm font-medium mb-3 hover:text-foreground transition-colors cursor-pointer"
-            >
-              <span>Risk Management (optional)</span>
-              <span className="text-xs text-muted-foreground">{riskMgmtOpen ? '\u25b4' : '\u25be'}</span>
-            </button>
-
-            {riskMgmtOpen && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="stop-loss" className="text-xs mb-1.5">Stop Loss ($)</Label>
-                  <Input
-                    id="stop-loss"
-                    type="number"
-                    step="any"
-                    placeholder="0.00"
-                    value={stopLoss ?? ''}
-                    onChange={(e) => setStopLoss(e.target.value === '' ? null : parseFloat(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="take-profit" className="text-xs mb-1.5">Take Profit ($)</Label>
-                  <Input
-                    id="take-profit"
-                    type="number"
-                    step="any"
-                    placeholder="0.00"
-                    value={takeProfit ?? ''}
-                    onChange={(e) => setTakeProfit(e.target.value === '' ? null : parseFloat(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="trade-high" className="text-xs mb-1.5">Trade High ($)</Label>
-                  <Input
-                    id="trade-high"
-                    type="number"
-                    step="any"
-                    placeholder="0.00"
-                    value={tradeHigh ?? ''}
-                    onChange={(e) => setTradeHigh(e.target.value === '' ? null : parseFloat(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="trade-low" className="text-xs mb-1.5">Trade Low ($)</Label>
-                  <Input
-                    id="trade-low"
-                    type="number"
-                    step="any"
-                    placeholder="0.00"
-                    value={tradeLow ?? ''}
-                    onChange={(e) => setTradeLow(e.target.value === '' ? null : parseFloat(e.target.value))}
-                  />
-                </div>
-              </div>
-            )}
-          </section>
 
           <Separator />
 

@@ -7,6 +7,7 @@ import { LocalStorageMigration } from '@/components/LocalStorageMigration'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AccountDropdown } from '@/components/AccountDropdown'
 import { GlobalFilterBar } from '@/components/GlobalFilterBar'
+import { SyncButton } from '@/components/SyncButton'
 
 function DashboardSkeleton() {
   return (
@@ -47,6 +48,7 @@ export default function DashboardLayout({
             <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
               <GlobalFilterBar />
               <div className="ml-auto flex items-center gap-2">
+                <SyncButton />
                 <ThemeToggle />
                 <AccountDropdown />
               </div>
