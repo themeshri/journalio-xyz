@@ -234,7 +234,9 @@ function processTradeIntoGroup(
   if (isEffectivelyZero(newBalance)) {
     group.isComplete = true;
     group.endDate = trade.timestamp;
-    group.duration = (trade.timestamp - group.startDate) * MS_TO_SECONDS;
+    // Calculate duration using the original first transaction, not display date
+    const firstTransaction = Math.min(...[...group.buys, ...group.sells].map(tx => tx.timestamp));
+    group.duration = (trade.timestamp - firstTransaction) * MS_TO_SECONDS;
   }
 
   return newBalance;
@@ -254,7 +256,7 @@ function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[], chain:
     return [];
   }
 
-  // Sort chronologically (oldest first)
+  // Sort chronologically (oldest first for processing balance logic)
   const sortedTrades = [...tokenTrades].sort((a, b) => a.timestamp - b.timestamp);
 
   const tradeGroups: TradeGroup[] = [];
@@ -271,13 +273,18 @@ function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[], chain:
     // Check if we need to start a new group
     if (shouldStartNewGroup(currentGroup, runningBalance, tradeDirection)) {
       // Finalize previous group if it exists
-      if (currentGroup && !currentGroup.isComplete) {
-        currentGroup.endBalance = runningBalance;
-        currentGroup.isComplete = isEffectivelyZero(runningBalance);
-        if (currentGroup.isComplete) {
-          currentGroup.endDate = trade.timestamp;
-          currentGroup.duration = (trade.timestamp - currentGroup.startDate) * MS_TO_SECONDS;
+      if (currentGroup) {
+        if (!currentGroup.isComplete) {
+          currentGroup.endBalance = runningBalance;
+          currentGroup.isComplete = isEffectivelyZero(runningBalance);
+          if (currentGroup.isComplete) {
+            currentGroup.endDate = trade.timestamp;
+            const firstTransaction = Math.min(...[...currentGroup.buys, ...currentGroup.sells].map(tx => tx.timestamp));
+            currentGroup.duration = (trade.timestamp - firstTransaction) * MS_TO_SECONDS;
+          }
         }
+        // Sort transactions newest to oldest for display
+        finalizeTradeGroupSorting(currentGroup);
       }
 
       // Create new group
@@ -306,10 +313,39 @@ function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[], chain:
     // Process the trade into the current group (with null check)
     if (currentGroup) {
       runningBalance = processTradeIntoGroup(currentGroup, trade, tradeDirection, runningBalance);
+      // Update display date after each transaction
+      updateTradeGroupDisplayDate(currentGroup);
     }
   });
 
+  // Finalize the last group if it exists
+  if (currentGroup) {
+    finalizeTradeGroupSorting(currentGroup);
+  }
+
   return tradeGroups;
+}
+
+/**
+ * Update the display date of a trade group to the latest transaction
+ * @param group - The trade group to update
+ */
+function updateTradeGroupDisplayDate(group: TradeGroup): void {
+  const allTransactions = [...group.buys, ...group.sells];
+  if (allTransactions.length > 0) {
+    const latestTimestamp = Math.max(...allTransactions.map(tx => tx.timestamp));
+    group.startDate = latestTimestamp;
+  }
+}
+
+/**
+ * Finalize trade group by sorting transactions
+ * @param group - The trade group to finalize
+ */
+function finalizeTradeGroupSorting(group: TradeGroup): void {
+  // Sort transactions newest to oldest for display
+  group.buys.sort((a, b) => b.timestamp - a.timestamp);
+  group.sells.sort((a, b) => b.timestamp - a.timestamp);
 }
 
 /**
@@ -369,13 +405,33 @@ export function calculateTradeCycles(trades: any[], chain: Chain = 'solana', wal
 }
 
 /**
+ * Helper to get the most recent transaction timestamp from a trade group.
+ * Looks at both buy and sell transactions to find the latest activity.
+ *
+ * @param trade - The trade group to analyze
+ * @returns Most recent timestamp across all transactions in the trade
+ */
+function getLatestTransactionTime(trade: TradeGroup): number {
+  const allTransactions = [...trade.buys, ...trade.sells];
+  if (allTransactions.length === 0) {
+    return trade.startDate;
+  }
+  return Math.max(...allTransactions.map(tx => tx.timestamp));
+}
+
+/**
  * Flatten and sort all trade groups across all tokens into a single sorted list.
  * Assigns a global trade number to each group for display purposes.
  *
- * @param tradeCycles - Array of trade cycles to flatten
- * @returns Flattened array of all trade groups, sorted by start date (newest first)
+ * Sorting logic:
+ * - Open trades (isComplete: false) are grouped by coin and sorted by most recent activity
+ * - Closed trades (isComplete: true) are sorted by start date
+ * - Within each coin group, trades are sorted chronologically (newest first)
  *
- * Use case: For displaying all trades across all tokens in a unified timeline view.
+ * @param tradeCycles - Array of trade cycles to flatten
+ * @returns Flattened array of all trade groups, with activity-based sorting for open trades
+ *
+ * Use case: For displaying all trades with active coins appearing first.
  */
 export function flattenTradeCycles(tradeCycles: TradeCycle[]): FlattenedTrade[] {
   // Handle empty input
@@ -393,6 +449,36 @@ export function flattenTradeCycles(tradeCycles: TradeCycle[]): FlattenedTrade[] 
     }))
   );
 
-  // Sort by start date, newest first
-  return allTrades.sort((a, b) => b.startDate - a.startDate);
+  // Separate open and closed trades
+  const openTrades = allTrades.filter(trade => !trade.isComplete);
+  const closedTrades = allTrades.filter(trade => trade.isComplete);
+
+  // Group open trades by coin (tokenMint)
+  const coinGroups = new Map<string, FlattenedTrade[]>();
+  openTrades.forEach(trade => {
+    if (!coinGroups.has(trade.tokenMint)) {
+      coinGroups.set(trade.tokenMint, []);
+    }
+    coinGroups.get(trade.tokenMint)!.push(trade);
+  });
+
+  // Sort coin groups by most recent activity, then trades within groups by startDate
+  const sortedOpenTrades = Array.from(coinGroups.values())
+    .map(trades => {
+      // Find most recent transaction time across all trades for this coin
+      const maxTimestamp = Math.max(...trades.map(trade => getLatestTransactionTime(trade)));
+      // Sort trades within this coin group by start date (newest first)
+      const sortedTrades = trades.sort((a, b) => b.startDate - a.startDate);
+      return { trades: sortedTrades, maxTimestamp };
+    })
+    // Sort coin groups by their most recent activity (newest first)
+    .sort((a, b) => b.maxTimestamp - a.maxTimestamp)
+    // Flatten back to a single array
+    .flatMap(group => group.trades);
+
+  // Sort closed trades by start date (newest first)
+  const sortedClosedTrades = closedTrades.sort((a, b) => b.startDate - a.startDate);
+
+  // Return open trades first (sorted by coin activity), then closed trades
+  return [...sortedOpenTrades, ...sortedClosedTrades];
 }

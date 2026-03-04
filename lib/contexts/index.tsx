@@ -394,9 +394,11 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   }, [activeWallets, walletSlots])
 
   const flattenedTrades = useMemo(() => {
-    return activeWallets
+    const allTrades = activeWallets
       .flatMap((w) => walletSlots[makeWalletKey(w.address, w.chain)]?.flattenedTrades || [])
-      .sort((a, b) => b.startDate - a.startDate)
+    
+    // Sort all trades purely chronologically by trade date (newest first)
+    return allTrades.sort((a, b) => b.startDate - a.startDate)
   }, [activeWallets, walletSlots])
 
   const isAnyLoading = useMemo(() => {
