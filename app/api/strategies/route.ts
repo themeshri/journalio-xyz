@@ -1,7 +1,7 @@
+import { validateBody, createStrategySchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 function parseStrategy(s: any) {
   return {
@@ -13,10 +13,14 @@ function parseStrategy(s: any) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { searchParams } = new URL(request.url)
     const includeArchived = searchParams.get('includeArchived') === 'true'
 
-    const where: Record<string, unknown> = { userId: defaultUserId }
+    const where: Record<string, unknown> = { userId }
     if (!includeArchived) {
       where.isArchived = false
     }
@@ -35,27 +39,26 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const body = await request.json()
+    const validation = validateBody(createStrategySchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
 
-    if (!body.name?.trim()) {
-      return NextResponse.json({ error: 'name is required' }, { status: 400 })
-    }
-
-    await prisma.user.upsert({
-      where: { id: defaultUserId },
-      create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-      update: {},
-    })
+    await ensureUserExists(userId, auth.email)
 
     const strategy = await prisma.strategy.create({
       data: {
-        userId: defaultUserId,
-        name: body.name.trim(),
-        description: body.description?.trim() || '',
-        color: body.color || '#10b981',
-        icon: body.icon || '📋',
-        ruleGroupsJson: JSON.stringify(body.ruleGroups || []),
-        isArchived: body.isArchived || false,
+        userId,
+        name: v.name,
+        description: v.description,
+        color: v.color,
+        icon: v.icon,
+        ruleGroupsJson: JSON.stringify(v.ruleGroups),
+        isArchived: v.isArchived,
       },
     })
 

@@ -1,3 +1,4 @@
+import { validateBody, updateNoteSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -16,12 +17,16 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+    const validation = validateBody(updateNoteSchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
+
     const note = await prisma.note.update({
       where: { id },
       data: {
-        ...(body.title !== undefined && { title: body.title }),
-        ...(body.content !== undefined && { content: body.content }),
-        ...(body.tags !== undefined && { tagsJson: JSON.stringify(body.tags) }),
+        ...(v.title !== undefined && { title: v.title }),
+        ...(v.content !== undefined && { content: v.content }),
+        ...(v.tags !== undefined && { tagsJson: JSON.stringify(v.tags) }),
       },
     })
     return NextResponse.json(parseNote(note))

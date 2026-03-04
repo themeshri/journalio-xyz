@@ -371,7 +371,7 @@ export function ActivityCalendar({
                               onClick={() => handleDayClick(date)}
                               aria-label={`${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: ${score} ${score === 1 ? 'activity' : 'activities'}`}
                               className={`w-[12px] h-[12px] sm:w-[14px] sm:h-[14px] flex items-center justify-center p-0 touch-manipulation ${
-                                activity?.tradeCount > 0 ? 'cursor-pointer hover:ring-2 hover:ring-zinc-400 hover:ring-offset-1' : ''
+                                (activity?.tradeCount ?? 0) > 0 ? 'cursor-pointer hover:ring-2 hover:ring-zinc-400 hover:ring-offset-1' : ''
                               }`}
                             >
                               <span className={`block w-[11px] h-[11px] sm:w-[13px] sm:h-[13px] rounded-[1px] sm:rounded-[2px] ${getScoreColor(score)} ${
@@ -435,8 +435,8 @@ export function ActivityCalendar({
       trades={trades}
       journalMap={journalMap}
       tradeComments={tradeComments}
-      preSessions={preSessions}
-      postSessions={postSessions}
+      preSessions={preSessions as any}
+      postSessions={postSessions as any}
     />
     </>
   )

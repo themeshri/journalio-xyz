@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { parseWalletParams, resolveFlattenedTrades, sanitizeForJSON } from '@/lib/server/resolve-trades'
 import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
 import { type Chain } from '@/lib/chains'
 import { getTradingDay } from '@/lib/trading-day'
-
-const defaultUserId = 'default-user'
 
 function parseStrategy(s: any) {
   return {
@@ -73,10 +72,11 @@ function computeStreak(journals: any[]): { current: number; longest: number } {
 async function resolveWalletTradesWithRaw(
   address: string,
   chain: Chain,
-  dex: string
+  dex: string,
+  userId: string
 ): Promise<{ trades: any[]; flattenedTrades: any[]; cached: boolean; cachedAt?: string }> {
   const wallet = await prisma.wallet.findFirst({
-    where: { address, chain, userId: defaultUserId },
+    where: { address, chain, userId },
   })
   if (!wallet) return { trades: [], flattenedTrades: [], cached: false }
 
@@ -127,8 +127,13 @@ async function resolveWalletTradesWithRaw(
 // GET /api/dashboard?addresses=a1,a2&chains=solana,base&dexes=fomo,other
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+    await ensureUserExists(userId, auth.email)
+
     const { searchParams } = new URL(request.url)
-    const params = parseWalletParams(searchParams)
+    const params = parseWalletParams(searchParams, userId)
 
     if (params.addresses.length === 0) {
       return NextResponse.json({
@@ -145,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch user settings for timezone-aware trading day
     const userSettings = await prisma.userSettings.findUnique({
-      where: { userId: defaultUserId },
+      where: { userId: userId },
       select: { timezone: true, tradingStartTime: true },
     })
     const todayDate = getTradingDay(
@@ -160,7 +165,7 @@ export async function GET(request: NextRequest) {
         params.addresses.map((address, i) => {
           const chain = (params.chains[i] || 'solana') as Chain
           const dex = params.dexes[i] || 'other'
-          return resolveWalletTradesWithRaw(address, chain, dex).then((result) => ({
+          return resolveWalletTradesWithRaw(address, chain, dex, userId).then((result) => ({
             key: `${chain}:${address}`,
             ...result,
           }))
@@ -169,25 +174,20 @@ export async function GET(request: NextRequest) {
       // Trade comments (with auto-seed)
       (async () => {
         let comments = await prisma.tradeComment.findMany({
-          where: { userId: defaultUserId },
+          where: { userId },
           orderBy: { createdAt: 'asc' },
         })
         if (comments.length === 0) {
-          await prisma.user.upsert({
-            where: { id: defaultUserId },
-            create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-            update: {},
-          })
           await prisma.tradeComment.createMany({
             data: DEFAULT_TRADE_COMMENTS.map((c) => ({
-              userId: defaultUserId,
+              userId,
               category: c.category,
               label: c.label,
               rating: c.rating,
             })),
           })
           comments = await prisma.tradeComment.findMany({
-            where: { userId: defaultUserId },
+            where: { userId: userId },
             orderBy: { createdAt: 'asc' },
           })
         }
@@ -195,31 +195,27 @@ export async function GET(request: NextRequest) {
       })(),
       // Strategies
       prisma.strategy.findMany({
-        where: { userId: defaultUserId },
+        where: { userId: userId },
         orderBy: { createdAt: 'desc' },
       }),
-      // Journals for all wallet addresses
-      Promise.all(
-        params.addresses.map((address) =>
-          prisma.journalEntry.findMany({
-            where: { userId: defaultUserId, walletAddress: address },
-            orderBy: { createdAt: 'desc' },
-          })
-        )
-      ),
+      // Journals for all wallet addresses (batched)
+      prisma.journalEntry.findMany({
+        where: { userId, walletAddress: { in: params.addresses } },
+        orderBy: { createdAt: 'desc' },
+      }),
       // Today's pre-session status
       prisma.preSession.findFirst({
-        where: { userId: defaultUserId, date: todayDate },
+        where: { userId: userId, date: todayDate },
         select: { savedAt: true },
       }),
       // Today's post-session status
       prisma.postSession.findFirst({
-        where: { userId: defaultUserId, date: todayDate },
+        where: { userId: userId, date: todayDate },
         select: { id: true },
       }),
       // Missed trades (papered plays)
       prisma.paperedPlay.findMany({
-        where: { userId: defaultUserId },
+        where: { userId: userId },
         orderBy: { createdAt: 'desc' },
       }),
     ])
@@ -238,8 +234,8 @@ export async function GET(request: NextRequest) {
     // Parse strategies
     const strategies = strategiesRaw.map(parseStrategy)
 
-    // Parse and flatten journals
-    const allJournals = journalResults.flat().map(parseJournal)
+    // Parse journals
+    const allJournals = journalResults.map(parseJournal)
 
     // Compute streak
     const streak = computeStreak(allJournals)

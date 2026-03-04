@@ -98,10 +98,7 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
                 }
 
                 const pnl = day.pnl
-                const intensity = pnl >= 0
-                  ? Math.min((pnl / maxPnl) * 100, 100)
-                  : Math.min((Math.abs(pnl) / maxLoss) * 100, 100)
-                const colorClass = getDayColorClass(pnl, intensity)
+                const colorClass = getDayColorClass(pnl, maxPnl, maxLoss)
                 const isToday = day.date === new Date().toISOString().slice(0, 10)
 
                 return (
@@ -112,7 +109,7 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
                       isToday ? 'ring-1 ring-zinc-400' : ''
                     }`}
                   >
-                    <span className="text-[10px] font-medium">{day.dayOfMonth}</span>
+                    <span className="text-[10px] font-medium">{parseInt(day.date.slice(8, 10))}</span>
                     {day.tradeCount > 0 && (
                       <span
                         className={`text-[7px] font-mono tabular-nums ${

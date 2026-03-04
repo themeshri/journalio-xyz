@@ -1,7 +1,7 @@
+import { validateBody, updateStrategySchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth } from '@/lib/auth-helper'
 
 function parseStrategy(s: any) {
   return {
@@ -16,10 +16,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
     const strategy = await prisma.strategy.findUnique({ where: { id } })
 
-    if (!strategy || strategy.userId !== defaultUserId) {
+    if (!strategy || strategy.userId !== userId) {
       return NextResponse.json({ error: 'Strategy not found' }, { status: 404 })
     }
 
@@ -35,21 +39,28 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
     const body = await request.json()
+    const validation = validateBody(updateStrategySchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
 
     const existing = await prisma.strategy.findUnique({ where: { id } })
-    if (!existing || existing.userId !== defaultUserId) {
+    if (!existing || existing.userId !== userId) {
       return NextResponse.json({ error: 'Strategy not found' }, { status: 404 })
     }
 
     const data: Record<string, unknown> = {}
-    if (body.name !== undefined) data.name = body.name.trim()
-    if (body.description !== undefined) data.description = body.description.trim()
-    if (body.color !== undefined) data.color = body.color
-    if (body.icon !== undefined) data.icon = body.icon
-    if (body.ruleGroups !== undefined) data.ruleGroupsJson = JSON.stringify(body.ruleGroups)
-    if (body.isArchived !== undefined) data.isArchived = body.isArchived
+    if (v.name !== undefined) data.name = v.name
+    if (v.description !== undefined) data.description = v.description
+    if (v.color !== undefined) data.color = v.color
+    if (v.icon !== undefined) data.icon = v.icon
+    if (v.ruleGroups !== undefined) data.ruleGroupsJson = JSON.stringify(v.ruleGroups)
+    if (v.isArchived !== undefined) data.isArchived = v.isArchived
 
     const strategy = await prisma.strategy.update({ where: { id }, data })
     return NextResponse.json(parseStrategy(strategy))
@@ -64,10 +75,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
 
     const existing = await prisma.strategy.findUnique({ where: { id } })
-    if (!existing || existing.userId !== defaultUserId) {
+    if (!existing || existing.userId !== userId) {
       return NextResponse.json({ error: 'Strategy not found' }, { status: 404 })
     }
 

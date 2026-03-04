@@ -1,27 +1,18 @@
+import { validateBody, createWalletSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
-
-let defaultUserEnsured = false
-
-async function ensureDefaultUser() {
-  if (defaultUserEnsured) return
-  await prisma.user.upsert({
-    where: { id: defaultUserId },
-    create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-    update: {},
-  })
-  defaultUserEnsured = true
-}
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 // GET - List all wallets for the current user
 export async function GET() {
   try {
-    await ensureDefaultUser()
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+    await ensureUserExists(userId, auth.email)
 
     const wallets = await prisma.wallet.findMany({
-      where: { userId: defaultUserId },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
     })
 
@@ -35,14 +26,15 @@ export async function GET() {
 // POST - Add a new wallet
 export async function POST(request: NextRequest) {
   try {
-    await ensureDefaultUser()
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+    await ensureUserExists(userId, auth.email)
 
     const body = await request.json()
-    const { address, nickname, isDefault, chain = 'solana', dex = 'other' } = body
-
-    if (!address) {
-      return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
-    }
+    const validation = validateBody(createWalletSchema, body)
+    if ('error' in validation) return validation.error
+    const { address, nickname, isDefault, chain, dex } = validation.data
 
     // Validate wallet address format based on chain
     const isValidAddress = (addr: string, chainType: string): boolean => {
@@ -72,7 +64,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.wallet.findUnique({
       where: {
         userId_address_chain: {
-          userId: defaultUserId,
+          userId: userId,
           address,
           chain,
         },
@@ -83,23 +75,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Wallet already added' }, { status: 400 })
     }
 
-    // If this is set as default, unset other defaults
-    if (isDefault) {
-      await prisma.wallet.updateMany({
-        where: { userId: defaultUserId, isDefault: true },
-        data: { isDefault: false },
-      })
-    }
+    // Use transaction to prevent race conditions with default toggle
+    const wallet = await prisma.$transaction(async (tx) => {
+      if (isDefault) {
+        await tx.wallet.updateMany({
+          where: { userId: userId, isDefault: true },
+          data: { isDefault: false },
+        })
+      }
 
-    const wallet = await prisma.wallet.create({
-      data: {
-        userId: defaultUserId,
-        address,
-        chain,
-        dex,
-        nickname: nickname || null,
-        isDefault: isDefault || false,
-      },
+      return tx.wallet.create({
+        data: {
+          userId: userId,
+          address,
+          chain,
+          dex,
+          nickname: nickname || null,
+          isDefault: isDefault || false,
+        },
+      })
     })
 
     return NextResponse.json(wallet, { status: 201 })

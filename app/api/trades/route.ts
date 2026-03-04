@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { getWalletTrades as getSolanaWalletTrades } from '@/lib/solana-tracker'
 import { getWalletTrades as getEvmWalletTrades } from '@/lib/zerion'
 import { type Chain, isEvmChain } from '@/lib/chains'
@@ -12,14 +11,9 @@ import { invalidatePrefix } from '@/lib/server/analytics-cache'
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {
   try {
-    // Authentication removed - app works without sign-in
-    // const session = await getServerSession(authOptions)
-    // if (!session?.user?.id) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    // }
-    
-    // Use a default user ID for all requests
-    const defaultUserId = 'default-user'
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
     const { searchParams } = new URL(request.url)
     const walletAddress = searchParams.get('address')
@@ -39,28 +33,20 @@ export async function GET(request: NextRequest) {
     // Find or create wallet (with chain support)
     let wallet = await prisma.wallet.findFirst({
       where: {
-        userId: defaultUserId,
+        userId: userId,
         address: walletAddress,
         chain: chain,
       },
     })
 
     if (!wallet) {
-      // First ensure the default user exists
-      await prisma.user.upsert({
-        where: { id: defaultUserId },
-        create: { 
-          id: defaultUserId,
-          email: 'default@example.com',
-          name: 'Default User'
-        },
-        update: {},
-      })
+      // Ensure the user exists in DB
+      await ensureUserExists(userId, auth.email)
       
       // Auto-create wallet if it doesn't exist
       wallet = await prisma.wallet.create({
         data: {
-          userId: defaultUserId,
+          userId: userId,
           address: walletAddress,
           chain: chain,
         },

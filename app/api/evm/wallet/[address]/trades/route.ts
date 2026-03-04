@@ -55,9 +55,9 @@ export async function GET(
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
+      console.error('Zerion API error:', response.status, await response.text())
       return NextResponse.json(
-        { error: `Zerion API error: ${response.status}`, details: errorText },
+        { error: 'Failed to fetch EVM trades' },
         { status: response.status }
       )
     }

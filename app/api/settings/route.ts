@@ -1,19 +1,14 @@
+import { validateBody, updateSettingsSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
-
-async function resolveUserId(): Promise<string> {
-  const session = await getServerSession(authOptions)
-  return session?.user?.id || defaultUserId
-}
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 // GET - Get user settings
 export async function GET(request: NextRequest) {
   try {
-    const userId = await resolveUserId()
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
     let settings = await prisma.userSettings.findUnique({
       where: { userId },
@@ -36,10 +31,14 @@ export async function GET(request: NextRequest) {
 // PATCH - Update user settings
 export async function PATCH(request: NextRequest) {
   try {
-    const userId = await resolveUserId()
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
     const body = await request.json()
-    const { displayName, transactionLimit, showUSDValues, darkMode, timezone, tradingStartTime } = body
+    const validation = validateBody(updateSettingsSchema, body)
+    if ('error' in validation) return validation.error
+    const { displayName, transactionLimit, showUSDValues, darkMode, timezone, tradingStartTime } = validation.data
 
     // Find or create settings
     let settings = await prisma.userSettings.findUnique({

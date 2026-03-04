@@ -1,22 +1,25 @@
+import { validateBody, createManualTradesSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 // POST - Create manual trade entries
 export async function POST(request: NextRequest) {
   try {
-    const defaultUserId = 'default-user'
-    const { trades } = await request.json()
-
-    if (!Array.isArray(trades) || trades.length === 0) {
-      return NextResponse.json({ error: 'trades array is required' }, { status: 400 })
-    }
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+    const body = await request.json()
+    const validation = validateBody(createManualTradesSchema, body)
+    if ('error' in validation) return validation.error
+    const { trades } = validation.data
 
     const results = []
 
     for (const t of trades) {
       // Find wallet by address
       let wallet = await prisma.wallet.findFirst({
-        where: { address: t.walletAddress, userId: defaultUserId },
+        where: { address: t.walletAddress, userId: userId },
       })
 
       if (!wallet) {
@@ -25,7 +28,7 @@ export async function POST(request: NextRequest) {
           data: {
             address: t.walletAddress,
             chain: t.chain || 'solana',
-            userId: defaultUserId,
+            userId: userId,
           },
         })
       }
@@ -53,10 +56,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ trades: results })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Manual trade creation error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to create manual trade' },
+      { error: 'Failed to create manual trade' },
       { status: 500 }
     )
   }

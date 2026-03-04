@@ -288,40 +288,41 @@ Last updated: 2026-03-04
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| GET | `/api/dashboard?addresses=&chains=&dexes=` | No | Combined: trades, strategies, journals, comments, streak, pre/post session status, missed trades |
-| GET | `/api/trades?address=&chain=&refresh=` | No | Fetch trades with 5-min DB cache, stale fallback on API failure |
-| GET | `/api/analytics/overview?...&startDate=&endDate=` | No | Cumulative P/L, duration buckets, trading hours |
-| GET | `/api/analytics/calendar?...&year=&month=` | No | Monthly P/L calendar data |
-| GET | `/api/analytics/time?...&startDate=&endDate=` | No | Hourly, day-of-week, session performance |
-| GET | `/api/analytics/missed?...` | No | Missed trade stats + hesitation cost |
-| POST | `/api/analytics/discipline?...` | No | Comment performance, efficiency, what-if analysis |
-| POST | `/api/analytics/strategy?...` | No | Strategy performance, rule impact |
-| GET | `/api/papered-plays` | No | List missed trades |
-| POST | `/api/papered-plays` | No | Create missed trade (requires `coinName`) |
-| PATCH | `/api/papered-plays/[id]` | No | Update missed trade |
-| DELETE | `/api/papered-plays/[id]` | No | Delete missed trade |
-| GET/POST | `/api/rules` | No | List/create global rules |
-| PATCH/DELETE | `/api/rules/[id]` | No | Update/delete global rule |
-| GET/POST | `/api/trade-comments` | No | List (auto-seeds defaults)/create trade comments |
-| PATCH/DELETE | `/api/trade-comments/[id]` | No | Update/delete trade comment |
-| GET/POST | `/api/strategies` | No | List/create strategies |
-| GET/PATCH/DELETE | `/api/strategies/[id]` | No | Get/update/delete strategy |
-| GET/POST | `/api/pre-sessions` | No | List (with `from`/`to` range)/upsert pre-sessions |
-| GET/DELETE | `/api/pre-sessions/[date]` | No | Get/delete pre-session by date |
-| GET/POST | `/api/post-sessions` | No | List (with `from`/`to` range)/upsert post-sessions |
-| GET/DELETE | `/api/post-sessions/[date]` | No | Get/delete post-session by date |
-| GET/POST | `/api/journals` | No | List/upsert journal entries |
-| GET/DELETE | `/api/journals/[id]` | No | Get/delete journal entry |
-| GET/POST | `/api/notes` | No | List/create notes |
-| GET/PATCH/DELETE | `/api/notes/[id]` | No | Get/update/delete note |
+| GET | `/api/dashboard?addresses=&chains=&dexes=` | Session | Combined: trades, strategies, journals, comments, streak, pre/post session status, missed trades |
+| GET | `/api/trades?address=&chain=&refresh=` | Session | Fetch trades with 5-min DB cache, stale fallback on API failure |
+| GET | `/api/analytics/overview?...&startDate=&endDate=` | Session | Cumulative P/L, duration buckets, trading hours |
+| GET | `/api/analytics/calendar?...&year=&month=` | Session | Monthly P/L calendar data |
+| GET | `/api/analytics/time?...&startDate=&endDate=` | Session | Hourly, day-of-week, session performance |
+| GET | `/api/analytics/missed?...` | Session | Missed trade stats + hesitation cost |
+| POST | `/api/analytics/discipline?...` | Session | Comment performance, efficiency, what-if analysis |
+| POST | `/api/analytics/strategy?...` | Session | Strategy performance, rule impact |
+| GET | `/api/papered-plays` | Session | List missed trades |
+| POST | `/api/papered-plays` | Session | Create missed trade (requires `coinName`) |
+| PATCH | `/api/papered-plays/[id]` | Session | Update missed trade |
+| DELETE | `/api/papered-plays/[id]` | Session | Delete missed trade |
+| GET/POST | `/api/rules` | Session | List/create global rules |
+| PATCH/DELETE | `/api/rules/[id]` | Session | Update/delete global rule |
+| GET/POST | `/api/trade-comments` | Session | List (auto-seeds defaults)/create trade comments |
+| PATCH/DELETE | `/api/trade-comments/[id]` | Session | Update/delete trade comment |
+| GET/POST | `/api/strategies` | Session | List/create strategies |
+| GET/PATCH/DELETE | `/api/strategies/[id]` | Session | Get/update/delete strategy |
+| GET/POST | `/api/pre-sessions` | Session | List (with `from`/`to` range)/upsert pre-sessions |
+| GET/DELETE | `/api/pre-sessions/[date]` | Session | Get/delete pre-session by date |
+| GET/POST | `/api/post-sessions` | Session | List (with `from`/`to` range)/upsert post-sessions |
+| GET/DELETE | `/api/post-sessions/[date]` | Session | Get/delete post-session by date |
+| GET/POST | `/api/journals` | Session | List/upsert journal entries |
+| GET/DELETE | `/api/journals/[id]` | Session | Get/delete journal entry |
+| GET/POST | `/api/notes` | Session | List/create notes |
+| GET/PATCH/DELETE | `/api/notes/[id]` | Session | Get/update/delete note |
 | GET/PATCH | `/api/settings` | Session | User preferences (timezone, tradingStartTime, etc.) |
 | GET/POST | `/api/wallets` | Session | Wallet CRUD |
 | DELETE/PATCH | `/api/wallets/[id]` | Session | Wallet operations |
 | GET/POST/DELETE | `/api/trade-edits` | Session | Trade edit overrides |
+| POST | `/api/manual-trades` | Session | Create manual trade entries |
 | GET | `/api/solana/wallet/[address]/trades` | No | Proxy → Solana Tracker trades |
 | GET | `/api/solana/wallet/[address]/balances` | No | Proxy → Solana Tracker balances |
 | GET | `/api/solana/token/[mint]` | No | Proxy → Solana Tracker token data |
-| * | `/api/auth/[...nextauth]` | — | NextAuth handlers |
+| POST | `/api/auth/sync-user` | Session | Sync authenticated Supabase user to DB |
 
 ### Legacy (unused)
 

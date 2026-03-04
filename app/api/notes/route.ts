@@ -1,7 +1,7 @@
+import { validateBody, createNoteSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 function parseNote(n: any) {
   return {
@@ -13,8 +13,12 @@ function parseNote(n: any) {
 
 export async function GET() {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const notes = await prisma.note.findMany({
-      where: { userId: defaultUserId },
+      where: { userId },
       orderBy: { updatedAt: 'desc' },
     })
     return NextResponse.json(notes.map(parseNote))
@@ -26,22 +30,25 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
-    await prisma.user.upsert({
-      where: { id: defaultUserId },
-      create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-      update: {},
-    })
+    const body = await request.json()
+    const validation = validateBody(createNoteSchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
+
+    await ensureUserExists(userId, auth.email)
 
     // If id provided, update existing note
-    if (body.id) {
+    if (v.id) {
       const note = await prisma.note.update({
-        where: { id: body.id },
+        where: { id: v.id },
         data: {
-          title: body.title || '',
-          content: body.content || '',
-          tagsJson: JSON.stringify(body.tags || []),
+          title: v.title,
+          content: v.content,
+          tagsJson: JSON.stringify(v.tags),
         },
       })
       return NextResponse.json(parseNote(note))
@@ -50,10 +57,10 @@ export async function POST(request: NextRequest) {
     // Create new note
     const note = await prisma.note.create({
       data: {
-        userId: defaultUserId,
-        title: body.title || '',
-        content: body.content || '',
-        tagsJson: JSON.stringify(body.tags || []),
+        userId,
+        title: v.title,
+        content: v.content,
+        tagsJson: JSON.stringify(v.tags),
       },
     })
     return NextResponse.json(parseNote(note), { status: 201 })

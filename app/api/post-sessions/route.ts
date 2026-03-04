@@ -1,15 +1,19 @@
+import { validateBody, createPostSessionSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { searchParams } = new URL(request.url)
     const from = searchParams.get('from')
     const to = searchParams.get('to')
 
-    const where: Record<string, unknown> = { userId: defaultUserId }
+    const where: Record<string, unknown> = { userId }
     if (from || to) {
       where.date = {
         ...(from ? { gte: from } : {}),
@@ -33,41 +37,41 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    if (!body.date) {
-      return NextResponse.json({ error: 'date is required' }, { status: 400 })
-    }
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
-    await prisma.user.upsert({
-      where: { id: defaultUserId },
-      create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-      update: {},
-    })
+    const validation = validateBody(createPostSessionSchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
+
+    await ensureUserExists(userId, auth.email)
 
     const session = await prisma.postSession.upsert({
       where: {
-        userId_date: { userId: defaultUserId, date: body.date },
+        userId_date: { userId, date: v.date },
       },
       create: {
-        userId: defaultUserId,
-        date: body.date,
-        rating: body.rating ?? 0,
-        emotionalState: body.emotionalState || '',
-        whatWentWell: body.whatWentWell || '',
-        whatWentWrong: body.whatWentWrong || '',
-        keyLessons: body.keyLessons || '',
-        rulesFollowed: body.rulesFollowed ?? null,
-        rulesNotes: body.rulesNotes || '',
-        planForTomorrow: body.planForTomorrow || '',
+        userId,
+        date: v.date,
+        rating: v.rating,
+        emotionalState: v.emotionalState,
+        whatWentWell: v.whatWentWell,
+        whatWentWrong: v.whatWentWrong,
+        keyLessons: v.keyLessons,
+        rulesFollowed: v.rulesFollowed ?? null,
+        rulesNotes: v.rulesNotes,
+        planForTomorrow: v.planForTomorrow,
       },
       update: {
-        rating: body.rating ?? 0,
-        emotionalState: body.emotionalState || '',
-        whatWentWell: body.whatWentWell || '',
-        whatWentWrong: body.whatWentWrong || '',
-        keyLessons: body.keyLessons || '',
-        rulesFollowed: body.rulesFollowed ?? null,
-        rulesNotes: body.rulesNotes || '',
-        planForTomorrow: body.planForTomorrow || '',
+        rating: v.rating,
+        emotionalState: v.emotionalState,
+        whatWentWell: v.whatWentWell,
+        whatWentWrong: v.whatWentWrong,
+        keyLessons: v.keyLessons,
+        rulesFollowed: v.rulesFollowed ?? null,
+        rulesNotes: v.rulesNotes,
+        planForTomorrow: v.planForTomorrow,
       },
     })
 

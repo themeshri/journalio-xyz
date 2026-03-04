@@ -357,7 +357,7 @@ export function DayDetailModal({
                                 {(trade.buys[0]?.tokenOut?.logoURI || trade.sells[0]?.tokenIn?.logoURI) && (
                                   <img 
                                     src={trade.buys[0]?.tokenOut?.logoURI || trade.sells[0]?.tokenIn?.logoURI || ''} 
-                                    alt={trade.tokenSymbol}
+                                    alt={trade.token}
                                     className="w-5 h-5 rounded-full"
                                     onError={(e) => {
                                       (e.target as HTMLImageElement).style.display = 'none'
@@ -365,22 +365,16 @@ export function DayDetailModal({
                                   />
                                 )}
                                 <div className="flex flex-col">
-                                  <span className="font-medium">{trade.tokenSymbol}</span>
+                                  <span className="font-medium">{trade.token}</span>
                                   {(trade.buys[0]?.tokenOut?.name || trade.sells[0]?.tokenIn?.name) && (
                                     <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
                                       {trade.buys[0]?.tokenOut?.name || trade.sells[0]?.tokenIn?.name}
                                     </span>
                                   )}
                                 </div>
-                                <TokenWithBadge 
-                                  token={{ 
-                                    symbol: trade.tokenSymbol, 
-                                    mint: trade.tokenMint,
-                                    chain: trade.chain 
-                                  }}
-                                  logoURI={null}
-                                  showSymbol={false}
-                                />
+                                <TokenWithBadge chain={trade.chain}>
+                                  <span />
+                                </TokenWithBadge>
                               </div>
                             </TableCell>
                             <TableCell className={`text-xs text-right font-mono tabular-nums ${
@@ -389,7 +383,7 @@ export function DayDetailModal({
                               {trade.profitLoss >= 0 ? '+' : ''}{formatValue(trade.profitLoss)}
                             </TableCell>
                             <TableCell className="text-xs text-right text-muted-foreground">
-                              {formatDuration(trade.duration)}
+                              {formatDuration(trade.duration ?? 0)}
                             </TableCell>
                             <TableCell className="text-center">
                               <span className={`text-xs ${
@@ -419,7 +413,7 @@ export function DayDetailModal({
           trade={journalTrade}
           initialData={journalMap[journalKey(journalTrade)] || null}
           tokenLogo={journalTrade.buys[0]?.tokenOut?.logoURI || journalTrade.sells[0]?.tokenIn?.logoURI || null}
-          onSave={handleJournalSave}
+          onSave={(data) => handleJournalSave(journalTrade, data)}
           onClose={() => setJournalTrade(null)}
         />
       )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSupabase } from '@/components/providers/supabase-provider'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -46,7 +46,7 @@ import {
 import { safeLocalStorage } from '@/lib/local-storage'
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession()
+  const { user, session, isLoading: authLoading } = useSupabase()
   const [displayName, setDisplayName] = useState('')
   const [transactionLimit, setTransactionLimit] = useState('50')
   const [showUSDValues, setShowUSDValues] = useState(true)
@@ -72,12 +72,12 @@ export default function SettingsPage() {
   const [deleteCommentConfirm, setDeleteCommentConfirm] = useState<string | null>(null)
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (session) {
       fetchSettings()
-    } else if (status === 'unauthenticated') {
+    } else if (!authLoading) {
       setIsLoading(false)
     }
-  }, [status])
+  }, [session, authLoading])
 
   useEffect(() => {
     try {
@@ -242,7 +242,7 @@ export default function SettingsPage() {
     )
   }
 
-  if (status === 'unauthenticated') {
+  if (!session && !authLoading) {
     return (
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Settings</h1>

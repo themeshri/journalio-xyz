@@ -1,7 +1,7 @@
+import { validateBody, updateRuleSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth } from '@/lib/auth-helper'
 
 export async function PATCH(
   request: NextRequest,
@@ -10,17 +10,24 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+    const validation = validateBody(updateRuleSchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
+
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
     const existing = await prisma.globalRule.findUnique({ where: { id } })
-    if (!existing || existing.userId !== defaultUserId) {
+    if (!existing || existing.userId !== userId) {
       return NextResponse.json({ error: 'Rule not found' }, { status: 404 })
     }
 
     const rule = await prisma.globalRule.update({
       where: { id },
       data: {
-        ...(body.text !== undefined ? { text: body.text.trim() } : {}),
-        ...(body.sortOrder !== undefined ? { sortOrder: body.sortOrder } : {}),
+        ...(v.text !== undefined ? { text: v.text } : {}),
+        ...(v.sortOrder !== undefined ? { sortOrder: v.sortOrder } : {}),
       },
     })
 
@@ -38,8 +45,12 @@ export async function DELETE(
   try {
     const { id } = await params
 
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const existing = await prisma.globalRule.findUnique({ where: { id } })
-    if (!existing || existing.userId !== defaultUserId) {
+    if (!existing || existing.userId !== userId) {
       return NextResponse.json({ error: 'Rule not found' }, { status: 404 })
     }
 

@@ -1,7 +1,7 @@
+import { validateBody, updateWalletSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 // DELETE - Delete a wallet
 export async function DELETE(
@@ -9,6 +9,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
 
     const wallet = await prisma.wallet.findUnique({
@@ -19,7 +23,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
     }
 
-    if (wallet.userId !== defaultUserId) {
+    if (wallet.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -40,9 +44,15 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
     const body = await request.json()
-    const { nickname, isDefault, dex } = body
+    const validation = validateBody(updateWalletSchema, body)
+    if ('error' in validation) return validation.error
+    const { nickname, isDefault, dex } = validation.data
 
     const wallet = await prisma.wallet.findUnique({
       where: { id },
@@ -52,29 +62,31 @@ export async function PATCH(
       return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
     }
 
-    if (wallet.userId !== defaultUserId) {
+    if (wallet.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // If setting as default, unset other defaults
-    if (isDefault) {
-      await prisma.wallet.updateMany({
-        where: {
-          userId: defaultUserId,
-          isDefault: true,
-          id: { not: id },
-        },
-        data: { isDefault: false },
-      })
-    }
+    // Use transaction for default toggle to prevent race conditions
+    const updatedWallet = await prisma.$transaction(async (tx) => {
+      if (isDefault) {
+        await tx.wallet.updateMany({
+          where: {
+            userId: userId,
+            isDefault: true,
+            id: { not: id },
+          },
+          data: { isDefault: false },
+        })
+      }
 
-    const updatedWallet = await prisma.wallet.update({
-      where: { id },
-      data: {
-        ...(nickname !== undefined && { nickname }),
-        ...(isDefault !== undefined && { isDefault }),
-        ...(dex !== undefined && { dex }),
-      },
+      return tx.wallet.update({
+        where: { id },
+        data: {
+          ...(nickname !== undefined && { nickname }),
+          ...(isDefault !== undefined && { isDefault }),
+          ...(dex !== undefined && { dex }),
+        },
+      })
     })
 
     return NextResponse.json(updatedWallet)

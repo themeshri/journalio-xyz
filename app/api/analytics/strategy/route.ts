@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseWalletParamsFromBody, resolveFlattenedTrades, applyDateFilter, sanitizeForJSON } from '@/lib/server/resolve-trades'
 import { getCached, setCached } from '@/lib/server/analytics-cache'
+import { requireAuth } from '@/lib/auth-helper'
 import {
   computeStrategyPerformance,
   computeRuleImpact,
@@ -14,13 +15,17 @@ function hashBody(body: Record<string, unknown>): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const body = await request.json()
-    const params = parseWalletParamsFromBody(body)
+    const params = parseWalletParamsFromBody(body, userId)
     if (params.addresses.length === 0) {
       return NextResponse.json({ error: 'No addresses provided' }, { status: 400 })
     }
 
-    const cacheKey = `strategy:${params.addresses.join(',')}:${hashBody(body)}`
+    const cacheKey = `strategy:${userId}:${params.addresses.join(',')}:${hashBody(body)}`
     const cached = getCached<unknown>(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
@@ -47,7 +52,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Analytics strategy error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to compute analytics' },
+      { error: 'Failed to compute analytics' },
       { status: 500 }
     )
   }

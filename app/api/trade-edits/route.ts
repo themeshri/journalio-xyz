@@ -1,12 +1,13 @@
+import { validateBody, createTradeEditSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { createSupabaseServerClient } from '@/lib/supabase'
 import { prisma } from '@/lib/prisma'
 
 // GET - Get trade edit for a specific trade
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const supabase = createSupabaseServerClient()
+    const { data: { session } } = await supabase.auth.getSession()
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -38,18 +39,17 @@ export async function GET(request: NextRequest) {
 // POST - Create or update trade edit
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const supabase = createSupabaseServerClient()
+    const { data: { session } } = await supabase.auth.getSession()
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    const { tradeId, editedType, editedAmountIn, editedAmountOut, editedValueUSD, notes } = body
-
-    if (!tradeId) {
-      return NextResponse.json({ error: 'Trade ID is required' }, { status: 400 })
-    }
+    const validation = validateBody(createTradeEditSchema, body)
+    if ('error' in validation) return validation.error
+    const { tradeId, editedType, editedAmountIn, editedAmountOut, editedValueUSD, notes } = validation.data
 
     // Verify the trade exists
     const trade = await prisma.trade.findUnique({
@@ -96,7 +96,8 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete trade edit
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const supabase = createSupabaseServerClient()
+    const { data: { session } } = await supabase.auth.getSession()
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

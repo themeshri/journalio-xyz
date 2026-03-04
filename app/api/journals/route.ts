@@ -1,7 +1,7 @@
+import { validateBody, createJournalSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 function parseJournal(j: any) {
   return {
@@ -15,11 +15,15 @@ function parseJournal(j: any) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { searchParams } = new URL(request.url)
     const walletAddress = searchParams.get('walletAddress')
     const strategyId = searchParams.get('strategyId')
 
-    const where: Record<string, unknown> = { userId: defaultUserId }
+    const where: Record<string, unknown> = { userId }
     if (walletAddress) where.walletAddress = walletAddress
     if (strategyId) where.strategyId = strategyId
 
@@ -37,59 +41,55 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const body = await request.json()
+    const validation = validateBody(createJournalSchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
 
-    if (!body.walletAddress || !body.tokenMint || body.tradeNumber === undefined) {
-      return NextResponse.json(
-        { error: 'walletAddress, tokenMint, and tradeNumber are required' },
-        { status: 400 }
-      )
-    }
-
-    await prisma.user.upsert({
-      where: { id: defaultUserId },
-      create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-      update: {},
-    })
+    await ensureUserExists(userId, auth.email)
 
     const data = {
-      strategy: body.strategy || '',
-      strategyId: body.strategyId || null,
-      ruleResultsJson: JSON.stringify(body.ruleResults || []),
-      emotionalState: body.emotionalState || '',
-      buyNotes: body.buyNotes || '',
-      buyRating: body.buyRating ?? 0,
-      exitPlan: body.exitPlan || '',
-      sellRating: body.sellRating ?? 0,
-      followedExitRule: body.followedExitRule ?? null,
-      sellMistakesJson: JSON.stringify(body.sellMistakes || []),
-      sellNotes: body.sellNotes || '',
-      attachment: body.attachment || null,
-      entryCommentId: body.entryCommentId || null,
-      exitCommentId: body.exitCommentId || null,
-      managementCommentId: body.managementCommentId || null,
-      emotionTag: body.emotionTag || null,
-      stopLoss: body.stopLoss ?? null,
-      takeProfit: body.takeProfit ?? null,
-      tradeHigh: body.tradeHigh ?? null,
-      tradeLow: body.tradeLow ?? null,
-      journaledAt: body.journaledAt || new Date().toISOString(),
+      strategy: v.strategy,
+      strategyId: v.strategyId || null,
+      ruleResultsJson: JSON.stringify(v.ruleResults),
+      emotionalState: v.emotionalState,
+      buyNotes: v.buyNotes,
+      buyRating: v.buyRating,
+      exitPlan: v.exitPlan,
+      sellRating: v.sellRating,
+      followedExitRule: v.followedExitRule ?? null,
+      sellMistakesJson: JSON.stringify(v.sellMistakes),
+      sellNotes: v.sellNotes,
+      attachment: v.attachment || null,
+      entryCommentId: v.entryCommentId || null,
+      exitCommentId: v.exitCommentId || null,
+      managementCommentId: v.managementCommentId || null,
+      emotionTag: v.emotionTag || null,
+      stopLoss: v.stopLoss ?? null,
+      takeProfit: v.takeProfit ?? null,
+      tradeHigh: v.tradeHigh ?? null,
+      tradeLow: v.tradeLow ?? null,
+      journaledAt: v.journaledAt || new Date().toISOString(),
     }
 
     const journal = await prisma.journalEntry.upsert({
       where: {
         userId_walletAddress_tokenMint_tradeNumber: {
-          userId: defaultUserId,
-          walletAddress: body.walletAddress,
-          tokenMint: body.tokenMint,
-          tradeNumber: body.tradeNumber,
+          userId,
+          walletAddress: v.walletAddress,
+          tokenMint: v.tokenMint,
+          tradeNumber: v.tradeNumber,
         },
       },
       create: {
-        userId: defaultUserId,
-        walletAddress: body.walletAddress,
-        tokenMint: body.tokenMint,
-        tradeNumber: body.tradeNumber,
+        userId,
+        walletAddress: v.walletAddress,
+        tokenMint: v.tokenMint,
+        tradeNumber: v.tradeNumber,
         ...data,
       },
       update: data,

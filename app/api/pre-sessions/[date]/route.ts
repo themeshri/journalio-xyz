@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth } from '@/lib/auth-helper'
 
 function parsePreSession(s: any) {
   return {
@@ -18,9 +17,13 @@ export async function GET(
   { params }: { params: Promise<{ date: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { date } = await params
     const session = await prisma.preSession.findUnique({
-      where: { userId_date: { userId: defaultUserId, date } },
+      where: { userId_date: { userId, date } },
     })
 
     if (!session) {
@@ -39,10 +42,14 @@ export async function DELETE(
   { params }: { params: Promise<{ date: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { date } = await params
 
     const existing = await prisma.preSession.findUnique({
-      where: { userId_date: { userId: defaultUserId, date } },
+      where: { userId_date: { userId, date } },
     })
 
     if (!existing) {
@@ -50,7 +57,7 @@ export async function DELETE(
     }
 
     await prisma.preSession.delete({
-      where: { userId_date: { userId: defaultUserId, date } },
+      where: { userId_date: { userId, date } },
     })
 
     return NextResponse.json({ success: true })

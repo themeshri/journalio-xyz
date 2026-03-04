@@ -1,7 +1,7 @@
+import { validateBody, createPreSessionSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 function parsePreSession(s: any) {
   return {
@@ -15,11 +15,15 @@ function parsePreSession(s: any) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { searchParams } = new URL(request.url)
     const from = searchParams.get('from')
     const to = searchParams.get('to')
 
-    const where: Record<string, unknown> = { userId: defaultUserId }
+    const where: Record<string, unknown> = { userId }
     if (from || to) {
       where.date = {
         ...(from ? { gte: from } : {}),
@@ -43,59 +47,59 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    if (!body.date) {
-      return NextResponse.json({ error: 'date is required' }, { status: 400 })
-    }
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
-    await prisma.user.upsert({
-      where: { id: defaultUserId },
-      create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-      update: {},
-    })
+    const validation = validateBody(createPreSessionSchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
+
+    await ensureUserExists(userId, auth.email)
 
     const session = await prisma.preSession.upsert({
       where: {
-        userId_date: { userId: defaultUserId, date: body.date },
+        userId_date: { userId, date: v.date },
       },
       create: {
-        userId: defaultUserId,
-        date: body.date,
-        time: body.time || '',
-        energyLevel: body.energyLevel ?? 0,
-        emotionalState: body.emotionalState || '',
-        sessionIntent: body.sessionIntent || '',
-        maxTrades: body.maxTrades || '',
-        maxLoss: body.maxLoss || '',
-        timeLimit: body.timeLimit || '',
-        defaultPositionSize: body.defaultPositionSize || '',
-        hasOpenPositions: body.hasOpenPositions ?? null,
-        marketSentiment: body.marketSentiment || '',
-        solTrend: body.solTrend || '',
-        majorNews: body.majorNews ?? null,
-        majorNewsNote: body.majorNewsNote || '',
-        normalVolume: body.normalVolume ?? null,
-        marketSnapshotJson: JSON.stringify(body.marketSnapshot || {}),
-        rulesCheckedJson: JSON.stringify(body.rulesChecked || []),
-        savedAt: body.savedAt || new Date().toISOString(),
+        userId,
+        date: v.date,
+        time: v.time,
+        energyLevel: v.energyLevel,
+        emotionalState: v.emotionalState,
+        sessionIntent: v.sessionIntent,
+        maxTrades: v.maxTrades,
+        maxLoss: v.maxLoss,
+        timeLimit: v.timeLimit,
+        defaultPositionSize: v.defaultPositionSize,
+        hasOpenPositions: v.hasOpenPositions ?? null,
+        marketSentiment: v.marketSentiment,
+        solTrend: v.solTrend,
+        majorNews: v.majorNews ?? null,
+        majorNewsNote: v.majorNewsNote,
+        normalVolume: v.normalVolume ?? null,
+        marketSnapshotJson: JSON.stringify(v.marketSnapshot),
+        rulesCheckedJson: JSON.stringify(v.rulesChecked),
+        savedAt: v.savedAt || new Date().toISOString(),
       },
       update: {
-        time: body.time || '',
-        energyLevel: body.energyLevel ?? 0,
-        emotionalState: body.emotionalState || '',
-        sessionIntent: body.sessionIntent || '',
-        maxTrades: body.maxTrades || '',
-        maxLoss: body.maxLoss || '',
-        timeLimit: body.timeLimit || '',
-        defaultPositionSize: body.defaultPositionSize || '',
-        hasOpenPositions: body.hasOpenPositions ?? null,
-        marketSentiment: body.marketSentiment || '',
-        solTrend: body.solTrend || '',
-        majorNews: body.majorNews ?? null,
-        majorNewsNote: body.majorNewsNote || '',
-        normalVolume: body.normalVolume ?? null,
-        marketSnapshotJson: JSON.stringify(body.marketSnapshot || {}),
-        rulesCheckedJson: JSON.stringify(body.rulesChecked || []),
-        savedAt: body.savedAt || new Date().toISOString(),
+        time: v.time,
+        energyLevel: v.energyLevel,
+        emotionalState: v.emotionalState,
+        sessionIntent: v.sessionIntent,
+        maxTrades: v.maxTrades,
+        maxLoss: v.maxLoss,
+        timeLimit: v.timeLimit,
+        defaultPositionSize: v.defaultPositionSize,
+        hasOpenPositions: v.hasOpenPositions ?? null,
+        marketSentiment: v.marketSentiment,
+        solTrend: v.solTrend,
+        majorNews: v.majorNews ?? null,
+        majorNewsNote: v.majorNewsNote,
+        normalVolume: v.normalVolume ?? null,
+        marketSnapshotJson: JSON.stringify(v.marketSnapshot),
+        rulesCheckedJson: JSON.stringify(v.rulesChecked),
+        savedAt: v.savedAt || new Date().toISOString(),
       },
     })
 

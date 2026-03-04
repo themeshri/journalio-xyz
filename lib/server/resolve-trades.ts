@@ -8,22 +8,24 @@ export interface WalletParams {
   addresses: string[]
   chains: Chain[]
   dexes: string[]
+  userId: string
 }
 
 /** Parse wallet params from query string (GET endpoints) */
-export function parseWalletParams(searchParams: URLSearchParams): WalletParams {
+export function parseWalletParams(searchParams: URLSearchParams, userId: string): WalletParams {
   const addresses = (searchParams.get('addresses') || '').split(',').filter(Boolean)
   const chains = (searchParams.get('chains') || '').split(',').filter(Boolean) as Chain[]
   const dexes = (searchParams.get('dexes') || '').split(',').filter(Boolean)
-  return { addresses, chains, dexes }
+  return { addresses, chains, dexes, userId }
 }
 
 /** Parse wallet params from POST body */
-export function parseWalletParamsFromBody(body: any): WalletParams {
+export function parseWalletParamsFromBody(body: any, userId: string): WalletParams {
   return {
     addresses: body.addresses || [],
     chains: body.chains || [],
     dexes: body.dexes || [],
+    userId,
   }
 }
 
@@ -51,10 +53,11 @@ function setCached(key: string, data: FlattenedTrade[]): void {
 async function resolveWalletTrades(
   address: string,
   chain: Chain,
-  dex: string
+  dex: string,
+  userId: string
 ): Promise<FlattenedTrade[]> {
   const wallet = await prisma.wallet.findFirst({
-    where: { address, chain, userId: 'default-user' },
+    where: { address, chain, userId },
   })
   if (!wallet) return []
 
@@ -87,7 +90,7 @@ async function resolveWalletTrades(
 
 /** Resolve flattened trades for one or more wallets from DB cache */
 export async function resolveFlattenedTrades(params: WalletParams): Promise<FlattenedTrade[]> {
-  const { addresses, chains, dexes } = params
+  const { addresses, chains, dexes, userId } = params
   if (addresses.length === 0) return []
 
   const cacheKey = `trades:${addresses.join(',')}:${dexes.join(',')}`
@@ -107,7 +110,7 @@ export async function resolveFlattenedTrades(params: WalletParams): Promise<Flat
       addresses.map((address, i) => {
         const chain = (chains[i] || 'solana') as Chain
         const dex = dexes[i] || ''
-        return resolveWalletTrades(address, chain, dex)
+        return resolveWalletTrades(address, chain, dex, userId)
       })
     )
     return results.flat().sort((a, b) => b.startDate - a.startDate)

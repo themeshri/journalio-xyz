@@ -1,5 +1,7 @@
+import { validateBody, updatePaperedPlaySchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth-helper'
 
 // DELETE - Delete a papered play
 export async function DELETE(
@@ -7,12 +9,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const defaultUserId = 'default-user'
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
 
     const play = await prisma.paperedPlay.findUnique({ where: { id } })
     if (!play) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (play.userId !== defaultUserId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (play.userId !== userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     await prisma.paperedPlay.delete({ where: { id } })
     return NextResponse.json({ success: true })
@@ -28,13 +33,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const defaultUserId = 'default-user'
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
     const body = await request.json()
+    const validation = validateBody(updatePaperedPlaySchema, body)
+    if ('error' in validation) return validation.error
 
     const play = await prisma.paperedPlay.findUnique({ where: { id } })
     if (!play) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (play.userId !== defaultUserId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (play.userId !== userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     // Build update data from all provided fields
     const data: Record<string, unknown> = {}

@@ -1,14 +1,19 @@
+import { validateBody, createPaperedPlaySchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 // GET - List all papered plays with optional filtering
 export async function GET(request: NextRequest) {
   try {
-    const defaultUserId = 'default-user'
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { searchParams } = new URL(request.url)
 
     // Build filter
-    const where: Record<string, unknown> = { userId: defaultUserId }
+    const where: Record<string, unknown> = { userId }
 
     const missReason = searchParams.get('missReason')
     if (missReason) where.missReason = missReason
@@ -43,48 +48,45 @@ export async function GET(request: NextRequest) {
 // POST - Create a new papered play
 export async function POST(request: NextRequest) {
   try {
-    const defaultUserId = 'default-user'
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const body = await request.json()
+    const validation = validateBody(createPaperedPlaySchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
 
-    // coinName is required at minimum
-    if (!body.coinName) {
-      return NextResponse.json({ error: 'coinName is required' }, { status: 400 })
-    }
-
-    // Ensure default user exists
-    await prisma.user.upsert({
-      where: { id: defaultUserId },
-      create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-      update: {},
-    })
+    // Ensure user exists
+    await ensureUserExists(userId, auth.email)
 
     const play = await prisma.paperedPlay.create({
       data: {
-        userId: defaultUserId,
-        coinName: body.coinName.trim(),
-        contractAddr: body.contractAddr?.trim() || null,
-        tokenMint: body.tokenMint?.trim() || null,
-        tokenSymbol: body.tokenSymbol?.trim() || null,
-        tokenImage: body.tokenImage || null,
-        mcWhenSaw: body.mcWhenSaw?.trim() || '',
-        ath: body.ath?.trim() || '',
-        reasonMissed: body.reasonMissed?.trim() || '',
-        howToNotMiss: body.howToNotMiss?.trim() || null,
-        attachment: body.attachment || null,
-        entryPrice: body.entryPrice ?? null,
-        entryTime: body.entryTime ? new Date(body.entryTime) : null,
-        exitPrice: body.exitPrice ?? null,
-        exitTime: body.exitTime ? new Date(body.exitTime) : null,
-        hypotheticalPositionSize: body.hypotheticalPositionSize ?? null,
-        outcome: body.outcome || null,
-        potentialMultiplier: body.potentialMultiplier ?? null,
-        potentialPnL: body.potentialPnL ?? null,
-        peakMultiplier: body.peakMultiplier ?? null,
-        missReason: body.missReason || null,
-        strategyId: body.strategyId || null,
-        rulesMetCount: body.rulesMetCount ?? null,
-        rulesTotalCount: body.rulesTotalCount ?? null,
-        notes: body.notes?.trim() || '',
+        userId,
+        coinName: v.coinName.trim(),
+        contractAddr: v.contractAddr?.trim() || null,
+        tokenMint: v.tokenMint?.trim() || null,
+        tokenSymbol: v.tokenSymbol?.trim() || null,
+        tokenImage: v.tokenImage || null,
+        mcWhenSaw: v.mcWhenSaw,
+        ath: v.ath,
+        reasonMissed: v.reasonMissed,
+        howToNotMiss: v.howToNotMiss || null,
+        attachment: v.attachment || null,
+        entryPrice: v.entryPrice ?? null,
+        entryTime: v.entryTime ? new Date(v.entryTime) : null,
+        exitPrice: v.exitPrice ?? null,
+        exitTime: v.exitTime ? new Date(v.exitTime) : null,
+        hypotheticalPositionSize: v.hypotheticalPositionSize ?? null,
+        outcome: v.outcome || null,
+        potentialMultiplier: v.potentialMultiplier ?? null,
+        potentialPnL: v.potentialPnL ?? null,
+        peakMultiplier: v.peakMultiplier ?? null,
+        missReason: v.missReason || null,
+        strategyId: v.strategyId || null,
+        rulesMetCount: v.rulesMetCount ?? null,
+        rulesTotalCount: v.rulesTotalCount ?? null,
+        notes: v.notes,
       },
     })
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
+import { useSupabase } from '@/components/providers/supabase-provider'
 import { User, Settings, LogOut, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,7 +13,7 @@ import {
 import Link from 'next/link'
 
 export function AccountDropdown() {
-  const { data: session } = useSession()
+  const { user, signOut } = useSupabase()
 
   return (
     <DropdownMenu>
@@ -24,11 +24,11 @@ export function AccountDropdown() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        {session?.user?.name && (
+        {user && (
           <>
             <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">{session.user.name}</p>
-              <p className="text-xs text-muted-foreground">{session.user.email}</p>
+              <p className="text-sm font-medium">{user.user_metadata?.name || user.email?.split('@')[0]}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
             </div>
             <DropdownMenuSeparator />
           </>

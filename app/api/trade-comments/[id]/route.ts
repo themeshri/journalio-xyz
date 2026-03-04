@@ -1,26 +1,33 @@
+import { validateBody, updateTradeCommentSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth } from '@/lib/auth-helper'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
     const body = await request.json()
+    const validation = validateBody(updateTradeCommentSchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
 
     const existing = await prisma.tradeComment.findUnique({ where: { id } })
-    if (!existing || existing.userId !== defaultUserId) {
+    if (!existing || existing.userId !== userId) {
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
     }
 
     const comment = await prisma.tradeComment.update({
       where: { id },
       data: {
-        ...(body.label !== undefined ? { label: body.label.trim() } : {}),
-        ...(body.rating !== undefined ? { rating: body.rating } : {}),
+        ...(v.label !== undefined ? { label: v.label } : {}),
+        ...(v.rating !== undefined ? { rating: v.rating } : {}),
       },
     })
 
@@ -36,10 +43,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
 
     const existing = await prisma.tradeComment.findUnique({ where: { id } })
-    if (!existing || existing.userId !== defaultUserId) {
+    if (!existing || existing.userId !== userId) {
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
     }
 

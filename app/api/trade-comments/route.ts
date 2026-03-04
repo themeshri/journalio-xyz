@@ -1,27 +1,27 @@
+import { validateBody, createTradeCommentSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
-
-const defaultUserId = 'default-user'
+import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 export async function GET() {
   try {
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     let comments = await prisma.tradeComment.findMany({
-      where: { userId: defaultUserId },
+      where: { userId },
       orderBy: { createdAt: 'asc' },
     })
 
     // Seed defaults if empty
     if (comments.length === 0) {
-      await prisma.user.upsert({
-        where: { id: defaultUserId },
-        create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-        update: {},
-      })
+      await ensureUserExists(userId, auth.email)
 
       await prisma.tradeComment.createMany({
         data: DEFAULT_TRADE_COMMENTS.map((c) => ({
-          userId: defaultUserId,
+          userId,
           category: c.category,
           label: c.label,
           rating: c.rating,
@@ -29,7 +29,7 @@ export async function GET() {
       })
 
       comments = await prisma.tradeComment.findMany({
-        where: { userId: defaultUserId },
+        where: { userId },
         orderBy: { createdAt: 'asc' },
       })
     }
@@ -44,29 +44,22 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const validation = validateBody(createTradeCommentSchema, body)
+    if ('error' in validation) return validation.error
+    const v = validation.data
 
-    if (!body.label?.trim()) {
-      return NextResponse.json({ error: 'label is required' }, { status: 400 })
-    }
-    if (!body.category || !['entry', 'exit', 'management'].includes(body.category)) {
-      return NextResponse.json({ error: 'valid category is required' }, { status: 400 })
-    }
-    if (!body.rating || !['positive', 'neutral', 'negative'].includes(body.rating)) {
-      return NextResponse.json({ error: 'valid rating is required' }, { status: 400 })
-    }
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
-    await prisma.user.upsert({
-      where: { id: defaultUserId },
-      create: { id: defaultUserId, email: 'default@example.com', name: 'Default User' },
-      update: {},
-    })
+    await ensureUserExists(userId, auth.email)
 
     const comment = await prisma.tradeComment.create({
       data: {
-        userId: defaultUserId,
-        category: body.category,
-        label: body.label.trim(),
-        rating: body.rating,
+        userId,
+        category: v.category,
+        label: v.label,
+        rating: v.rating,
       },
     })
 

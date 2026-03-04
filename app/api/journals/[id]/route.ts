@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-
-const defaultUserId = 'default-user'
+import { requireAuth } from '@/lib/auth-helper'
 
 function parseJournal(j: any) {
   return {
@@ -19,9 +18,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const journal = await prisma.journalEntry.findUnique({ where: { id } })
 
-    if (!journal || journal.userId !== defaultUserId) {
+    if (!journal || journal.userId !== userId) {
       return NextResponse.json({ error: 'Journal not found' }, { status: 404 })
     }
 
@@ -39,8 +42,12 @@ export async function DELETE(
   try {
     const { id } = await params
 
+    const auth = await requireAuth()
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const existing = await prisma.journalEntry.findUnique({ where: { id } })
-    if (!existing || existing.userId !== defaultUserId) {
+    if (!existing || existing.userId !== userId) {
       return NextResponse.json({ error: 'Journal not found' }, { status: 404 })
     }
 
