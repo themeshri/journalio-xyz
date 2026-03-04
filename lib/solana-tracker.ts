@@ -3,7 +3,7 @@ import axios from 'axios';
 // Configuration for Solana Tracker API
 const USE_PROXY = typeof window !== 'undefined'; // Use proxy in browser
 const API_BASE_URL = USE_PROXY ? '/api/solana' : 'https://data.solanatracker.io';
-const API_KEY = process.env.SOLANATRACKER_API_KEY;
+const API_KEY = process.env.SOLANA_TRACKER_API_KEY;
 
 console.log('Solana Tracker config:', {
   HAS_API_KEY: !!API_KEY,

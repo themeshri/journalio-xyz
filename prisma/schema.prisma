@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// NextAuth.js models
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -24,8 +20,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -39,27 +34,26 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts      Account[]
-  sessions      Session[]
-  wallets       Wallet[]
-  paperedPlays  PaperedPlay[]
-  tradeEdits    TradeEdit[]
-  settings      UserSettings?
-  strategies    Strategy[]
-  globalRules   GlobalRule[]
-  preSessions   PreSession[]
+  id             String         @id @default(cuid())
+  name           String?
+  email          String?        @unique
+  emailVerified  DateTime?
+  image          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  accounts       Account[]
+  globalRules    GlobalRule[]
   journalEntries JournalEntry[]
-  tradeComments TradeComment[]
-  postSessions  PostSession[]
-  notes         Note[]
+  notes          Note[]
+  paperedPlays   PaperedPlay[]
+  postSessions   PostSession[]
+  preSessions    PreSession[]
+  sessions       Session[]
+  strategies     Strategy[]
+  tradeComments  TradeComment[]
+  tradeEdits     TradeEdit[]
+  settings       UserSettings?
+  wallets        Wallet[]
 }
 
 model VerificationToken {
@@ -70,20 +64,18 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// User's wallets - now supports multiple chains
 model Wallet {
   id        String   @id @default(cuid())
   userId    String
   address   String
   nickname  String?
-  chain     String   @default("ethereum") // ethereum, polygon, arbitrum, solana, etc.
-  dex       String   @default("other")    // fomo, axiom, jupiter, gmgn, other
+  chain     String   @default("ethereum")
+  dex       String   @default("other")
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trades Trade[]
+  trades    Trade[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, address, chain])
   @@index([address])
@@ -92,39 +84,29 @@ model Wallet {
   @@index([userId, createdAt])
 }
 
-// Cached transactions from Zerion API - multichain support
 model Trade {
-  id         String   @id @default(cuid())
-  walletId   String
-  signature  String   @unique // Transaction hash/signature
-  timestamp  Int
-  type       String @default("trade") // send, receive, trade, approve, cancel, deposit, withdraw
-  status     String @default("confirmed") // confirmed, pending, failed
-  direction  String @default("out") // in, out, self
-  chain      String @default("solana") // ethereum, polygon, arbitrum, solana, etc.
-
-  // Token data stored as JSON
-  tokenInData  String? // JSON string (optional for non-trade transactions)
-  tokenOutData String? // JSON string (optional for non-trade transactions)
-
-  amountIn   Float?
-  amountOut  Float?
-  priceUSD   Float?
-  valueUSD   Float @default(0)
-  
-  // Protocol/application information (replaces dex field)
-  dex        String @default("Unknown") // For backward compatibility
-  protocol   String?
-  application String?
-  
-  // Fee information (JSON)
-  feeData    String? // JSON string for fee details
-
-  createdAt  DateTime @default(now())
-  indexedAt  DateTime @default(now())
-
-  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  edits  TradeEdit[]
+  id           String      @id @default(cuid())
+  walletId     String
+  signature    String      @unique
+  timestamp    Int
+  type         String      @default("trade")
+  status       String      @default("confirmed")
+  direction    String      @default("out")
+  chain        String      @default("solana")
+  tokenInData  String?
+  tokenOutData String?
+  amountIn     Float?
+  amountOut    Float?
+  priceUSD     Float?
+  valueUSD     Float       @default(0)
+  dex          String      @default("Unknown")
+  protocol     String?
+  application  String?
+  feeData      String?
+  createdAt    DateTime    @default(now())
+  indexedAt    DateTime    @default(now())
+  wallet       Wallet      @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  edits        TradeEdit[]
 
   @@index([walletId])
   @@index([timestamp])
@@ -135,76 +117,55 @@ model Trade {
   @@index([indexedAt])
 }
 
-// Trade edits - manual adjustments to trades
 model TradeEdit {
-  id          String   @id @default(cuid())
-  tradeId     String
-  userId      String
-
-  // Fields that can be edited
-  editedType       String?  // Override buy/sell/swap
-  editedAmountIn   Float?   // Override amount in
-  editedAmountOut  Float?   // Override amount out
-  editedValueUSD   Float?   // Override USD value
-  notes            String?  // User notes
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  tradeId         String
+  userId          String
+  editedType      String?
+  editedAmountIn  Float?
+  editedAmountOut Float?
+  editedValueUSD  Float?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade           Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
 
   @@unique([tradeId, userId])
   @@index([userId])
   @@index([tradeId])
 }
 
-// Papered plays - missed opportunities
 model PaperedPlay {
-  id            String   @id @default(cuid())
-  userId        String
-
-  // Token info (existing fields kept for compat)
-  coinName      String
-  contractAddr  String?
-  tokenMint     String?
-  tokenSymbol   String?
-  tokenImage    String?
-
-  // Legacy fields kept for backward compat
-  mcWhenSaw     String   @default("")
-  ath           String   @default("")
-  reasonMissed  String   @default("")
-  howToNotMiss  String?
-  attachment    String?
-
-  // Hypothetical trade details
-  entryPrice              Float?
-  entryTime               DateTime?
-  exitPrice               Float?
-  exitTime                DateTime?
+  id                       String    @id @default(cuid())
+  userId                   String
+  coinName                 String
+  contractAddr             String?
+  tokenMint                String?
+  tokenSymbol              String?
+  tokenImage               String?
+  mcWhenSaw                String    @default("")
+  ath                      String    @default("")
+  reasonMissed             String    @default("")
+  howToNotMiss             String?
+  attachment               String?
+  entryPrice               Float?
+  entryTime                DateTime?
+  exitPrice                Float?
+  exitTime                 DateTime?
   hypotheticalPositionSize Float?
-
-  // Outcome tracking
-  outcome                 String?   // 'win' | 'loss' | 'breakeven' | 'pending'
-  potentialMultiplier     Float?
-  potentialPnL            Float?
-  peakMultiplier          Float?
-
-  // Why missed
-  missReason              String?   // hesitation, distracted, no_capital, risk_limit, late_spotted, low_conviction, sleeping, other
-
-  // Strategy link
-  strategyId              String?
-  rulesMetCount           Int?
-  rulesTotalCount         Int?
-
-  // Meta
-  notes                   String    @default("")
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outcome                  String?
+  potentialMultiplier      Float?
+  potentialPnL             Float?
+  peakMultiplier           Float?
+  missReason               String?
+  strategyId               String?
+  rulesMetCount            Int?
+  rulesTotalCount          Int?
+  notes                    String    @default("")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
@@ -213,37 +174,32 @@ model PaperedPlay {
   @@index([userId, createdAt])
 }
 
-// User settings
 model UserSettings {
-  id                String  @id @default(cuid())
-  userId            String  @unique
-  displayName       String?
-  transactionLimit  Int     @default(50)
-  showUSDValues     Boolean @default(true)
-  darkMode          Boolean @default(false)
-  timezone          String  @default("UTC")
-  tradingStartTime  String  @default("09:00")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  displayName      String?
+  transactionLimit Int      @default(50)
+  showUSDValues    Boolean  @default(true)
+  darkMode         Boolean  @default(false)
+  timezone         String   @default("UTC")
+  tradingStartTime String   @default("09:00")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ─── Phase 3: localStorage → DB Migration Models ───────────────
-
 model Strategy {
-  id              String   @id @default(cuid())
-  userId          String
-  name            String
-  description     String   @default("")
-  color           String   @default("#10b981")
-  icon            String   @default("📋")
-  ruleGroupsJson  String   @default("[]") // JSON string of RuleGroup[]
-  isArchived      Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  description    String   @default("")
+  color          String   @default("#10b981")
+  icon           String   @default("📋")
+  ruleGroupsJson String   @default("[]")
+  isArchived     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -255,8 +211,7 @@ model GlobalRule {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, sortOrder])
 }
@@ -264,7 +219,7 @@ model GlobalRule {
 model PreSession {
   id                  String   @id @default(cuid())
   userId              String
-  date                String   // YYYY-MM-DD
+  date                String
   time                String   @default("")
   energyLevel         Int      @default(0)
   emotionalState      String   @default("")
@@ -279,49 +234,47 @@ model PreSession {
   majorNews           Boolean?
   majorNewsNote       String   @default("")
   normalVolume        Boolean?
-  marketSnapshotJson  String   @default("{}") // JSON string
-  rulesCheckedJson    String   @default("[]") // JSON string of rule IDs
+  marketSnapshotJson  String   @default("{}")
+  rulesCheckedJson    String   @default("[]")
   savedAt             String   @default("")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
   @@index([userId])
 }
 
 model JournalEntry {
-  id               String   @id @default(cuid())
-  userId           String
-  walletAddress    String
-  tokenMint        String
-  tradeNumber      Int
-  strategy         String   @default("")
-  strategyId       String?
-  ruleResultsJson  String   @default("[]") // JSON string of TradeRuleResult[]
-  emotionalState   String   @default("")
-  buyNotes         String   @default("")
-  buyRating        Int      @default(0)
-  exitPlan         String   @default("")
-  sellRating       Int      @default(0)
-  followedExitRule Boolean?
-  sellMistakesJson String   @default("[]") // JSON string of string[]
-  sellNotes        String   @default("")
-  attachment       String?  // base64 data URL
-  entryCommentId   String?
-  exitCommentId    String?
+  id                  String   @id @default(cuid())
+  userId              String
+  walletAddress       String
+  tokenMint           String
+  tradeNumber         Int
+  strategy            String   @default("")
+  strategyId          String?
+  ruleResultsJson     String   @default("[]")
+  emotionalState      String   @default("")
+  buyNotes            String   @default("")
+  buyRating           Int      @default(0)
+  exitPlan            String   @default("")
+  sellRating          Int      @default(0)
+  followedExitRule    Boolean?
+  sellMistakesJson    String   @default("[]")
+  sellNotes           String   @default("")
+  attachment          String?
+  entryCommentId      String?
+  exitCommentId       String?
   managementCommentId String?
-  emotionTag       String?
-  stopLoss         Float?
-  takeProfit       Float?
-  tradeHigh        Float?
-  tradeLow         Float?
-  journaledAt      String   @default("")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emotionTag          String?
+  journaledAt         String   @default("")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  stopLoss            Float?
+  takeProfit          Float?
+  tradeHigh           Float?
+  tradeLow            Float?
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, walletAddress, tokenMint, tradeNumber])
   @@index([userId])
@@ -331,8 +284,8 @@ model JournalEntry {
 model PostSession {
   id              String   @id @default(cuid())
   userId          String
-  date            String   // YYYY-MM-DD
-  rating          Int      @default(0) // 1-10
+  date            String
+  rating          Int      @default(0)
   emotionalState  String   @default("")
   whatWentWell    String   @default("")
   whatWentWrong   String   @default("")
@@ -342,8 +295,7 @@ model PostSession {
   planForTomorrow String   @default("")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
   @@index([userId])
@@ -354,11 +306,10 @@ model Note {
   userId    String
   title     String   @default("")
   content   String   @default("")
-  tagsJson  String   @default("[]") // JSON string of string[]
+  tagsJson  String   @default("[]")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
@@ -367,13 +318,12 @@ model Note {
 model TradeComment {
   id        String   @id @default(cuid())
   userId    String
-  category  String   // 'entry' | 'exit' | 'management'
+  category  String
   label     String
-  rating    String   // 'positive' | 'neutral' | 'negative'
+  rating    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, category])
 }
