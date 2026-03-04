@@ -2,9 +2,30 @@
 
 import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatValue, formatDuration } from '@/lib/formatters'
+import { formatValue } from '@/lib/formatters'
 import { AreaChart, Area } from 'recharts'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
+
+/** Format USD without cents (whole dollars only) */
+function formatWhole(amount: number, showSign: boolean = false): string {
+  const isNegative = amount < 0
+  const formatted = Math.round(Math.abs(amount)).toLocaleString('en-US')
+  if (isNegative) return `-$${formatted}`
+  if (showSign && amount > 0) return `+$${formatted}`
+  return `$${formatted}`
+}
+
+/** Format duration without seconds */
+function formatDurationNoSec(ms: number): string {
+  const minutes = Math.floor(ms / 60_000)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  const parts: string[] = []
+  if (days > 0) parts.push(`${days}d`)
+  if (hours % 24 > 0) parts.push(`${hours % 24}h`)
+  if (minutes % 60 > 0) parts.push(`${minutes % 60}m`)
+  return parts.length > 0 ? parts.join(' ') : '<1m'
+}
 
 interface KPICardsProps {
   trades: FlattenedTrade[]
@@ -196,10 +217,10 @@ export function KPICards({ trades }: KPICardsProps) {
       {/* Net Return — left: label+value, right: sparkline */}
       <Card>
         <CardContent className="flex items-center justify-between p-4 h-[100px]">
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center gap-2">
             <p className="text-[11px] text-muted-foreground">Net Return</p>
             <p className="text-lg font-mono tabular-nums font-bold">
-              {formatValue(stats.totalPL, true)}
+              {formatWhole(stats.totalPL, true)}
             </p>
           </div>
           <div className="flex items-center justify-center">
@@ -211,7 +232,7 @@ export function KPICards({ trades }: KPICardsProps) {
       {/* Winrate — left: label+value, right: donut+counts */}
       <Card>
         <CardContent className="flex items-center justify-between p-4 h-[100px]">
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center gap-2">
             <p className="text-[11px] text-muted-foreground">Winrate</p>
             <p className="text-lg font-mono tabular-nums font-bold">{stats.winRate}%</p>
           </div>
@@ -229,13 +250,13 @@ export function KPICards({ trades }: KPICardsProps) {
       {/* Avg P/L — left: label+value, right: bar */}
       <Card>
         <CardContent className="flex items-center justify-between gap-3 p-4 h-[100px]">
-          <div className="flex flex-col justify-center shrink-0">
+          <div className="flex flex-col justify-center gap-2 shrink-0">
             <p className="text-[11px] text-muted-foreground">Avg P/L</p>
             <p className="text-lg font-mono tabular-nums font-bold">
-              {formatValue(stats.avgPL, true)}
+              {formatWhole(stats.avgPL, true)}
             </p>
           </div>
-          <div className="flex items-center justify-center flex-1 min-w-0">
+          <div className="flex items-center justify-center w-1/2 max-w-[50%]">
             <ProfitBar avgWin={stats.avgWin} avgLoss={stats.avgLoss} ratio={stats.winLossRatio} />
           </div>
         </CardContent>
@@ -244,7 +265,7 @@ export function KPICards({ trades }: KPICardsProps) {
       {/* Profit Factor — left: label+value, right: dots */}
       <Card>
         <CardContent className="flex items-center justify-between p-4 h-[100px]">
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center gap-2">
             <p className="text-[11px] text-muted-foreground">Profit Factor</p>
             <p className="text-lg font-mono tabular-nums font-bold">
               {stats.profitFactor === Infinity ? '\u221E' : stats.profitFactor.toFixed(2)}
@@ -259,15 +280,15 @@ export function KPICards({ trades }: KPICardsProps) {
       {/* Avg Duration — left: label+value, right: W/L durations */}
       <Card>
         <CardContent className="flex items-center justify-between p-4 h-[100px]">
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center gap-2">
             <p className="text-[11px] text-muted-foreground">Avg Duration</p>
             <p className="text-lg font-mono tabular-nums font-bold">
-              {stats.avgDuration > 0 ? formatDuration(stats.avgDuration) : '-'}
+              {stats.avgDuration > 0 ? formatDurationNoSec(stats.avgDuration) : '-'}
             </p>
           </div>
           <div className="flex flex-col items-end justify-center gap-1 text-[10px] font-mono tabular-nums">
-            <span className="text-emerald-500">W {stats.avgWinDuration > 0 ? formatDuration(stats.avgWinDuration) : '-'}</span>
-            <span className="text-red-500">L {stats.avgLossDuration > 0 ? formatDuration(stats.avgLossDuration) : '-'}</span>
+            <span className="text-emerald-500">W {stats.avgWinDuration > 0 ? formatDurationNoSec(stats.avgWinDuration) : '-'}</span>
+            <span className="text-red-500">L {stats.avgLossDuration > 0 ? formatDurationNoSec(stats.avgLossDuration) : '-'}</span>
           </div>
         </CardContent>
       </Card>

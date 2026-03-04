@@ -16,7 +16,10 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Journalio',
+  title: {
+    default: 'Journalio',
+    template: '%s',
+  },
   description: 'Your Solana trading journal and wallet tracker',
 }
 

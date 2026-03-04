@@ -43,6 +43,7 @@ import {
   getCommentsByCategory,
   type TradeComment,
 } from '@/lib/trade-comments'
+import { safeLocalStorage } from '@/lib/local-storage'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -80,7 +81,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     try {
-      const mode = localStorage.getItem('journalio_journal_view_mode')
+      const mode = safeLocalStorage.getItem('journalio_journal_view_mode', null)
       if (mode === 'merged' || mode === 'grouped') setJournalViewMode(mode)
     } catch {}
   }, [])
@@ -107,7 +108,9 @@ export default function SettingsPage() {
         setNewCommentLabel('')
         setNewCommentRating('neutral')
       }
-    } catch { /* ignore */ }
+    } catch {
+      toast.error('Failed to save comment')
+    }
   }
 
   async function deleteComment(id: string) {
@@ -116,7 +119,9 @@ export default function SettingsPage() {
       if (res.ok) {
         setTradeComments((prev) => prev.filter((c) => c.id !== id))
       }
-    } catch { /* ignore */ }
+    } catch {
+      toast.error('Failed to save comment')
+    }
     setDeleteCommentConfirm(null)
   }
 
@@ -140,7 +145,9 @@ export default function SettingsPage() {
           prev.map((c) => (c.id === editingCommentId ? updated : c))
         )
       }
-    } catch { /* ignore */ }
+    } catch {
+      toast.error('Failed to save comment')
+    }
     setEditingCommentId(null)
   }
 
@@ -401,9 +408,10 @@ export default function SettingsPage() {
               {(['merged', 'grouped'] as const).map((mode) => (
                 <button
                   key={mode}
+                  aria-pressed={journalViewMode === mode}
                   onClick={() => {
                     setJournalViewMode(mode)
-                    localStorage.setItem('journalio_journal_view_mode', mode)
+                    safeLocalStorage.setItem('journalio_journal_view_mode', mode)
                   }}
                   className={`text-xs px-2.5 py-1 rounded border transition-colors ${
                     journalViewMode === mode
@@ -423,7 +431,7 @@ export default function SettingsPage() {
       <section className="mb-8">
         <h2 className="text-sm font-semibold mb-4">Trade Comments</h2>
         <p className="text-xs text-muted-foreground mb-4">
-          Manage discipline comments used in journal entries. Changes save automatically.
+          Manage discipline comments used in journal entries. Add, edit, or remove comments using the controls below.
         </p>
 
         {/* Category tabs */}

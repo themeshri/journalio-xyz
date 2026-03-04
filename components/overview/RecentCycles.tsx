@@ -38,7 +38,7 @@ export const RecentCycles = forwardRef<RecentCyclesHandle, RecentCyclesProps>(
     const [selectedTrade, setSelectedTrade] = useState<FlattenedTrade | null>(null)
 
     const recentCompleted = useMemo(
-      () => trades.filter((t) => t.isComplete).slice(0, 8),
+      () => trades.filter((t) => t.isComplete).slice(0, 12),
       [trades]
     )
 

@@ -1,13 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { type NoteData, loadNotes, saveNote, deleteNote } from '@/lib/notes'
 
 export default function NotesPage() {
@@ -17,6 +21,9 @@ export default function NotesPage() {
   const [saving, setSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [tagInput, setTagInput] = useState('')
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
+  const lastSavedNote = useRef<NoteData | null>(null)
 
   useEffect(() => {
     loadNotes().then((data) => {
@@ -26,8 +33,14 @@ export default function NotesPage() {
   }, [])
 
   const handleNewNote = useCallback(() => {
-    setActiveNote({ title: '', content: '', tags: [] })
-  }, [])
+    if (isDirty) {
+      if (!window.confirm('You have unsaved changes. Discard?')) return
+    }
+    const newNote = { title: '', content: '', tags: [] }
+    setActiveNote(newNote)
+    lastSavedNote.current = newNote
+    setIsDirty(false)
+  }, [isDirty])
 
   const handleSave = useCallback(async () => {
     if (!activeNote) return
@@ -44,6 +57,8 @@ export default function NotesPage() {
         return [saved, ...prev]
       })
       setActiveNote(saved)
+      lastSavedNote.current = saved
+      setIsDirty(false)
       toast.success('Note saved')
     } else {
       toast.error('Failed to save note')
@@ -67,6 +82,7 @@ export default function NotesPage() {
     if (!tag || !activeNote) return
     if (!activeNote.tags.includes(tag)) {
       setActiveNote({ ...activeNote, tags: [...activeNote.tags, tag] })
+      setIsDirty(true)
     }
     setTagInput('')
   }, [tagInput, activeNote])
@@ -74,6 +90,7 @@ export default function NotesPage() {
   const removeTag = useCallback((tag: string) => {
     if (!activeNote) return
     setActiveNote({ ...activeNote, tags: activeNote.tags.filter((t) => t !== tag) })
+    setIsDirty(true)
   }, [activeNote])
 
   const filteredNotes = searchQuery
@@ -97,9 +114,10 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-8rem)]">
+    <>
+    <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
       {/* Sidebar: note list */}
-      <div className="w-72 shrink-0 flex flex-col">
+      <div className={`w-full md:w-72 md:shrink-0 flex flex-col ${activeNote ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-semibold">Notes</h1>
           <Button size="sm" variant="outline" onClick={handleNewNote}>
@@ -126,7 +144,14 @@ export default function NotesPage() {
                 className={`cursor-pointer transition-colors ${
                   activeNote?.id === note.id ? 'border-primary' : 'hover:bg-muted/50'
                 }`}
-                onClick={() => setActiveNote(note)}
+                onClick={() => {
+                  if (activeNote?.id !== note.id && isDirty) {
+                    if (!window.confirm('You have unsaved changes. Discard?')) return
+                  }
+                  setActiveNote(note)
+                  lastSavedNote.current = note
+                  setIsDirty(false)
+                }}
               >
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -140,9 +165,10 @@ export default function NotesPage() {
                     </div>
                     <button
                       className="text-muted-foreground hover:text-destructive shrink-0 p-0.5"
+                      aria-label={`Delete note ${note.title || 'Untitled'}`}
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (note.id) handleDelete(note.id)
+                        if (note.id) setDeleteNoteId(note.id)
                       }}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -165,7 +191,7 @@ export default function NotesPage() {
       </div>
 
       {/* Editor */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={`flex-1 flex flex-col min-w-0 ${!activeNote ? 'hidden md:flex' : 'flex'}`}>
         {!activeNote ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
             Select a note or create a new one
@@ -173,10 +199,19 @@ export default function NotesPage() {
         ) : (
           <>
             <div className="flex items-center gap-3 mb-3">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="md:hidden"
+                onClick={() => { setActiveNote(null); setIsDirty(false) }}
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back
+              </Button>
               <Input
                 placeholder="Note title..."
                 value={activeNote.title}
-                onChange={(e) => setActiveNote({ ...activeNote, title: e.target.value })}
+                onChange={(e) => { setActiveNote({ ...activeNote, title: e.target.value }); setIsDirty(true) }}
                 className="text-lg font-medium"
               />
               <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -192,7 +227,7 @@ export default function NotesPage() {
                   className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-muted rounded"
                 >
                   {tag}
-                  <button onClick={() => removeTag(tag)} className="hover:text-destructive">
+                  <button onClick={() => removeTag(tag)} className="hover:text-destructive" aria-label={`Remove tag ${tag}`}>
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -202,7 +237,7 @@ export default function NotesPage() {
                 className="inline-flex"
               >
                 <Input
-                  placeholder="Add tag..."
+                  placeholder="Add tag (Enter to add)"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   className="h-6 w-24 text-xs"
@@ -213,12 +248,26 @@ export default function NotesPage() {
             <Textarea
               placeholder="Write your notes here..."
               value={activeNote.content}
-              onChange={(e) => setActiveNote({ ...activeNote, content: e.target.value })}
+              onChange={(e) => { setActiveNote({ ...activeNote, content: e.target.value }); setIsDirty(true) }}
               className="flex-1 min-h-[300px] resize-none"
             />
           </>
         )}
       </div>
     </div>
+
+    <AlertDialog open={!!deleteNoteId} onOpenChange={(open) => !open && setDeleteNoteId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+          <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { if (deleteNoteId) handleDelete(deleteNoteId); setDeleteNoteId(null) }}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

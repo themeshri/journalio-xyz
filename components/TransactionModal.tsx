@@ -3,6 +3,7 @@
 import React, { memo } from 'react';
 import { Trade } from '@/lib/solana-tracker';
 import { formatPrice, formatMarketCap } from '@/lib/formatters';
+import { explorerTxUrl, type Chain } from '@/lib/chains';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -16,6 +17,7 @@ interface TransactionModalProps {
   trades: Trade[];
   title: string;
   onClose: () => void;
+  chain?: Chain;
 }
 
 function formatNumber(num: number, decimals: number = 2) {
@@ -39,6 +41,7 @@ const TransactionModal = memo(function TransactionModal({
   trades,
   title,
   onClose,
+  chain = 'solana',
 }: TransactionModalProps) {
   return (
     <Dialog open onOpenChange={() => onClose()}>
@@ -124,7 +127,7 @@ const TransactionModal = memo(function TransactionModal({
                       {/* Tx link */}
                       <div className="mt-1.5">
                         <a
-                          href={`https://solscan.io/tx/${trade.signature}`}
+                          href={explorerTxUrl(chain, trade.signature)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-primary hover:underline font-mono break-all"
