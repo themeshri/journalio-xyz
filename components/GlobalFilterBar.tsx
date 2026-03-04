@@ -54,12 +54,11 @@ export function GlobalFilterBar() {
   const router = useRouter()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   // Only show on pages that actually consume filters
   const showFilter = FILTER_PAGES.some((p) => pathname === p || pathname.startsWith(p + '/'))
-  if (!showFilter) return null
-  const panelRef = useRef<HTMLDivElement>(null)
-  const triggerRef = useRef<HTMLButtonElement>(null)
 
   // Close panel on click outside
   useEffect(() => {
@@ -85,6 +84,8 @@ export function GlobalFilterBar() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open])
+
+  if (!showFilter) return null
 
   const outcome = searchParams.get('outcome') || 'all'
   const month = searchParams.get('month') || 'all'
