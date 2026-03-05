@@ -75,6 +75,7 @@ export function SupabaseProvider({
       if (!error) {
         setSession(null)
         setUser(null)
+        window.location.href = '/auth/signin'
       }
     },
   }

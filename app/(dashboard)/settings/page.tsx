@@ -25,7 +25,6 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { Switch } from '@/components/ui/switch'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,8 +47,6 @@ import { safeLocalStorage } from '@/lib/local-storage'
 export default function SettingsPage() {
   const { user, session, isLoading: authLoading } = useSupabase()
   const [displayName, setDisplayName] = useState('')
-  const [transactionLimit, setTransactionLimit] = useState('50')
-  const [showUSDValues, setShowUSDValues] = useState(true)
   const [timezone, setTimezone] = useState('')
   const [tradingStartTime, setTradingStartTime] = useState('09:00')
   const [tzSearch, setTzSearch] = useState('')
@@ -161,8 +158,6 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json()
         setDisplayName(data.displayName || '')
-        setTransactionLimit(String(data.transactionLimit || 50))
-        setShowUSDValues(data.showUSDValues ?? true)
         setTimezone(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
         setTradingStartTime(data.tradingStartTime || '09:00')
       }
@@ -181,8 +176,6 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           displayName,
-          transactionLimit: parseInt(transactionLimit),
-          showUSDValues,
           darkMode: false,
           timezone,
           tradingStartTime,
@@ -210,8 +203,6 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           displayName: '',
-          transactionLimit: 50,
-          showUSDValues: true,
           darkMode: false,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           tradingStartTime: '09:00',
@@ -219,8 +210,6 @@ export default function SettingsPage() {
       })
       if (res.ok) {
         setDisplayName('')
-        setTransactionLimit('50')
-        setShowUSDValues(true)
         setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
         setTradingStartTime('09:00')
         setSaveStatus('saved')
@@ -290,39 +279,6 @@ export default function SettingsPage() {
       <section className="mb-8">
         <h2 className="text-sm font-semibold mb-4">Preferences</h2>
         <div className="space-y-5">
-          <div>
-            <Label htmlFor="transactionLimit" className="text-xs mb-1.5">
-              Transaction Fetch Limit
-            </Label>
-            <Select
-              value={transactionLimit}
-              onValueChange={setTransactionLimit}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25">25 transactions</SelectItem>
-                <SelectItem value="50">50 transactions</SelectItem>
-                <SelectItem value="100">100 transactions</SelectItem>
-                <SelectItem value="200">200 transactions</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-xs">Show USD Values</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Display amounts in USD
-              </p>
-            </div>
-            <Switch
-              checked={showUSDValues}
-              onCheckedChange={setShowUSDValues}
-            />
-          </div>
-
           <div>
             <Label htmlFor="timezone" className="text-xs mb-1.5">
               Timezone
