@@ -6,7 +6,7 @@ import type { FlattenedTrade } from '@/lib/tradeCycles'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import { KPICards } from '@/components/overview/KPICards'
 import { RecentCycles } from '@/components/overview/RecentCycles'
-import { SessionHero } from '@/components/overview/SessionHero'
+import { SessionHero, SessionPills, getAutoTab, type Tab } from '@/components/overview/SessionHero'
 import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
 import { Evaluation } from '@/components/overview/Evaluation'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
@@ -31,6 +31,11 @@ export default function OverviewPage() {
   useEffect(() => {
     document.title = 'Overview | Journalio'
   }, [])
+
+  // Session hero tab state
+  const autoTab = getAutoTab(preSessionDone, postSessionDone)
+  const [sessionTab, setSessionTab] = useState<Tab>(autoTab)
+  useEffect(() => { setSessionTab(autoTab) }, [autoTab])
 
   const filteredTrades = useMemo(
     () => filterTradesByRange(flattenedTrades, timeRange),
@@ -135,7 +140,15 @@ export default function OverviewPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Home</h1>
-        <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
+        <div className="flex items-center gap-3">
+          <SessionPills
+            selectedTab={sessionTab}
+            onTabChange={setSessionTab}
+            preSessionDone={preSessionDone}
+            postSessionDone={postSessionDone}
+          />
+          <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
+        </div>
       </div>
 
       {/* Row 1: Session Hero */}
@@ -146,6 +159,7 @@ export default function OverviewPage() {
           flattenedTrades={flattenedTrades}
           journalMap={journalMap}
           onJournalClick={handleJournalClick}
+          selectedTab={sessionTab}
           timezone={timezone}
           tradingStartTime={tradingStartTime}
         />

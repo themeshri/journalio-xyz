@@ -17,13 +17,14 @@ interface SessionHeroProps {
   flattenedTrades: FlattenedTrade[]
   journalMap: Record<string, JournalRecord>
   onJournalClick: () => void
+  selectedTab: Tab
   timezone?: string
   tradingStartTime?: string
 }
 
-type Tab = 'pre' | 'active' | 'post'
+export type Tab = 'pre' | 'active' | 'post'
 
-function getAutoTab(preSessionDone: boolean, postSessionDone: boolean): Tab {
+export function getAutoTab(preSessionDone: boolean, postSessionDone: boolean): Tab {
   if (!preSessionDone) return 'pre'
   if (!postSessionDone) return 'active'
   return 'post'
@@ -59,23 +60,60 @@ const tabConfig: { key: Tab; label: string }[] = [
   { key: 'post', label: 'Post-Session' },
 ]
 
+export function SessionPills({
+  selectedTab,
+  onTabChange,
+  preSessionDone,
+  postSessionDone,
+}: {
+  selectedTab: Tab
+  onTabChange: (tab: Tab) => void
+  preSessionDone: boolean
+  postSessionDone: boolean
+}) {
+  const autoTab = getAutoTab(preSessionDone, postSessionDone)
+  return (
+    <div className="flex items-center gap-1 p-1 rounded-lg bg-black/5 dark:bg-white/5 w-fit">
+      {tabConfig.map(({ key, label }) => {
+        const isSelected = selectedTab === key
+        const isDone = key === 'pre' ? preSessionDone : key === 'post' ? postSessionDone : false
+        return (
+          <button
+            key={key}
+            onClick={() => onTabChange(key)}
+            className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              isSelected
+                ? 'bg-white dark:bg-zinc-800 text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {isDone && (
+              <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+            )}
+            {key === 'active' && autoTab === 'active' && (
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
+            )}
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function SessionHero({
   preSessionDone,
   postSessionDone,
   flattenedTrades,
   journalMap,
   onJournalClick,
+  selectedTab,
   timezone = 'UTC',
   tradingStartTime = '09:00',
 }: SessionHeroProps) {
-  const autoTab = getAutoTab(preSessionDone, postSessionDone)
-  const [selectedTab, setSelectedTab] = useState<Tab>(autoTab)
-
-  // Sync selected tab when the auto-detected state changes
-  useEffect(() => {
-    setSelectedTab(autoTab)
-  }, [autoTab])
-
   const [rules, setRules] = useState<GlobalRule[]>([])
   const [preSessionData, setPreSessionData] = useState<PreSessionData | null>(null)
   const [sessionDuration, setSessionDuration] = useState('')
@@ -135,13 +173,6 @@ export function SessionHero({
   const journalDone = journalProgress.total === 0 || journalProgress.done >= journalProgress.total
   const journalRemaining = journalProgress.total - journalProgress.done
 
-  // Tab completion status
-  const tabDone: Record<Tab, boolean> = {
-    pre: preSessionDone,
-    active: preSessionDone && !postSessionDone, // "current" if in active phase
-    post: postSessionDone,
-  }
-
   // Gradient + border colors per tab
   const gradients: Record<Tab, string> = {
     pre: 'border-blue-200 dark:border-blue-800/40 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/10',
@@ -153,37 +184,6 @@ export function SessionHero({
 
   return (
     <div className={`rounded-xl border ${gradients[selectedTab]} p-5 transition-all`}>
-      {/* Segmented pills */}
-      <div className="flex items-center gap-1 p-1 rounded-lg bg-black/5 dark:bg-white/5 w-fit mb-4">
-        {tabConfig.map(({ key, label }) => {
-          const isSelected = selectedTab === key
-          const isDone = key === 'pre' ? preSessionDone : key === 'post' ? postSessionDone : false
-          return (
-            <button
-              key={key}
-              onClick={() => setSelectedTab(key)}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                isSelected
-                  ? 'bg-white dark:bg-zinc-800 text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {isDone && (
-                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-              )}
-              {key === 'active' && autoTab === 'active' && (
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                </span>
-              )}
-              {label}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Tab content */}
       {selectedTab === 'pre' && (
         <PreSessionPanel preSessionDone={preSessionDone} />
       )}
