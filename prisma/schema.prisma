@@ -88,7 +88,7 @@ model Wallet {
 model Trade {
   id           String      @id @default(cuid())
   walletId     String
-  signature    String      @unique
+  signature    String
   timestamp    Int
   type         String      @default("trade")
   status       String      @default("confirmed")
@@ -109,6 +109,7 @@ model Trade {
   wallet       Wallet      @relation(fields: [walletId], references: [id], onDelete: Cascade)
   edits        TradeEdit[]
 
+  @@unique([walletId, signature])
   @@index([walletId])
   @@index([timestamp])
   @@index([signature])

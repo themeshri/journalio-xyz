@@ -158,6 +158,10 @@ export default function TradeJournalPage() {
     return (
       <div className="pt-8">
         <h1 className="text-xl font-semibold mb-6">Trade Journal</h1>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <div className="h-4 w-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+          <span>Loading trades<span className="animate-pulse">...</span></span>
+        </div>
         <TableRowsSkeleton rows={5} cols={8} />
       </div>
     )

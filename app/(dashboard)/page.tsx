@@ -126,6 +126,10 @@ export default function OverviewPage() {
     return (
       <div className="pt-8 space-y-6">
         <h1 className="text-xl font-semibold">Home</h1>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="h-4 w-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+          <span>Loading trades<span className="animate-pulse">...</span></span>
+        </div>
         <StatStripSkeleton count={7} />
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-3"><ChartSkeleton /></div>

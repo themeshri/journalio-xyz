@@ -119,30 +119,42 @@ export async function GET(request: NextRequest) {
       
       console.log(`Found ${newTrades.length} new trades out of ${apiTrades.length} total trades`);
 
-      // Cache only new trades (batch insert)
+      // Cache new trades in batches (pgBouncer can timeout on large single inserts)
       if (newTrades.length > 0) {
-        await prisma.trade.createMany({
-          data: newTrades.map(trade => ({
-            walletId: wallet.id,
-            signature: trade.signature,
-            timestamp: trade.timestamp,
-            type: trade.type,
-            status: "confirmed",
-            direction: trade.type === 'buy' ? 'in' : 'out',
-            chain: chain,
-            tokenInData: trade.tokenIn ? JSON.stringify(trade.tokenIn) : null,
-            tokenOutData: trade.tokenOut ? JSON.stringify(trade.tokenOut) : null,
-            amountIn: trade.amountIn,
-            amountOut: trade.amountOut,
-            priceUSD: trade.priceUSD,
-            valueUSD: trade.valueUSD,
-            dex: trade.dex,
-            protocol: trade.dex,
-            indexedAt: new Date(),
-          })),
-          skipDuplicates: true,
-        })
-        console.log(`Successfully cached ${newTrades.length} new trades`);
+        const BATCH_SIZE = 200
+        const tradeData = newTrades.map(trade => ({
+          walletId: wallet.id,
+          signature: trade.signature,
+          timestamp: trade.timestamp,
+          type: trade.type,
+          status: "confirmed",
+          direction: trade.type === 'buy' ? 'in' : 'out',
+          chain: chain,
+          tokenInData: trade.tokenIn ? JSON.stringify(trade.tokenIn) : null,
+          tokenOutData: trade.tokenOut ? JSON.stringify(trade.tokenOut) : null,
+          amountIn: trade.amountIn,
+          amountOut: trade.amountOut,
+          priceUSD: trade.priceUSD,
+          valueUSD: trade.valueUSD,
+          dex: trade.dex,
+          protocol: trade.dex,
+          indexedAt: new Date(),
+        }))
+
+        let storedCount = 0
+        for (let i = 0; i < tradeData.length; i += BATCH_SIZE) {
+          const batch = tradeData.slice(i, i + BATCH_SIZE)
+          try {
+            const result = await prisma.trade.createMany({
+              data: batch,
+              skipDuplicates: true,
+            })
+            storedCount += result.count
+          } catch (batchError) {
+            console.error(`Failed to store batch ${i / BATCH_SIZE + 1}:`, batchError instanceof Error ? batchError.message : batchError)
+          }
+        }
+        console.log(`Successfully cached ${storedCount}/${newTrades.length} new trades`);
       }
 
       // Invalidate analytics cache for this wallet on fresh fetch

@@ -96,10 +96,11 @@ export async function getWalletTrades(
       : `${API_BASE_URL}/wallet/${walletAddress}/trades`;
 
     const config = USE_PROXY
-      ? {} // No headers needed for proxy
+      ? { timeout: 30000 }
       : {
           params: { limit },
           headers: { 'x-api-key': API_KEY },
+          timeout: 30000,
         };
 
     const response = await axios.get(url, config);
