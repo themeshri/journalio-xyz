@@ -160,20 +160,49 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const params = parseWalletParams(searchParams, userId)
 
-    if (params.addresses.length === 0) {
-      return NextResponse.json({
-        walletTrades: {},
-        tradeComments: [],
-        strategies: [],
-        journals: [],
-        streak: { current: 0, longest: 0 },
-        preSessionDone: false,
-        postSessionDone: false,
-        missedTrades: [],
-        settings: { timezone: 'UTC', tradingStartTime: '09:00' },
-        yearlyPreSessions: [],
-        yearlyPostSessions: [],
-      })
+    // If no addresses provided, fetch all saved wallets for this user
+    const allSavedWallets = await prisma.wallet.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    })
+    const savedWalletsResponse = allSavedWallets.map((w) => ({
+      address: w.address,
+      chain: w.chain,
+      nickname: w.nickname || '',
+      dex: w.dex || 'other',
+    }))
+
+    // Use provided addresses or fall back to all saved wallets
+    const walletParams: { address: string; chain: Chain; dex: string }[] =
+      params.addresses.length > 0
+        ? params.addresses.map((address, i) => ({
+            address,
+            chain: (params.chains[i] || 'solana') as Chain,
+            dex: params.dexes[i] || 'other',
+          }))
+        : allSavedWallets.map((w) => ({
+            address: w.address,
+            chain: w.chain as Chain,
+            dex: w.dex || 'other',
+          }))
+
+    const emptyResponse = {
+      walletTrades: {},
+      tradeComments: [],
+      strategies: [],
+      journals: [],
+      streak: { current: 0, longest: 0 },
+      preSessionDone: false,
+      postSessionDone: false,
+      missedTrades: [],
+      settings: { timezone: 'UTC', tradingStartTime: '09:00' },
+      yearlyPreSessions: [],
+      yearlyPostSessions: [],
+      savedWallets: savedWalletsResponse,
+    }
+
+    if (walletParams.length === 0) {
+      return NextResponse.json(emptyResponse)
     }
 
     // Fetch user settings for timezone-aware trading day
@@ -190,12 +219,8 @@ export async function GET(request: NextRequest) {
     const yearStart = `${year}-01-01`
     const yearEnd = `${year}-12-31`
 
-    // Build wallet params for batch query
-    const walletParams = params.addresses.map((address, i) => ({
-      address,
-      chain: (params.chains[i] || 'solana') as Chain,
-      dex: params.dexes[i] || 'other',
-    }))
+    // Addresses for journal queries
+    const addresses = walletParams.map((p) => p.address)
 
     // Run all queries in parallel (batched wallet trades + metadata)
     const [walletTrades, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, todayPostSession, missedTrades, yearlyPreSessionsRaw, yearlyPostSessionsRaw] = await Promise.all([
@@ -230,7 +255,7 @@ export async function GET(request: NextRequest) {
       }),
       // Journals for all wallet addresses (batched)
       prisma.journalEntry.findMany({
-        where: { userId, walletAddress: { in: params.addresses } },
+        where: { userId, walletAddress: { in: addresses } },
         orderBy: { createdAt: 'desc' },
       }),
       // Today's pre-session status
@@ -283,6 +308,7 @@ export async function GET(request: NextRequest) {
       settings: { timezone, tradingStartTime },
       yearlyPreSessions: yearlyPreSessionsRaw,
       yearlyPostSessions: yearlyPostSessionsRaw,
+      savedWallets: savedWalletsResponse,
     }
 
     return NextResponse.json(response)

@@ -257,103 +257,120 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function init() {
-      const saved = await fetchSavedWalletsFromAPI()
-      setSavedWallets(saved)
-      const activeKeys = loadActiveWalletKeys()
+      try {
+        // Single API call: dashboard returns saved wallets + all trade/metadata
+        const dashRes = await fetch('/api/dashboard')
 
-      let active: SavedWallet[]
-      if (activeKeys === null) {
-        active = saved
-      } else {
-        active = saved.filter((w) =>
+        if (!dashRes.ok) {
+          // Fallback: fetch wallets separately, then individual trades
+          const saved = await fetchSavedWalletsFromAPI()
+          setSavedWallets(saved)
+          const activeKeys = loadActiveWalletKeys()
+          const active = activeKeys === null ? saved : saved.filter((w) =>
+            activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
+          )
+          setActiveWallets(active)
+          setInitialized(true)
+          if (active.length > 0) {
+            Promise.all(active.map(w => fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)))
+          }
+          return
+        }
+
+        const data = await dashRes.json()
+
+        // Hydrate saved wallets from dashboard response (eliminates /api/wallets call)
+        const saved: SavedWallet[] = (data.savedWallets || []).map((w: any) => ({
+          address: w.address,
+          chain: w.chain as Chain,
+          nickname: w.nickname || '',
+          dex: w.dex || 'other',
+        }))
+        setSavedWallets(saved)
+
+        // Determine active wallets from localStorage selection
+        const activeKeys = loadActiveWalletKeys()
+        const active = activeKeys === null ? saved : saved.filter((w) =>
           activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
         )
-      }
+        setActiveWallets(active)
+        setInitialized(true)
 
-      setActiveWallets(active)
-      setInitialized(true)
+        // Hydrate settings from dashboard response
+        if (data.settings) {
+          userTimezoneRef.current = {
+            timezone: data.settings.timezone || 'UTC',
+            tradingStartTime: data.settings.tradingStartTime || '09:00',
+          }
+        }
 
-      if (active.length === 0) return
+        // Hydrate metadata
+        if (data.tradeComments) setTradeComments(data.tradeComments)
+        if (data.strategies) setStrategies(data.strategies)
+        if (data.journals) {
+          journalsRef.current = data.journals
+          setJournalMap(buildJournalMap(data.journals))
+        }
+        if (data.streak) setStreak(data.streak)
+        if (data.preSessionDone !== undefined) setPreSessionDone(data.preSessionDone)
+        if (data.postSessionDone !== undefined) setPostSessionDone(data.postSessionDone)
+        if (data.missedTrades) setMissedTrades(data.missedTrades)
+        if (data.yearlyPreSessions) setYearlyPreSessions(data.yearlyPreSessions)
+        if (data.yearlyPostSessions) setYearlyPostSessions(data.yearlyPostSessions)
 
-      try {
-        const addresses = active.map((w) => w.address).join(',')
-        const chains = active.map((w) => w.chain).join(',')
-        const dexes = active.map((w) => w.dex).join(',')
-        const dashRes = await fetch(
-          `/api/dashboard?addresses=${encodeURIComponent(addresses)}&chains=${encodeURIComponent(chains)}&dexes=${encodeURIComponent(dexes)}`
-        )
+        if (active.length === 0) return
 
-        if (dashRes.ok) {
-          const data = await dashRes.json()
-
-          // Hydrate wallet slots
-          const newSlots: Record<WalletKey, WalletSlot> = {}
-          for (const w of active) {
-            const key = makeWalletKey(w.address, w.chain)
-            const walletData = data.walletTrades[key]
-            if (walletData) {
-              const feeRate = APP_FEE_RATES[w.dex] || 0
-              const trades = (walletData.trades || []).map((t: any) => ({
-                ...t,
-                valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
-                _chain: w.chain,
-                _walletAddress: w.address,
-              }))
-              newSlots[key] = {
-                address: w.address, chain: w.chain, dex: w.dex, nickname: w.nickname,
-                trades: trades.sort((a: any, b: any) => b.timestamp - a.timestamp),
-                flattenedTrades: walletData.flattenedTrades || [],
-                isLoading: false, error: '', isStale: false,
-                cacheInfo: { cached: walletData.cached, cachedAt: walletData.cachedAt ? new Date(walletData.cachedAt) : undefined },
-              }
-            } else {
-              newSlots[key] = {
-                address: w.address, chain: w.chain, dex: w.dex, nickname: w.nickname,
-                trades: [], flattenedTrades: [],
-                isLoading: false, error: '', isStale: false, cacheInfo: null,
-              }
+        // Hydrate wallet slots from dashboard walletTrades
+        const newSlots: Record<WalletKey, WalletSlot> = {}
+        for (const w of active) {
+          const key = makeWalletKey(w.address, w.chain)
+          const walletData = data.walletTrades[key]
+          if (walletData) {
+            const feeRate = APP_FEE_RATES[w.dex] || 0
+            const trades = (walletData.trades || []).map((t: any) => ({
+              ...t,
+              valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
+              _chain: w.chain,
+              _walletAddress: w.address,
+            }))
+            newSlots[key] = {
+              address: w.address, chain: w.chain, dex: w.dex, nickname: w.nickname,
+              trades: trades.sort((a: any, b: any) => b.timestamp - a.timestamp),
+              flattenedTrades: walletData.flattenedTrades || [],
+              isLoading: false, error: '', isStale: false,
+              cacheInfo: { cached: walletData.cached, cachedAt: walletData.cachedAt ? new Date(walletData.cachedAt) : undefined },
+            }
+          } else {
+            newSlots[key] = {
+              address: w.address, chain: w.chain, dex: w.dex, nickname: w.nickname,
+              trades: [], flattenedTrades: [],
+              isLoading: false, error: '', isStale: false, cacheInfo: null,
             }
           }
-          setWalletSlots(newSlots)
+        }
+        setWalletSlots(newSlots)
 
-          // Hydrate metadata
-          if (data.tradeComments) setTradeComments(data.tradeComments)
-          if (data.strategies) setStrategies(data.strategies)
-          if (data.journals) {
-            journalsRef.current = data.journals
-            setJournalMap(buildJournalMap(data.journals))
+        // Trigger external fetch for wallets with no cached trades
+        for (const w of active) {
+          const key = makeWalletKey(w.address, w.chain)
+          const walletData = data.walletTrades[key]
+          if (!walletData || (walletData.trades || []).length === 0) {
+            fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, true)
           }
-          if (data.streak) setStreak(data.streak)
-          if (data.preSessionDone !== undefined) setPreSessionDone(data.preSessionDone)
-          if (data.postSessionDone !== undefined) setPostSessionDone(data.postSessionDone)
-          if (data.missedTrades) setMissedTrades(data.missedTrades)
-
-          // Hydrate settings from dashboard response (eliminates separate /api/settings call)
-          if (data.settings) {
-            userTimezoneRef.current = {
-              timezone: data.settings.timezone || 'UTC',
-              tradingStartTime: data.settings.tradingStartTime || '09:00',
-            }
-          }
-
-          // Hydrate yearly sessions from dashboard response (eliminates 2 page-level fetches)
-          if (data.yearlyPreSessions) setYearlyPreSessions(data.yearlyPreSessions)
-          if (data.yearlyPostSessions) setYearlyPostSessions(data.yearlyPostSessions)
-
-          // Trigger external fetch for wallets with no cached trades
-          for (const w of active) {
-            const key = makeWalletKey(w.address, w.chain)
-            const walletData = data.walletTrades[key]
-            if (!walletData || (walletData.trades || []).length === 0) {
-              fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, true)
-            }
-          }
-        } else {
-          Promise.all(active.map(w => fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)))
         }
       } catch (err) {
         console.error('Dashboard fetch failed, falling back to individual fetches:', err)
-        Promise.all(active.map(w => fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)))
+        const saved = await fetchSavedWalletsFromAPI()
+        setSavedWallets(saved)
+        const activeKeys = loadActiveWalletKeys()
+        const active = activeKeys === null ? saved : saved.filter((w) =>
+          activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
+        )
+        setActiveWallets(active)
+        setInitialized(true)
+        if (active.length > 0) {
+          Promise.all(active.map(w => fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)))
+        }
       }
     }
     init()

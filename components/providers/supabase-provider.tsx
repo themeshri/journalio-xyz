@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { createSupabaseClient } from '@/lib/supabase'
 import type { Session, User } from '@supabase/supabase-js'
 
@@ -25,9 +25,12 @@ export function SupabaseProvider({
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createSupabaseClient()
 
+  const syncedRef = useRef(false)
+
   useEffect(() => {
     setIsLoading(true)
-    
+    syncedRef.current = false
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
@@ -36,7 +39,8 @@ export function SupabaseProvider({
         setUser(session?.user ?? null)
         setIsLoading(false)
 
-        if (session?.user) {
+        if (session?.user && !syncedRef.current) {
+          syncedRef.current = true
           // Create or update user in database
           try {
             await fetch('/api/auth/sync-user', {
