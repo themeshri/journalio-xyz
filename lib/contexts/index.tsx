@@ -13,9 +13,10 @@ import { type FlattenedTrade } from '../tradeCycles'
 import { loadTradeComments, type TradeComment } from '../trade-comments'
 import { loadStrategies, type Strategy } from '../strategies'
 import { loadJournals, type JournalRecord } from '../journals'
-import { getWalletTokens } from '../solana-tracker'
+import { getWalletTokens, type WalletToken } from '../solana-tracker'
 import { APP_FEE_RATES } from '../constants'
 import { type TimePreset, type TimeRange } from '../time-filters'
+import { type MissedTradeEntry } from '../analytics'
 import { getTradingDay } from '../trading-day'
 
 import {
@@ -24,7 +25,7 @@ import {
   type WalletKey,
   makeWalletKey,
 } from './wallet-context'
-import { TradeContext, type WalletSlot } from './trade-context'
+import { TradeContext, type WalletSlot, type RawTrade } from './trade-context'
 import { MetadataContext } from './metadata-context'
 import { BalanceContext } from './balance-context'
 
@@ -32,7 +33,7 @@ import { BalanceContext } from './balance-context'
 export { useWalletIdentity, buildWalletQueryParams, makeWalletKey } from './wallet-context'
 export type { SavedWallet, WalletKey } from './wallet-context'
 export { useTrades } from './trade-context'
-export type { WalletSlot } from './trade-context'
+export type { WalletSlot, RawTrade } from './trade-context'
 export { useMetadata } from './metadata-context'
 export { useBalances } from './balance-context'
 
@@ -75,15 +76,15 @@ async function fetchTradesForWallet(
   chain: Chain,
   dex: string,
   forceRefresh: boolean = false
-): Promise<{ trades: any[]; flattenedTrades?: FlattenedTrade[]; cached: boolean; cachedAt?: string; stale?: boolean }> {
+): Promise<{ trades: RawTrade[]; flattenedTrades?: FlattenedTrade[]; cached: boolean; cachedAt?: string; stale?: boolean }> {
   const url = `/api/trades?address=${encodeURIComponent(address)}&chain=${chain}&cycles=true&dex=${encodeURIComponent(dex)}${forceRefresh ? '&refresh=true' : ''}`
   const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch trades')
   return res.json()
 }
 
-function buildJournalMap(journals: JournalRecord[]): Record<string, any> {
-  const map: Record<string, any> = {}
+function buildJournalMap(journals: JournalRecord[]): Record<string, JournalRecord> {
+  const map: Record<string, JournalRecord> = {}
   for (const j of journals) {
     const key = `${j.tokenMint}-${j.tradeNumber}-${j.walletAddress}`
     map[key] = j
@@ -91,7 +92,7 @@ function buildJournalMap(journals: JournalRecord[]): Record<string, any> {
   return map
 }
 
-function computeStreakFromJournals(journals: JournalRecord[]): { current: number; longest: number } {
+function computeStreakFromJournals(journals: JournalRecord[], todayOverride?: string): { current: number; longest: number } {
   const dates = new Set<string>()
   for (const j of journals) {
     if (j.journaledAt) dates.add(j.journaledAt.slice(0, 10))
@@ -99,8 +100,12 @@ function computeStreakFromJournals(journals: JournalRecord[]): { current: number
   if (dates.size === 0) return { current: 0, longest: 0 }
 
   const sortedDates = [...dates].sort().reverse()
-  const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const today = todayOverride || new Date().toISOString().slice(0, 10)
+  const yesterday = (() => {
+    const d = new Date(today + 'T12:00:00Z')
+    d.setUTCDate(d.getUTCDate() - 1)
+    return d.toISOString().slice(0, 10)
+  })()
 
   let current = 0
   let checkDate = ''
@@ -148,21 +153,22 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   // ─── Metadata ─────────────────────────────────────────
   const [tradeComments, setTradeComments] = useState<TradeComment[]>([])
   const [strategies, setStrategies] = useState<Strategy[]>([])
-  const [journalMap, setJournalMap] = useState<Record<string, any>>({})
+  const [journalMap, setJournalMap] = useState<Record<string, JournalRecord>>({})
   const [streak, setStreak] = useState<{ current: number; longest: number }>({ current: 0, longest: 0 })
   const [preSessionDone, setPreSessionDone] = useState(false)
   const [postSessionDone, setPostSessionDone] = useState(false)
-  const [missedTrades, setMissedTrades] = useState<any[]>([])
+  const [missedTrades, setMissedTrades] = useState<MissedTradeEntry[]>([])
   const [timeRange, setTimeRange] = useState<TimeRange>({ startDate: null, endDate: null })
   const [timePreset, setTimePreset] = useState<TimePreset>('all')
   const journalsRef = useRef<JournalRecord[]>([])
+  const userTimezoneRef = useRef<{ timezone: string; tradingStartTime: string }>({ timezone: 'UTC', tradingStartTime: '09:00' })
 
   // ─── Balances ─────────────────────────────────────────
-  const [walletTokens, setWalletTokens] = useState<Map<string, any[]>>(new Map())
+  const [walletTokens, setWalletTokens] = useState<Map<string, WalletToken[]>>(new Map())
   const [loadingBalances, setLoadingBalances] = useState(false)
   const [balancesFetched, setBalancesFetched] = useState(false)
   const [balanceError, setBalanceError] = useState('')
-  const balanceCacheRef = useRef<Map<string, { tokens: any[]; timestamp: number }>>(new Map())
+  const balanceCacheRef = useRef<Map<string, { tokens: WalletToken[]; timestamp: number }>>(new Map())
   const balanceAbortRef = useRef<AbortController | null>(null)
   const BALANCE_CACHE_DURATION = 5 * 60 * 1000
 
@@ -265,6 +271,18 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       setActiveWallets(active)
       setInitialized(true)
 
+      // Fetch user settings for timezone-aware streak calculation
+      try {
+        const settingsRes = await fetch('/api/settings')
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json()
+          userTimezoneRef.current = {
+            timezone: settings.timezone || 'UTC',
+            tradingStartTime: settings.tradingStartTime || '09:00',
+          }
+        }
+      } catch (err) { console.error('Failed to fetch user settings:', err) }
+
       if (active.length === 0) return
 
       try {
@@ -331,7 +349,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         } else {
           Promise.all(active.map(w => fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)))
         }
-      } catch {
+      } catch (err) {
+        console.error('Dashboard fetch failed, falling back to individual fetches:', err)
         Promise.all(active.map(w => fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)))
       }
     }
@@ -384,7 +403,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   // ─── Derived trade values ─────────────────────────────
 
   const allTrades = useMemo(() => {
-    const merged: any[] = []
+    const merged: RawTrade[] = []
     for (const w of activeWallets) {
       const key = makeWalletKey(w.address, w.chain)
       const slot = walletSlots[key]
@@ -413,8 +432,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
 
   // ─── Metadata callbacks ───────────────────────────────
 
-  const updateJournalEntry = useCallback((key: string, data: any) => {
-    setJournalMap((prev) => ({ ...prev, [key]: data }))
+  const updateJournalEntry = useCallback((key: string, data: Partial<JournalRecord>) => {
+    setJournalMap((prev) => ({ ...prev, [key]: { ...prev[key], ...data } as JournalRecord }))
     if (data?.journaledAt) {
       const updated = [...journalsRef.current]
       const existing = updated.findIndex(
@@ -423,10 +442,11 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       if (existing >= 0) {
         updated[existing] = { ...updated[existing], ...data }
       } else {
-        updated.push(data)
+        updated.push(data as JournalRecord)
       }
       journalsRef.current = updated
-      setStreak(computeStreakFromJournals(updated))
+      const tz = userTimezoneRef.current
+      setStreak(computeStreakFromJournals(updated, getTradingDay(tz.timezone, tz.tradingStartTime)))
     }
   }, [])
 
@@ -446,7 +466,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     const all = results.flat()
     journalsRef.current = all
     setJournalMap(buildJournalMap(all))
-    setStreak(computeStreakFromJournals(all))
+    const tz = userTimezoneRef.current
+    setStreak(computeStreakFromJournals(all, getTradingDay(tz.timezone, tz.tradingStartTime)))
   }, [activeWallets])
 
   const reloadPreSessionStatus = useCallback(async () => {
@@ -456,7 +477,10 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         const settingsRes = await fetch('/api/settings')
         if (settingsRes.ok) {
           const settings = await settingsRes.json()
-          today = getTradingDay(settings.timezone || 'UTC', settings.tradingStartTime || '09:00')
+          const tz = settings.timezone || 'UTC'
+          const tst = settings.tradingStartTime || '09:00'
+          userTimezoneRef.current = { timezone: tz, tradingStartTime: tst }
+          today = getTradingDay(tz, tst)
         } else {
           today = new Date().toISOString().slice(0, 10)
         }
@@ -466,8 +490,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       const res = await fetch(`/api/pre-sessions/${today}`)
       const data = await res.json()
       setPreSessionDone(data !== null && !!data?.savedAt)
-    } catch {
-      // keep existing state on error
+    } catch (err) {
+      console.error('Failed to reload pre-session status:', err)
     }
   }, [])
 
@@ -478,7 +502,10 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         const settingsRes = await fetch('/api/settings')
         if (settingsRes.ok) {
           const settings = await settingsRes.json()
-          today = getTradingDay(settings.timezone || 'UTC', settings.tradingStartTime || '09:00')
+          const tz = settings.timezone || 'UTC'
+          const tst = settings.tradingStartTime || '09:00'
+          userTimezoneRef.current = { timezone: tz, tradingStartTime: tst }
+          today = getTradingDay(tz, tst)
         } else {
           today = new Date().toISOString().slice(0, 10)
         }
@@ -492,8 +519,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       } else {
         setPostSessionDone(false)
       }
-    } catch {
-      // keep existing state on error
+    } catch (err) {
+      console.error('Failed to reload post-session status:', err)
     }
   }, [])
 
@@ -507,8 +534,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       const res = await fetch('/api/papered-plays')
       const data = await res.json()
       if (Array.isArray(data)) setMissedTrades(data)
-    } catch {
-      // keep existing state on error
+    } catch (err) {
+      console.error('Failed to reload missed trades:', err)
     }
   }, [])
 
@@ -526,7 +553,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       setLoadingBalances(true)
       setBalanceError('')
       try {
-        const results = new Map<string, any[]>()
+        const results = new Map<string, WalletToken[]>()
         for (let i = 0; i < activeWallets.length; i++) {
           const w = activeWallets[i]
           if (signal.aborted) return

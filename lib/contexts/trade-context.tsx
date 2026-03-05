@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react'
 import { type Chain } from '../chains'
-import { type FlattenedTrade } from '../tradeCycles'
+import { type TradeInput, type FlattenedTrade } from '../tradeCycles'
 import { type WalletKey } from './wallet-context'
 
 interface CacheInfo {
@@ -10,12 +10,14 @@ interface CacheInfo {
   cachedAt?: Date
 }
 
+export type RawTrade = TradeInput & { _chain: Chain; _walletAddress: string }
+
 export interface WalletSlot {
   address: string
   chain: Chain
   dex: string
   nickname: string
-  trades: any[]
+  trades: RawTrade[]
   flattenedTrades: FlattenedTrade[]
   isLoading: boolean
   error: string
@@ -25,7 +27,7 @@ export interface WalletSlot {
 
 export interface TradeContextValue {
   walletSlots: Record<WalletKey, WalletSlot>
-  allTrades: any[]
+  allTrades: RawTrade[]
   flattenedTrades: FlattenedTrade[]
   isAnyLoading: boolean
   isAnyStale: boolean

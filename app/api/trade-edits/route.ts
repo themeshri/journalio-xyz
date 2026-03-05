@@ -47,9 +47,10 @@ export async function POST(request: NextRequest) {
 
     const trade = await prisma.trade.findUnique({
       where: { id: tradeId },
+      include: { wallet: { select: { userId: true } } },
     })
 
-    if (!trade) {
+    if (!trade || trade.wallet.userId !== userId) {
       return NextResponse.json({ error: 'Trade not found' }, { status: 404 })
     }
 

@@ -29,6 +29,7 @@ import { useWallet } from '@/lib/wallet-context'
 import { CheckCircle, XCircle, ChevronRight } from 'lucide-react'
 import { type PreSessionData } from '@/lib/pre-sessions'
 import { type PostSessionData } from '@/lib/post-sessions'
+import { journalKey } from '@/lib/journal-utils'
 
 interface DayDetailModalProps {
   selectedDay: CalendarDay | null
@@ -38,10 +39,6 @@ interface DayDetailModalProps {
   tradeComments: TradeComment[]
   preSessions?: PreSessionData[]
   postSessions?: PostSessionData[]
-}
-
-function journalKey(t: FlattenedTrade) {
-  return `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
 }
 
 function ratingLabel(rating: string | undefined) {

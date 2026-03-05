@@ -6,15 +6,12 @@ import { formatValue } from '@/lib/formatters'
 import Link from 'next/link'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 import type { TradeComment } from '@/lib/trade-comments'
+import { journalKey } from '@/lib/journal-utils'
 
 interface MistakesSummaryProps {
   trades: FlattenedTrade[]
   journalMap: Record<string, any>
   tradeComments: TradeComment[]
-}
-
-function journalKey(t: FlattenedTrade) {
-  return `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
 }
 
 export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesSummaryProps) {

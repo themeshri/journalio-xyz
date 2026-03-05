@@ -36,6 +36,7 @@ export function formatTime(timestamp: number): string {
 
 // Format number as USD currency with sign prefix
 export function formatValue(amount: number, showSign: boolean = false): string {
+  if (!isFinite(amount)) return '$0.00';
   const isNegative = amount < 0;
   const absAmount = Math.abs(amount);
 
@@ -91,6 +92,7 @@ export function formatPrice(price: number): string {
 
 // Format percentage
 export function formatPercentage(value: number): string {
+  if (!isFinite(value)) return '+0.00%';
   const sign = value >= 0 ? '+' : '';
   return `${sign}${value.toFixed(2)}%`;
 }

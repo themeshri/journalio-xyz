@@ -463,19 +463,25 @@ export default function AnalyticsPage() {
           if (dd > maxDD) maxDD = dd
         }
 
-        // Returns array for Sharpe/Sortino
-        const returns = completedTrades.map((t) => t.profitLoss)
-        const n = returns.length
-        const meanRet = n > 0 ? returns.reduce((s, r) => s + r, 0) / n : 0
-        const variance = n > 1 ? returns.reduce((s, r) => s + (r - meanRet) ** 2, 0) / (n - 1) : 0
+        // Percentage returns for Sharpe/Sortino (P/L / cost basis)
+        const pctReturns = completedTrades
+          .filter((t) => t.totalBuyValue > 0)
+          .map((t) => t.profitLoss / t.totalBuyValue)
+        const n = pctReturns.length
+        const meanRet = n > 0 ? pctReturns.reduce((s, r) => s + r, 0) / n : 0
+        const variance = n > 1 ? pctReturns.reduce((s, r) => s + (r - meanRet) ** 2, 0) / (n - 1) : 0
         const stdDev = Math.sqrt(variance)
-        const annFactor = Math.sqrt(Math.min(n, 100))
+        // Annualize assuming 252 trading days/year, scaled by sample size
+        const tradingDays = Math.max(1, n)
+        const annFactor = Math.sqrt(252 / tradingDays)
         const sharpe = stdDev > 0 ? (meanRet / stdDev) * annFactor : 0
 
-        // Sortino: only downside deviation
-        const negReturns = returns.filter((r) => r < 0)
-        const downVariance = negReturns.length > 1
-          ? negReturns.reduce((s, r) => s + (r - meanRet) ** 2, 0) / (negReturns.length - 1)
+        // Sortino: downside deviation from zero (target return = 0)
+        const downsideSquares = pctReturns
+          .filter((r) => r < 0)
+          .map((r) => r ** 2)
+        const downVariance = downsideSquares.length > 0
+          ? downsideSquares.reduce((s, v) => s + v, 0) / n  // divide by total n, not just downside count
           : 0
         const downDev = Math.sqrt(downVariance)
         const sortino = downDev > 0 ? (meanRet / downDev) * annFactor : 0

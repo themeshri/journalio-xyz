@@ -1336,7 +1336,7 @@ export default function HistoryPage() {
                   No transactions found for your active wallets.
                 </p>
               ) : (
-                <TradesTable trades={allTrades} />
+                <TradesTable trades={allTrades as any} />
               )}
             </div>
           )}

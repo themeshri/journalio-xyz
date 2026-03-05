@@ -6,15 +6,12 @@ import { formatValue } from '@/lib/formatters'
 import Link from 'next/link'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 import type { Strategy } from '@/lib/strategies'
+import { journalKey } from '@/lib/journal-utils'
 
 interface StrategySummaryProps {
   trades: FlattenedTrade[]
   journalMap: Record<string, any>
   strategies: Strategy[]
-}
-
-function journalKey(t: FlattenedTrade) {
-  return `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
 }
 
 interface StrategyStats {

@@ -3,18 +3,19 @@
 import { createContext, useContext } from 'react'
 import { type TradeComment } from '../trade-comments'
 import { type Strategy } from '../strategies'
+import { type JournalRecord } from '../journals'
 import { type MissedTradeEntry } from '../analytics'
 import { type TimePreset, type TimeRange } from '../time-filters'
 
 export interface MetadataContextValue {
   tradeComments: TradeComment[]
   strategies: Strategy[]
-  journalMap: Record<string, any>
+  journalMap: Record<string, JournalRecord>
   streak: { current: number; longest: number }
   preSessionDone: boolean
   postSessionDone: boolean
   missedTrades: MissedTradeEntry[]
-  updateJournalEntry: (key: string, data: any) => void
+  updateJournalEntry: (key: string, data: Partial<JournalRecord>) => void
   reloadStrategies: () => Promise<void>
   reloadTradeComments: () => Promise<void>
   reloadJournals: () => Promise<void>

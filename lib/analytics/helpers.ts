@@ -19,7 +19,7 @@ export function computeStats(trades: FlattenedTrade[]): WhatIfStats {
     totalTrades: total,
     totalPnL: Math.round(totalPnL * 100) / 100,
     winRate: Math.round((wins.length / total) * 100),
-    profitFactor: grossLoss > 0 ? Math.round((grossProfit / grossLoss) * 100) / 100 : grossProfit > 0 ? Infinity : 0,
+    profitFactor: grossLoss > 0 ? Math.round((grossProfit / grossLoss) * 100) / 100 : grossProfit > 0 ? 999.99 : 0,
     avgPnL: Math.round((totalPnL / total) * 100) / 100,
   }
 }

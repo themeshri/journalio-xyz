@@ -117,6 +117,7 @@ model Trade {
   @@index([type])
   @@index([walletId, timestamp])
   @@index([indexedAt])
+  @@index([walletId, indexedAt])
 }
 
 model TradeEdit {
@@ -281,6 +282,7 @@ model JournalEntry {
   @@unique([userId, walletAddress, tokenMint, tradeNumber])
   @@index([userId])
   @@index([walletAddress])
+  @@index([userId, tokenMint, tradeNumber])
 }
 
 model PostSession {

@@ -15,16 +15,13 @@ import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import Link from 'next/link'
+import { journalKey } from '@/lib/journal-utils'
 
 const sectionErrorFallback = (
   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
     Something went wrong loading this section. Try refreshing the page.
   </div>
 )
-
-function journalKey(t: { tokenMint: string; tradeNumber: number; walletAddress: string }) {
-  return `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
-}
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()

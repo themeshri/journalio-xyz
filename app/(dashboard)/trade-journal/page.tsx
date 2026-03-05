@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { journalKey } from '@/lib/journal-utils'
 
 function relativeTime(timestamp: number): string {
   const now = Date.now() / 1000
@@ -44,10 +45,6 @@ function relativeTime(timestamp: number): string {
 function truncateAddress(addr: string) {
   if (addr.length <= 10) return addr
   return `${addr.slice(0, 4)}...${addr.slice(-4)}`
-}
-
-function journalKey(trade: FlattenedTrade) {
-  return `${trade.tokenMint}-${trade.tradeNumber}-${trade.walletAddress}`
 }
 
 export default function TradeJournalPage() {

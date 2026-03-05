@@ -18,14 +18,11 @@ import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { useWallet } from '@/lib/wallet-context'
 import { saveJournal } from '@/lib/journals'
 import { TokenWithBadge } from '@/components/chain-badge'
+import { journalKey } from '@/lib/journal-utils'
 
 interface RecentCyclesProps {
   trades: FlattenedTrade[]
   unjournalledCount: number
-}
-
-function journalKey(t: FlattenedTrade) {
-  return `${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`
 }
 
 export interface RecentCyclesHandle {
