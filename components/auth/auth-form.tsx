@@ -49,7 +49,7 @@ export function AuthForm() {
       const { error } = await auth.signInWithEmail(email)
       
       if (error) {
-        toast.error('Failed to send magic link')
+        toast.error(error.message || 'Failed to send magic link')
         console.error('Email auth error:', error)
       } else {
         setEmailSent(true)
