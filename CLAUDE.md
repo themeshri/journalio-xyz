@@ -91,7 +91,7 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 | `StaleDataBanner` | `components/StaleDataBanner.tsx` | Amber banner shown when trade data is served from stale cache |
 | `LocalStorageMigration` | `components/LocalStorageMigration.tsx` | One-time migration of localStorage data to database |
 
-Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `PaperedPlays.tsx`, `SummaryView.tsx`, `TradeCycleCard.backup.tsx`, `SkeletonLoading.tsx`
+Legacy (not used in dashboard): `SummaryView.tsx`
 
 ## Lib Modules
 
@@ -101,7 +101,7 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | `trading-day.ts` | `getTradingDay`, `getCalendarDate`, `getTradingDayForDate` | Timezone-aware trading day calculation; respects user's timezone + trading start time |
 | `time-filters.ts` | `TimePreset`, `TimeRange`, `presetToRange`, `filterTradesByRange` | Shared time filter types + utilities (client and server) |
 | `solana-tracker.ts` | `isValidSolanaAddress`, `getWalletTrades`, `getWalletTokens`, `getTokenData` | Solana Tracker API client; browser requests proxy through `/api/solana/*` |
-| `tradeCycles.ts` | `calculateTradeCycles`, `flattenTradeCycles` | Groups txs by token → splits into buy/sell cycles by balance |
+| `tradeCycles.ts` | `TradeInput`, `calculateTradeCycles`, `flattenTradeCycles` | Groups txs by token → splits into buy/sell cycles by balance; `TradeInput` is the typed trade shape used across API routes |
 | `contexts/` | `DashboardProviders`, `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext` | Split context: identity, trades, metadata (strategies/journals/streak/time-filter/pre-session/post-session/missed-trades), balances |
 | `analytics.ts` → `analytics/` | Re-export barrel; modules: `core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`, `types`, `helpers` | Analytics computation split by domain |
 | `server/resolve-trades.ts` | `resolveFlattenedTrades`, `applyDateFilter`, `parseWalletParams`, `sanitizeForJSON` | Server-side trade resolution with TTL cache, dedup, date filtering |
@@ -123,9 +123,7 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | `supabase-auth.ts` | `supabaseAuth` | Client-side Supabase auth (signIn, signOut with localStorage cleanup, getSession) |
 | `validations.ts` | Zod schemas + `validateBody` | Input validation for all POST/PATCH API endpoints |
 | `prisma.ts` | `prisma` | Prisma client singleton |
-| `settings.ts` | — | Legacy localStorage settings (unused by current Settings page) |
 | `zerion.ts` | `getWalletTrades` | Zerion API client for EVM chains (Base, BNB) |
-| `moralis.ts` | — | Legacy Moralis API client (unused) |
 
 ## API Routes
 
@@ -168,11 +166,6 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | GET | `/api/solana/wallet/[address]/balances` | No | Proxy to Solana Tracker balances API |
 | GET | `/api/solana/token/[mint]` | No | Proxy to Solana Tracker token data |
 | POST | `/api/auth/sync-user` | Session | Sync authenticated Supabase user to DB |
-
-### Legacy (unused)
-
-- `/api/zerion/wallets/[address]/transactions` — Zerion proxy
-- `/api/zerion/wallets/[address]/portfolio` — Zerion proxy
 
 ## Data Storage
 

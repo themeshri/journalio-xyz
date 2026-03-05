@@ -324,13 +324,6 @@ Last updated: 2026-03-05
 | GET | `/api/solana/token/[mint]` | No | Proxy → Solana Tracker token data |
 | POST | `/api/auth/sync-user` | Session | Sync authenticated Supabase user to DB |
 
-### Legacy (unused)
-
-| Route | Description |
-|-------|-------------|
-| `/api/zerion/wallets/[address]/transactions` | Zerion proxy |
-| `/api/zerion/wallets/[address]/portfolio` | Zerion proxy |
-
 ---
 
 ## 13. Core Libraries
@@ -339,7 +332,7 @@ Last updated: 2026-03-05
 |--------|-------------|---------|
 | `lib/wallet-context.tsx` | `WalletProvider`, `useWallet`, `useMetadata` | Multi-wallet state, barrel re-export of split contexts |
 | `lib/trading-day.ts` | `getTradingDay`, `getCalendarDate`, `getTradingDayForDate` | Timezone-aware trading day calculation using user's timezone + start time |
-| `lib/tradeCycles.ts` | `calculateTradeCycles`, `flattenTradeCycles` | Groups raw txs by token → splits into buy/sell cycles by balance changes |
+| `lib/tradeCycles.ts` | `TradeInput`, `calculateTradeCycles`, `flattenTradeCycles` | Groups raw txs by token → splits into buy/sell cycles by balance changes; `TradeInput` is the typed trade shape |
 | `lib/analytics.ts` → `lib/analytics/` | 20+ functions | Computation for all charts: cumulative P/L, duration, calendar (incl. yearly heatmap), hourly, day-of-week, sessions, missed trades, strategy perf, rule impact, what-if, patterns, efficiency, discipline |
 | `lib/strategies.ts` | `loadStrategies`, `createStrategy`, `updateStrategy`, `deleteStrategy` | Async strategy CRUD via API |
 | `lib/trade-comments.ts` | `loadTradeComments`, `getCommentsByCategory` | Comment library CRUD via API |
