@@ -12,7 +12,7 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
 

@@ -5,7 +5,7 @@ import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
 

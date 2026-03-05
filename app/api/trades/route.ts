@@ -11,7 +11,7 @@ import { invalidatePrefix } from '@/lib/server/analytics-cache'
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
 

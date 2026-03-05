@@ -18,7 +18,7 @@ function hashBody(body: Record<string, unknown>): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
 

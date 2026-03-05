@@ -127,7 +127,7 @@ async function resolveWalletTradesWithRaw(
 // GET /api/dashboard?addresses=a1,a2&chains=solana,base&dexes=fomo,other
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
     await ensureUserExists(userId, auth.email)
