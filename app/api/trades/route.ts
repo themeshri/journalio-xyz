@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       // Invalidate analytics cache for this wallet on fresh fetch
       invalidatePrefix(walletAddress)
 
-      const freshResponse: any = { trades: apiTrades, cached: false, fetchedAt: new Date() }
+      const freshResponse: any = { trades: apiTrades, cached: false, cachedAt: new Date().toISOString() }
       if (wantCycles) {
         const feeRate = APP_FEE_RATES[dex] || 0
         const adjusted = feeRate > 0
