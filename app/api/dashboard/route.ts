@@ -8,6 +8,8 @@ import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
 import { type Chain } from '@/lib/chains'
 import { getTradingDay } from '@/lib/trading-day'
 
+export const maxDuration = 60
+
 function parseStrategy(s: any) {
   return {
     ...s,

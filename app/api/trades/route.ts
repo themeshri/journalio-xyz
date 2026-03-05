@@ -8,6 +8,9 @@ import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { invalidatePrefix } from '@/lib/server/analytics-cache'
 
+// Allow up to 60s for fetching trades from external APIs
+export const maxDuration = 60
+
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {
   try {
@@ -137,7 +140,7 @@ export async function GET(request: NextRequest) {
             protocol: trade.dex,
             indexedAt: new Date(),
           })),
-          // skipDuplicates not supported on SQLite; duplicates are already filtered above via existingSignatures
+          skipDuplicates: true,
         })
         console.log(`Successfully cached ${newTrades.length} new trades`);
       }
