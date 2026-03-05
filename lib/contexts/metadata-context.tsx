@@ -15,6 +15,8 @@ export interface MetadataContextValue {
   preSessionDone: boolean
   postSessionDone: boolean
   missedTrades: MissedTradeEntry[]
+  yearlyPreSessions: { date: string; savedAt?: string }[]
+  yearlyPostSessions: { date: string }[]
   updateJournalEntry: (key: string, data: Partial<JournalRecord>) => void
   reloadStrategies: () => Promise<void>
   reloadTradeComments: () => Promise<void>

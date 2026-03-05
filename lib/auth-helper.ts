@@ -56,13 +56,19 @@ export async function requireAuth(request: NextRequest): Promise<AuthResult | Ne
   return auth
 }
 
+const seenUsers = new Set<string>()
+
 /**
  * Ensures the user exists in the database (upsert).
+ * Pass skipIfSeen=true on hot paths (dashboard, wallets) to skip the DB round-trip
+ * after the first successful call for a given userId.
  */
-export async function ensureUserExists(userId: string, email: string): Promise<void> {
+export async function ensureUserExists(userId: string, email: string, skipIfSeen = false): Promise<void> {
+  if (skipIfSeen && seenUsers.has(userId)) return
   await prisma.user.upsert({
     where: { id: userId },
     create: { id: userId, email, name: email.split('@')[0] },
     update: {},
   })
+  seenUsers.add(userId)
 }

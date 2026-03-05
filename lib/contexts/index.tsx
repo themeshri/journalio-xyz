@@ -158,6 +158,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [preSessionDone, setPreSessionDone] = useState(false)
   const [postSessionDone, setPostSessionDone] = useState(false)
   const [missedTrades, setMissedTrades] = useState<MissedTradeEntry[]>([])
+  const [yearlyPreSessions, setYearlyPreSessions] = useState<{ date: string; savedAt?: string }[]>([])
+  const [yearlyPostSessions, setYearlyPostSessions] = useState<{ date: string }[]>([])
   const [timeRange, setTimeRange] = useState<TimeRange>({ startDate: null, endDate: null })
   const [timePreset, setTimePreset] = useState<TimePreset>('all')
   const journalsRef = useRef<JournalRecord[]>([])
@@ -271,18 +273,6 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       setActiveWallets(active)
       setInitialized(true)
 
-      // Fetch user settings for timezone-aware streak calculation
-      try {
-        const settingsRes = await fetch('/api/settings')
-        if (settingsRes.ok) {
-          const settings = await settingsRes.json()
-          userTimezoneRef.current = {
-            timezone: settings.timezone || 'UTC',
-            tradingStartTime: settings.tradingStartTime || '09:00',
-          }
-        }
-      } catch (err) { console.error('Failed to fetch user settings:', err) }
-
       if (active.length === 0) return
 
       try {
@@ -337,6 +327,18 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
           if (data.preSessionDone !== undefined) setPreSessionDone(data.preSessionDone)
           if (data.postSessionDone !== undefined) setPostSessionDone(data.postSessionDone)
           if (data.missedTrades) setMissedTrades(data.missedTrades)
+
+          // Hydrate settings from dashboard response (eliminates separate /api/settings call)
+          if (data.settings) {
+            userTimezoneRef.current = {
+              timezone: data.settings.timezone || 'UTC',
+              tradingStartTime: data.settings.tradingStartTime || '09:00',
+            }
+          }
+
+          // Hydrate yearly sessions from dashboard response (eliminates 2 page-level fetches)
+          if (data.yearlyPreSessions) setYearlyPreSessions(data.yearlyPreSessions)
+          if (data.yearlyPostSessions) setYearlyPostSessions(data.yearlyPostSessions)
 
           // Trigger external fetch for wallets with no cached trades
           for (const w of active) {
@@ -554,25 +556,37 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       setBalanceError('')
       try {
         const results = new Map<string, WalletToken[]>()
-        for (let i = 0; i < activeWallets.length; i++) {
-          const w = activeWallets[i]
-          if (signal.aborted) return
-          if (i > 0) await new Promise((r) => setTimeout(r, 200))
 
+        // Check cache first, collect uncached wallets
+        const uncached: typeof activeWallets = []
+        for (const w of activeWallets) {
           const cacheKey = `${w.chain}:${w.address}`
           const cached = balanceCacheRef.current.get(cacheKey)
           if (cached && Date.now() - cached.timestamp < BALANCE_CACHE_DURATION) {
             results.set(cacheKey, cached.tokens)
-            continue
+          } else {
+            uncached.push(w)
           }
+        }
 
-          try {
+        // Fetch all uncached balances in parallel
+        const fetchResults = await Promise.allSettled(
+          uncached.map(async (w) => {
+            const cacheKey = `${w.chain}:${w.address}`
             const tokens = await getWalletTokens(w.address)
-            if (signal.aborted) return
-            results.set(cacheKey, tokens)
-            balanceCacheRef.current.set(cacheKey, { tokens, timestamp: Date.now() })
-          } catch (err) {
-            if (err instanceof Error && err.name === 'AbortError') return
+            return { cacheKey, tokens }
+          })
+        )
+
+        if (signal.aborted) return
+
+        for (const result of fetchResults) {
+          if (result.status === 'fulfilled') {
+            results.set(result.value.cacheKey, result.value.tokens)
+            balanceCacheRef.current.set(result.value.cacheKey, {
+              tokens: result.value.tokens,
+              timestamp: Date.now(),
+            })
           }
         }
 
@@ -623,6 +637,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     preSessionDone,
     postSessionDone,
     missedTrades,
+    yearlyPreSessions,
+    yearlyPostSessions,
     updateJournalEntry,
     reloadStrategies,
     reloadTradeComments,
@@ -633,7 +649,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     timeRange,
     timePreset,
     setTimeFilter,
-  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter])
+  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter])
 
   const balanceValue = useMemo(() => ({
     walletTokens,

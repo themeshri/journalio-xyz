@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { rateLimitByUser } from '@/lib/rate-limit'
-import { parseWalletParams, resolveFlattenedTrades, sanitizeForJSON } from '@/lib/server/resolve-trades'
+import { parseWalletParams } from '@/lib/server/resolve-trades'
 import { calculateTradeCycles, flattenTradeCycles, type TradeInput } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
@@ -72,57 +72,75 @@ function computeStreak(journals: any[]): { current: number; longest: number } {
   return { current, longest }
 }
 
-async function resolveWalletTradesWithRaw(
-  address: string,
-  chain: Chain,
-  dex: string,
+/**
+ * Batch-fetch all wallet trades in a single DB query, then group by wallet.
+ */
+async function batchResolveWalletTrades(
+  walletParams: { address: string; chain: Chain; dex: string }[],
   userId: string
-): Promise<{ trades: any[]; flattenedTrades: any[]; cached: boolean; cachedAt?: string }> {
-  const wallet = await prisma.wallet.findFirst({
-    where: { address, chain, userId },
+): Promise<Record<string, { trades: any[]; flattenedTrades: any[]; cached: boolean; cachedAt?: string }>> {
+  if (walletParams.length === 0) return {}
+
+  // Single query: fetch all matching wallets with their trades
+  const wallets = await prisma.wallet.findMany({
+    where: {
+      userId,
+      OR: walletParams.map((p) => ({ address: p.address, chain: p.chain })),
+    },
+    include: {
+      trades: { orderBy: { timestamp: 'desc' } },
+    },
   })
-  if (!wallet) return { trades: [], flattenedTrades: [], cached: false }
 
-  const CACHE_TTL_MS = 5 * 60 * 1000
-  const isFresh = wallet.updatedAt && (Date.now() - new Date(wallet.updatedAt).getTime()) < CACHE_TTL_MS
-
-  const dbTrades = await prisma.trade.findMany({
-    where: { walletId: wallet.id },
-    orderBy: { timestamp: 'desc' },
-  })
-
-  if (dbTrades.length === 0) return { trades: [], flattenedTrades: [], cached: false }
-
-  const feeRate = APP_FEE_RATES[dex] || 0
-  const trades: TradeInput[] = dbTrades.map((t) => ({
-    signature: t.signature,
-    timestamp: t.timestamp,
-    type: t.type,
-    tokenIn: t.tokenInData ? JSON.parse(t.tokenInData) : null,
-    tokenOut: t.tokenOutData ? JSON.parse(t.tokenOutData) : null,
-    amountIn: t.amountIn ?? 0,
-    amountOut: t.amountOut ?? 0,
-    priceUSD: t.priceUSD ?? 0,
-    valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
-    dex: t.dex,
-    maker: address,
-  }))
-
-  const cycles = calculateTradeCycles(trades, chain, address)
-  const flattenedTrades = flattenTradeCycles(cycles)
-
-  // Find latest indexedAt for cache info
-  const latestIndexedAt = dbTrades.reduce((latest, t) => {
-    const d = new Date(t.indexedAt)
-    return d > latest ? d : latest
-  }, new Date(0))
-
-  return {
-    trades,
-    flattenedTrades,
-    cached: true,
-    cachedAt: latestIndexedAt.toISOString(),
+  // Index wallets by address:chain for fast lookup
+  const walletMap = new Map<string, typeof wallets[0]>()
+  for (const w of wallets) {
+    walletMap.set(`${w.chain}:${w.address}`, w)
   }
+
+  const result: Record<string, { trades: any[]; flattenedTrades: any[]; cached: boolean; cachedAt?: string }> = {}
+
+  for (const p of walletParams) {
+    const key = `${p.chain}:${p.address}`
+    const wallet = walletMap.get(key)
+
+    if (!wallet || wallet.trades.length === 0) {
+      result[key] = { trades: [], flattenedTrades: [], cached: false }
+      continue
+    }
+
+    const feeRate = APP_FEE_RATES[p.dex] || 0
+    const trades: TradeInput[] = wallet.trades.map((t) => ({
+      signature: t.signature,
+      timestamp: t.timestamp,
+      type: t.type,
+      tokenIn: t.tokenInData ? JSON.parse(t.tokenInData) : null,
+      tokenOut: t.tokenOutData ? JSON.parse(t.tokenOutData) : null,
+      amountIn: t.amountIn ?? 0,
+      amountOut: t.amountOut ?? 0,
+      priceUSD: t.priceUSD ?? 0,
+      valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
+      dex: t.dex,
+      maker: p.address,
+    }))
+
+    const cycles = calculateTradeCycles(trades, p.chain, p.address)
+    const flattenedTrades = flattenTradeCycles(cycles)
+
+    const latestIndexedAt = wallet.trades.reduce((latest, t) => {
+      const d = new Date(t.indexedAt)
+      return d > latest ? d : latest
+    }, new Date(0))
+
+    result[key] = {
+      trades,
+      flattenedTrades,
+      cached: true,
+      cachedAt: latestIndexedAt.toISOString(),
+    }
+  }
+
+  return result
 }
 
 // GET /api/dashboard?addresses=a1,a2&chains=solana,base&dexes=fomo,other
@@ -137,7 +155,7 @@ export async function GET(request: NextRequest) {
     const userLimited = checkUserRate(userId)
     if (userLimited) return userLimited
 
-    await ensureUserExists(userId, auth.email)
+    await ensureUserExists(userId, auth.email, true)
 
     const { searchParams } = new URL(request.url)
     const params = parseWalletParams(searchParams, userId)
@@ -152,6 +170,9 @@ export async function GET(request: NextRequest) {
         preSessionDone: false,
         postSessionDone: false,
         missedTrades: [],
+        settings: { timezone: 'UTC', tradingStartTime: '09:00' },
+        yearlyPreSessions: [],
+        yearlyPostSessions: [],
       })
     }
 
@@ -160,24 +181,26 @@ export async function GET(request: NextRequest) {
       where: { userId: userId },
       select: { timezone: true, tradingStartTime: true },
     })
-    const todayDate = getTradingDay(
-      userSettings?.timezone || 'UTC',
-      userSettings?.tradingStartTime || '09:00'
-    )
+    const timezone = userSettings?.timezone || 'UTC'
+    const tradingStartTime = userSettings?.tradingStartTime || '09:00'
+    const todayDate = getTradingDay(timezone, tradingStartTime)
 
-    // Run all queries in parallel
-    const [walletTradeResults, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, todayPostSession, missedTrades] = await Promise.all([
-      // Trades per wallet
-      Promise.all(
-        params.addresses.map((address, i) => {
-          const chain = (params.chains[i] || 'solana') as Chain
-          const dex = params.dexes[i] || 'other'
-          return resolveWalletTradesWithRaw(address, chain, dex, userId).then((result) => ({
-            key: `${chain}:${address}`,
-            ...result,
-          }))
-        })
-      ),
+    // Current year range for yearly session queries
+    const year = new Date().getFullYear()
+    const yearStart = `${year}-01-01`
+    const yearEnd = `${year}-12-31`
+
+    // Build wallet params for batch query
+    const walletParams = params.addresses.map((address, i) => ({
+      address,
+      chain: (params.chains[i] || 'solana') as Chain,
+      dex: params.dexes[i] || 'other',
+    }))
+
+    // Run all queries in parallel (batched wallet trades + metadata)
+    const [walletTrades, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, todayPostSession, missedTrades, yearlyPreSessionsRaw, yearlyPostSessionsRaw] = await Promise.all([
+      // Batched wallet trades (single DB query)
+      batchResolveWalletTrades(walletParams, userId),
       // Trade comments (with auto-seed)
       (async () => {
         let comments = await prisma.tradeComment.findMany({
@@ -225,18 +248,19 @@ export async function GET(request: NextRequest) {
         where: { userId: userId },
         orderBy: { createdAt: 'desc' },
       }),
+      // Yearly pre-sessions for ActivityCalendar
+      prisma.preSession.findMany({
+        where: { userId, date: { gte: yearStart, lte: yearEnd } },
+        select: { date: true, savedAt: true },
+        orderBy: { date: 'asc' },
+      }),
+      // Yearly post-sessions for ActivityCalendar
+      prisma.postSession.findMany({
+        where: { userId, date: { gte: yearStart, lte: yearEnd } },
+        select: { date: true },
+        orderBy: { date: 'asc' },
+      }),
     ])
-
-    // Build walletTrades map
-    const walletTrades: Record<string, any> = {}
-    for (const result of walletTradeResults) {
-      walletTrades[result.key] = {
-        trades: result.trades,
-        flattenedTrades: result.flattenedTrades,
-        cached: result.cached,
-        cachedAt: result.cachedAt,
-      }
-    }
 
     // Parse strategies
     const strategies = strategiesRaw.map(parseStrategy)
@@ -256,9 +280,12 @@ export async function GET(request: NextRequest) {
       preSessionDone: !!(todayPreSession?.savedAt),
       postSessionDone: !!todayPostSession,
       missedTrades,
+      settings: { timezone, tradingStartTime },
+      yearlyPreSessions: yearlyPreSessionsRaw,
+      yearlyPostSessions: yearlyPostSessionsRaw,
     }
 
-    return NextResponse.json(sanitizeForJSON(response))
+    return NextResponse.json(response)
   } catch (error) {
     console.error('Error in dashboard endpoint:', error)
     return NextResponse.json({ error: 'Failed to load dashboard data' }, { status: 500 })

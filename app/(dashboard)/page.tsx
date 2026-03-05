@@ -25,31 +25,11 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, timeRange, timePreset, setTimeFilter } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter } = useMetadata()
 
   // Set page title
   useEffect(() => {
     document.title = 'Overview | Journalio'
-  }, [])
-
-  // Fetch pre/post sessions for ActivityCalendar (current year)
-  const [yearPreSessions, setYearPreSessions] = useState<{ date: string; savedAt?: string }[]>([])
-  const [yearPostSessions, setYearPostSessions] = useState<{ date: string }[]>([])
-
-  useEffect(() => {
-    const year = new Date().getFullYear()
-    const from = `${year}-01-01`
-    const to = `${year}-12-31`
-
-    fetch(`/api/pre-sessions?from=${from}&to=${to}`)
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setYearPreSessions(Array.isArray(data) ? data : []))
-      .catch(() => {})
-
-    fetch(`/api/post-sessions?from=${from}&to=${to}`)
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setYearPostSessions(Array.isArray(data) ? data : []))
-      .catch(() => {})
   }, [])
 
   const filteredTrades = useMemo(
@@ -202,8 +182,8 @@ export default function OverviewPage() {
         <ActivityCalendar
           trades={flattenedTrades}
           journalMap={journalMap}
-          preSessions={yearPreSessions}
-          postSessions={yearPostSessions}
+          preSessions={yearlyPreSessions}
+          postSessions={yearlyPostSessions}
         />
       </ErrorBoundary>
 

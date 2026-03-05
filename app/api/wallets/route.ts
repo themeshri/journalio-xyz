@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
-    await ensureUserExists(userId, auth.email)
+    await ensureUserExists(userId, auth.email, true)
 
     const wallets = await prisma.wallet.findMany({
       where: { userId },
