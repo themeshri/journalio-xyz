@@ -4,9 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
 // GET - List all wallets for the current user
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
     await ensureUserExists(userId, auth.email)
@@ -26,7 +26,7 @@ export async function GET() {
 // POST - Add a new wallet
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
     await ensureUserExists(userId, auth.email)

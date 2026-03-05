@@ -1,17 +1,14 @@
 import { validateBody, createTradeEditSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth-helper'
 
 // GET - Get trade edit for a specific trade
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
     const { searchParams } = new URL(request.url)
     const tradeId = searchParams.get('tradeId')
@@ -24,7 +21,7 @@ export async function GET(request: NextRequest) {
       where: {
         tradeId_userId: {
           tradeId,
-          userId: session.user.id,
+          userId,
         },
       },
     })
@@ -39,19 +36,15 @@ export async function GET(request: NextRequest) {
 // POST - Create or update trade edit
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
     const body = await request.json()
     const validation = validateBody(createTradeEditSchema, body)
     if ('error' in validation) return validation.error
     const { tradeId, editedType, editedAmountIn, editedAmountOut, editedValueUSD, notes } = validation.data
 
-    // Verify the trade exists
     const trade = await prisma.trade.findUnique({
       where: { id: tradeId },
     })
@@ -60,17 +53,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Trade not found' }, { status: 404 })
     }
 
-    // Upsert the edit
     const edit = await prisma.tradeEdit.upsert({
       where: {
         tradeId_userId: {
           tradeId,
-          userId: session.user.id,
+          userId,
         },
       },
       create: {
         tradeId,
-        userId: session.user.id,
+        userId,
         editedType,
         editedAmountIn,
         editedAmountOut,
@@ -96,12 +88,9 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete trade edit
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
 
     const { searchParams } = new URL(request.url)
     const tradeId = searchParams.get('tradeId')
@@ -114,7 +103,7 @@ export async function DELETE(request: NextRequest) {
       where: {
         tradeId_userId: {
           tradeId,
-          userId: session.user.id,
+          userId,
         },
       },
     })

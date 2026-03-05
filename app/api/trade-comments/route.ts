@@ -4,9 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     if ('error' in validation) return validation.error
     const v = validation.data
 
-    const auth = await requireAuth()
+    const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
 

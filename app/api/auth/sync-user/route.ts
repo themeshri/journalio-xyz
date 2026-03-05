@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createSupabaseServerClient } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,28 +14,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate that the request comes from an authenticated Supabase session
-    // and that the user ID matches the session
-    try {
-      const supabase = createSupabaseServerClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (id && session?.user?.id && session.user.id !== id) {
-        return NextResponse.json(
-          { error: 'User ID does not match authenticated session' },
-          { status: 403 }
-        )
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll() {},
+        },
       }
-    } catch {
-      // If service role client isn't available, skip server-side validation
-      // The client should still be sending valid Supabase auth data
+    )
+
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (!authUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // First check if user exists by ID (for Supabase users)
-    let existingUser = null
-    if (id) {
-      existingUser = await prisma.user.findUnique({
-        where: { id },
-      })
+    // Ensure the ID in the body matches the authenticated user
+    if (id && authUser.id !== id) {
+      return NextResponse.json(
+        { error: 'User ID does not match authenticated session' },
+        { status: 403 }
+      )
     }
+
+    const userId = id || authUser.id
+
+    // First check if user exists by ID
+    let existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    })
 
     // If not found by ID, check by email
     if (!existingUser) {
@@ -45,7 +58,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingUser) {
-      // Update existing user
       const updatedUser = await prisma.user.update({
         where: { id: existingUser.id },
         data: {
@@ -55,36 +67,29 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Ensure user has settings
       const hasSettings = await prisma.userSettings.findUnique({
         where: { userId: updatedUser.id },
       })
 
       if (!hasSettings) {
         await prisma.userSettings.create({
-          data: {
-            userId: updatedUser.id,
-          },
+          data: { userId: updatedUser.id },
         })
       }
 
       return NextResponse.json({ user: updatedUser })
     } else {
-      // Create new user
       const newUser = await prisma.user.create({
         data: {
-          id: id || undefined,
+          id: userId,
           email,
           name: name || email.split('@')[0],
           image,
         },
       })
 
-      // Create default settings
       await prisma.userSettings.create({
-        data: {
-          userId: newUser.id,
-        },
+        data: { userId: newUser.id },
       })
 
       return NextResponse.json({ user: newUser })

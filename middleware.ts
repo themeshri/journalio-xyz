@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
   // Public routes that don't require authentication
@@ -11,7 +11,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check for Supabase session cookie
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -19,30 +18,45 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check if there's an access token in cookies (Supabase stores session in cookies)
-  const accessToken = request.cookies.get('sb-access-token')?.value
-    || request.cookies.get(`sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`)?.value
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  })
 
-  // If no auth cookie found, redirect to sign-in
-  if (!accessToken) {
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        // Update cookies on the request (for downstream server components)
+        cookiesToSet.forEach(({ name, value }) => {
+          request.cookies.set(name, value)
+        })
+        // Update cookies on the response (for the browser)
+        response = NextResponse.next({
+          request: { headers: request.headers },
+        })
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options)
+        })
+      },
+    },
+  })
+
+  // This refreshes the session if expired and sets updated cookies
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
     const signInUrl = new URL('/auth/signin', request.url)
     signInUrl.searchParams.set('redirect', request.nextUrl.pathname)
     return NextResponse.redirect(signInUrl)
   }
 
-  return NextResponse.next()
+  return response
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes handle their own auth)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - auth (auth pages)
-     */
     '/((?!api|_next/static|_next/image|favicon.ico|auth).*)',
   ],
 }
