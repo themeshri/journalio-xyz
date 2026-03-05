@@ -164,6 +164,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [timePreset, setTimePreset] = useState<TimePreset>('all')
   const journalsRef = useRef<JournalRecord[]>([])
   const userTimezoneRef = useRef<{ timezone: string; tradingStartTime: string }>({ timezone: 'UTC', tradingStartTime: '09:00' })
+  const [userTimezone, setUserTimezone] = useState('UTC')
+  const [userTradingStartTime, setUserTradingStartTime] = useState('09:00')
 
   // ─── Balances ─────────────────────────────────────────
   const [walletTokens, setWalletTokens] = useState<Map<string, WalletToken[]>>(new Map())
@@ -298,10 +300,11 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
 
         // Hydrate settings from dashboard response
         if (data.settings) {
-          userTimezoneRef.current = {
-            timezone: data.settings.timezone || 'UTC',
-            tradingStartTime: data.settings.tradingStartTime || '09:00',
-          }
+          const tz = data.settings.timezone || 'UTC'
+          const tst = data.settings.tradingStartTime || '09:00'
+          userTimezoneRef.current = { timezone: tz, tradingStartTime: tst }
+          setUserTimezone(tz)
+          setUserTradingStartTime(tst)
         }
 
         // Hydrate metadata
@@ -499,6 +502,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
           const tz = settings.timezone || 'UTC'
           const tst = settings.tradingStartTime || '09:00'
           userTimezoneRef.current = { timezone: tz, tradingStartTime: tst }
+          setUserTimezone(tz)
+          setUserTradingStartTime(tst)
           today = getTradingDay(tz, tst)
         } else {
           today = new Date().toISOString().slice(0, 10)
@@ -524,6 +529,8 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
           const tz = settings.timezone || 'UTC'
           const tst = settings.tradingStartTime || '09:00'
           userTimezoneRef.current = { timezone: tz, tradingStartTime: tst }
+          setUserTimezone(tz)
+          setUserTradingStartTime(tst)
           today = getTradingDay(tz, tst)
         } else {
           today = new Date().toISOString().slice(0, 10)
@@ -667,7 +674,9 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     timeRange,
     timePreset,
     setTimeFilter,
-  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter])
+    timezone: userTimezone,
+    tradingStartTime: userTradingStartTime,
+  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter, userTimezone, userTradingStartTime])
 
   const balanceValue = useMemo(() => ({
     walletTokens,

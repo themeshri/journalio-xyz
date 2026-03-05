@@ -6,7 +6,7 @@ import type { FlattenedTrade } from '@/lib/tradeCycles'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import { KPICards } from '@/components/overview/KPICards'
 import { RecentCycles } from '@/components/overview/RecentCycles'
-import { DailyChecklist } from '@/components/overview/DailyChecklist'
+import { SessionHero } from '@/components/overview/SessionHero'
 import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
 import { Evaluation } from '@/components/overview/Evaluation'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
@@ -25,7 +25,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime } = useMetadata()
 
   // Set page title
   useEffect(() => {
@@ -42,16 +42,6 @@ export default function OverviewPage() {
     const unjournaled = completed.filter(t => !journalMap[journalKey(t)])
     return { unjournalledCount: unjournaled.length, firstUnjournaled: unjournaled[0] || null }
   }, [filteredTrades, journalMap])
-
-  // Journal progress for last 48h (for DailyChecklist)
-  const journalProgress = useMemo(() => {
-    const cutoff = Date.now() / 1000 - 48 * 3600
-    const recentCompleted = flattenedTrades.filter(
-      t => t.isComplete && t.endDate && t.endDate >= cutoff
-    )
-    const journaledCount = recentCompleted.filter(t => !!journalMap[journalKey(t)]).length
-    return { done: journaledCount, total: recentCompleted.length }
-  }, [flattenedTrades, journalMap])
 
   // State for ActionBanner-triggered journal modal
   const [bannerJournalTrade, setBannerJournalTrade] = useState<FlattenedTrade | null>(null)
@@ -148,13 +138,16 @@ export default function OverviewPage() {
         <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
       </div>
 
-      {/* Row 1: Daily Checklist */}
+      {/* Row 1: Session Hero */}
       <ErrorBoundary fallback={sectionErrorFallback}>
-        <DailyChecklist
+        <SessionHero
           preSessionDone={preSessionDone}
           postSessionDone={postSessionDone}
-          journalProgress={journalProgress}
+          flattenedTrades={flattenedTrades}
+          journalMap={journalMap}
           onJournalClick={handleJournalClick}
+          timezone={timezone}
+          tradingStartTime={tradingStartTime}
         />
       </ErrorBoundary>
 

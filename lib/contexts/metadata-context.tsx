@@ -27,6 +27,8 @@ export interface MetadataContextValue {
   timeRange: TimeRange
   timePreset: TimePreset
   setTimeFilter: (range: TimeRange, preset: TimePreset) => void
+  timezone: string
+  tradingStartTime: string
 }
 
 export const MetadataContext = createContext<MetadataContextValue | null>(null)
