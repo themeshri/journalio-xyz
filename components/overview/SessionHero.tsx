@@ -185,7 +185,7 @@ export function SessionHero({
   return (
     <div className={`rounded-xl border ${gradients[selectedTab]} p-5 transition-all`}>
       {selectedTab === 'pre' && (
-        <PreSessionPanel preSessionDone={preSessionDone} />
+        <PreSessionPanel preSessionDone={preSessionDone} today={getTradingDay(timezone, tradingStartTime)} />
       )}
       {selectedTab === 'active' && (
         <ActivePanel
@@ -215,7 +215,7 @@ export function SessionHero({
 
 /* ─── Pre-Session Panel ──────────────────────────────── */
 
-function PreSessionPanel({ preSessionDone }: { preSessionDone: boolean }) {
+function PreSessionPanel({ preSessionDone, today }: { preSessionDone: boolean; today: string }) {
   if (preSessionDone) {
     return (
       <div className="flex items-center justify-between gap-4">
@@ -226,7 +226,10 @@ function PreSessionPanel({ preSessionDone }: { preSessionDone: boolean }) {
             </div>
             <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Pre-session complete</span>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
+            {today}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
             You set your intent for today.
           </p>
         </div>
@@ -248,6 +251,9 @@ function PreSessionPanel({ preSessionDone }: { preSessionDone: boolean }) {
           <PulseDot color="blue" />
           <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Not started</span>
         </div>
+        <p className="text-xs text-muted-foreground">
+          {today}
+        </p>
         <h2 className="text-lg font-semibold mb-1">Before you trade, set your intent.</h2>
         <p className="text-sm text-muted-foreground">
           Your best trades come from sessions where you started with a plan.

@@ -8,14 +8,17 @@ import {
   BookOpen,
   BookHeart,
   Clock,
-  FlaskConical,
   BarChart3,
   Puzzle,
   Wallet,
   Settings as SettingsIcon,
   ChevronRight,
   Menu,
+  Moon,
+  Sun,
+  PanelLeftClose,
 } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import {
   Sidebar,
   SidebarContent,
@@ -29,7 +32,6 @@ import {
   SidebarFooter,
   SidebarSeparator,
   SidebarGroup,
-  SidebarGroupLabel,
   useSidebar,
 } from '@/components/ui/sidebar'
 import {
@@ -55,14 +57,27 @@ const mainNav: NavItem[] = [
   { label: 'Home', href: '/', icon: Home },
   { label: 'Journal', href: '/trade-journal', icon: BookOpen, badge: 'discipline' },
   {
-    label: 'Diary',
+    label: 'Session Diary',
     href: '/diary',
     icon: BookHeart,
     badge: 'preSession',
     children: [
       { label: 'Pre-Session', href: '/diary/pre-session' },
       { label: 'Post-Session', href: '/diary/post-session' },
+      { label: 'Missed Trades', href: '/missed-trades' },
       { label: 'Notes', href: '/diary/notes' },
+    ],
+  },
+  {
+    label: 'Analytics',
+    href: '/chart-lab',
+    icon: BarChart3,
+    children: [
+      { label: 'Overview', href: '/analytics' },
+      { label: 'Calendar', href: '/chart-lab/calendar' },
+      { label: 'Equity Curve', href: '/chart-lab/equity' },
+      { label: 'Distribution', href: '/chart-lab/distribution' },
+      { label: 'Holding Time', href: '/chart-lab/holding-time' },
     ],
   },
   {
@@ -70,30 +85,18 @@ const mainNav: NavItem[] = [
     href: '/history',
     icon: Clock,
     children: [
-      { label: 'Pre-Sessions', href: '/history?tab=pre-sessions' },
+      { label: 'Sessions', href: '/history?tab=pre-sessions' },
       { label: 'Journal', href: '/history?tab=journal' },
       { label: 'Transactions', href: '/history?tab=transactions' },
       { label: 'Missed Trades', href: '/history?tab=missed-trades' },
-      { label: 'Chartbook', href: '/history?tab=chartbook' },
-    ],
-  },
-  {
-    label: 'Chart Lab',
-    href: '/chart-lab',
-    icon: FlaskConical,
-    children: [
-      { label: 'Calendar', href: '/chart-lab/calendar' },
-      { label: 'Equity Curve', href: '/chart-lab/equity' },
-      { label: 'Distribution', href: '/chart-lab/distribution' },
-      { label: 'Holding Time', href: '/chart-lab/holding-time' },
+      { label: 'Attachments', href: '/history?tab=chartbook' },
     ],
   },
 ]
 
 const managementNav: NavItem[] = [
-  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Strategies', href: '/strategies', icon: Puzzle },
-  { label: 'Wallet Mgmt', href: '/wallet-management', icon: Wallet },
+  { label: 'Wallets', href: '/wallet-management', icon: Wallet },
   { label: 'Settings', href: '/settings', icon: SettingsIcon },
 ]
 
@@ -101,9 +104,10 @@ export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { state, setOpen, toggleSidebar } = useSidebar()
-  const { activeWallets, savedWallets, setWalletActive, walletSlots, streak, tradeComments, journalMap } = useWallet()
+  const { activeWallets, walletSlots, streak, tradeComments, journalMap } = useWallet()
   const { preSessionDone } = useMetadata()
-  const [walletsExpanded, setWalletsExpanded] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const isDark = theme === 'dark'
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
 
   // Compute discipline from journal map (from context)
@@ -160,10 +164,6 @@ export function AppSidebar() {
       return item.children.some((child) => isActive(child.href))
     }
     return false
-  }
-
-  function isWalletActive(address: string, chain: Chain): boolean {
-    return activeWallets.some((w) => w.address === address && w.chain === chain)
   }
 
   function truncate(addr: string) {
@@ -345,62 +345,28 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
-        {savedWallets.length > 0 && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupLabel
-                className="cursor-pointer select-none"
-                onClick={() => setWalletsExpanded(!walletsExpanded)}
-              >
-                Wallets {walletsExpanded ? '−' : '+'}
-              </SidebarGroupLabel>
-              {walletsExpanded && (
-                <div className="px-2 space-y-1 group-data-[collapsible=icon]:hidden">
-                  {savedWallets.map((w) => {
-                    const active = isWalletActive(w.address, w.chain)
-                    const key = makeWalletKey(w.address, w.chain)
-                    const slot = walletSlots[key]
-                    return (
-                      <label
-                        key={`${w.chain}-${w.address}`}
-                        className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted/50 cursor-pointer text-xs"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={active}
-                          onChange={(e) => setWalletActive(w.address, w.chain, e.target.checked)}
-                          className="rounded border-border"
-                        />
-                        <span className="text-[10px] font-medium bg-muted px-1 py-0.5 rounded shrink-0">
-                          {CHAIN_CONFIG[w.chain].label.toUpperCase()}
-                        </span>
-                        <span className="font-mono truncate text-muted-foreground">
-                          {w.nickname || truncate(w.address)}
-                        </span>
-                        {slot?.isLoading && (
-                          <span className="ml-auto text-[10px] text-muted-foreground animate-pulse">...</span>
-                        )}
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
-            </SidebarGroup>
-          </>
-        )}
       </SidebarContent>
-      <SidebarFooter className="px-4 py-3">
-        <div className="group-data-[collapsible=icon]:hidden">
-          {streak.current > 0 && (
-            <p className="text-xs text-muted-foreground mb-1">
-              <span aria-hidden="true">🔥</span> {streak.current}-day streak
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Journalio v1.0
-          </p>
-        </div>
+      <SidebarFooter className="px-2 py-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip={isDark ? 'Use Light Mode' : 'Use Dark Mode'}
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            >
+              {isDark ? <Sun /> : <Moon />}
+              <span>{isDark ? 'Use Light Mode' : 'Use Dark Mode'}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Collapse Sidebar"
+              onClick={() => toggleSidebar()}
+            >
+              <PanelLeftClose />
+              <span>Collapse Sidebar</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   )

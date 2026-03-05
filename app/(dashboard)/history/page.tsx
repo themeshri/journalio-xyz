@@ -1286,12 +1286,12 @@ export default function HistoryPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList>
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="journal">Journal</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="missed-trades">Missed Trades</TabsTrigger>
-          <TabsTrigger value="chartbook">Chartbook</TabsTrigger>
+        <TabsList className="bg-transparent p-0 h-auto gap-2 border-b border-border rounded-none w-full justify-start">
+          <TabsTrigger value="sessions" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Sessions</TabsTrigger>
+          <TabsTrigger value="journal" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Journal</TabsTrigger>
+          <TabsTrigger value="transactions" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Transactions</TabsTrigger>
+          <TabsTrigger value="missed-trades" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Missed Trades</TabsTrigger>
+          <TabsTrigger value="chartbook" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Attachments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sessions">
