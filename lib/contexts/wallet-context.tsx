@@ -20,6 +20,7 @@ export interface WalletIdentityContextValue {
   savedWallets: SavedWallet[]
   activeWallets: SavedWallet[]
   hasActiveWallets: boolean
+  initialized: boolean
   setWalletActive: (address: string, chain: Chain, active: boolean) => void
   reloadWallets: () => Promise<void>
 }

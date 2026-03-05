@@ -24,7 +24,7 @@ const sectionErrorFallback = (
 )
 
 export default function OverviewPage() {
-  const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
+  const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
   const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter } = useMetadata()
 
   // Set page title
@@ -88,18 +88,7 @@ export default function OverviewPage() {
     }
   }, [bannerJournalTrade, journalMap, filteredTrades, updateJournalEntry])
 
-  if (!hasActiveWallets) {
-    return (
-      <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Home</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/wallet-management" className="text-emerald-600 hover:underline">Add a wallet</Link> in Wallet Management to start tracking trades.
-        </p>
-      </div>
-    )
-  }
-
-  if (isAnyLoading && allTrades.length === 0) {
+  if (!initialized || (isAnyLoading && allTrades.length === 0)) {
     return (
       <div className="pt-8 space-y-6">
         <h1 className="text-xl font-semibold">Home</h1>
@@ -112,6 +101,17 @@ export default function OverviewPage() {
           <div className="lg:col-span-3"><ChartSkeleton /></div>
           <div className="lg:col-span-2"><ChartSkeleton /></div>
         </div>
+      </div>
+    )
+  }
+
+  if (!hasActiveWallets) {
+    return (
+      <div className="max-w-xl pt-8">
+        <h1 className="text-xl font-semibold mb-2">Home</h1>
+        <p className="text-sm text-muted-foreground">
+          <Link href="/wallet-management" className="text-emerald-600 hover:underline">Add a wallet</Link> in Wallet Management to start tracking trades.
+        </p>
       </div>
     )
   }

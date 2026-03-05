@@ -632,9 +632,10 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     savedWallets,
     activeWallets,
     hasActiveWallets,
+    initialized,
     setWalletActive,
     reloadWallets,
-  }), [savedWallets, activeWallets, hasActiveWallets, setWalletActive, reloadWallets])
+  }), [savedWallets, activeWallets, hasActiveWallets, initialized, setWalletActive, reloadWallets])
 
   const tradeValue = useMemo(() => ({
     walletSlots,
