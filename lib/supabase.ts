@@ -1,3 +1,4 @@
+import { createBrowserClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -7,10 +8,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables')
 }
 
-// Client-side Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Client-side Supabase client — uses cookies (compatible with middleware/SSR)
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
-// Admin Supabase client (for server actions)
+// Admin Supabase client (for server actions that need elevated privileges)
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export const supabaseAdmin = serviceRoleKey
@@ -24,11 +25,3 @@ export const supabaseAdmin = serviceRoleKey
 
 // Create client for component use
 export const createSupabaseClient = () => supabase
-
-// Server-side client (for API routes and server components)
-export const createSupabaseServerClient = () => {
-  if (!supabaseAdmin) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
-  }
-  return supabaseAdmin
-}
