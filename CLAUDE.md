@@ -14,9 +14,10 @@ Solana trading journal with pre-session checklists, post-session reviews, trade 
 - **Styling**: Tailwind CSS v4, shadcn/ui (New York style, Zinc base)
 - **Fonts**: DM Sans (`--font-dm-sans` body), JetBrains Mono (`--font-jetbrains-mono` numbers/addresses)
 - **Colors**: Zinc (neutral) + Emerald (primary/success), Red (destructive)
-- **Database**: Prisma ORM, SQLite (dev) / PostgreSQL (prod)
+- **Database**: Prisma ORM, PostgreSQL (Supabase) — pooled connection (port 6543) for runtime, direct (port 5432) for migrations
 - **Auth**: Supabase Auth (Google/Twitter OAuth, email magic links)
-- **External API**: Solana Tracker API (`data.solanatracker.io`)
+- **Deployment**: Vercel (serverless) — `prisma generate && next build` (migrations applied separately)
+- **External APIs**: Solana Tracker API (`data.solanatracker.io`), Zerion (EVM chains)
 
 ## App Structure
 
@@ -48,7 +49,7 @@ app/
 RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
   └── DashboardLayout (Suspense → WalletProvider → SidebarProvider)
         ├── AppSidebar (nav links, active wallet display)
-        └── SidebarInset → header + main content area
+        └── SidebarInset → header (GlobalFilterBar, SyncButton + last synced time, ThemeToggle, AccountDropdown) + main content area
 ```
 
 ## Pages
@@ -66,12 +67,13 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 | `/missed-trades` | Missed Trades | API (DB) | Track tokens you saw but didn't trade, with potential multiplier |
 | `/strategies` | Strategies | API (DB) | Named strategies (entry/exit/stop-loss conditions) + global rules |
 | `/wallet-management` | Wallet Mgmt | localStorage | Add/remove/switch saved wallets |
-| `/settings` | Settings | API (DB) | Display name, tx limit, USD toggle, timezone, trading start time, trade comments |
+| `/settings` | Settings | API (DB) | Display name, timezone, trading start time, journal view mode, trade comments |
 
 ## Key Components
 
 | Component | File | Description |
 |-----------|------|-------------|
+| `SyncButton` | `components/SyncButton.tsx` | Sync all active wallets + shows "last synced X ago" relative time |
 | `AppSidebar` | `components/app-sidebar.tsx` | Sidebar nav with wallet display, pre-session status dot (reads from MetadataContext) |
 | `DailyChecklist` | `components/overview/DailyChecklist.tsx` | Gamified 3-item checklist (pre-session, post-session, journals) with progress bar |
 | `ActivityCalendar` | `components/overview/ActivityCalendar.tsx` | GitHub-style yearly heatmap with 0-5 activity score per day |
@@ -85,7 +87,7 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 | `JournalModal` | `components/JournalModal.tsx` | Dialog for journaling buy/sell analysis per trade cycle |
 | `TransactionModal` | `components/TransactionModal.tsx` | Dialog showing individual txs in a trade cycle |
 | `ErrorBoundary` | `components/ErrorBoundary.tsx` | React error boundary with dev stack trace |
-| `Providers` | `components/Providers.tsx` | NextAuth SessionProvider wrapper |
+| `Providers` | `components/Providers.tsx` | Supabase SessionProvider wrapper |
 | `StaleDataBanner` | `components/StaleDataBanner.tsx` | Amber banner shown when trade data is served from stale cache |
 | `LocalStorageMigration` | `components/LocalStorageMigration.tsx` | One-time migration of localStorage data to database |
 
@@ -122,7 +124,7 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 | `validations.ts` | Zod schemas + `validateBody` | Input validation for all POST/PATCH API endpoints |
 | `prisma.ts` | `prisma` | Prisma client singleton |
 | `settings.ts` | — | Legacy localStorage settings (unused by current Settings page) |
-| `zerion.ts` | — | Legacy Zerion API client (unused) |
+| `zerion.ts` | `getWalletTrades` | Zerion API client for EVM chains (Base, BNB) |
 | `moralis.ts` | — | Legacy Moralis API client (unused) |
 
 ## API Routes
@@ -188,7 +190,7 @@ Legacy (not used in dashboard): `WalletInput.tsx`, `TransactionList.tsx`, `Paper
 
 Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`, `Strategy`, `GlobalRule`, `PreSession`, `PostSession`, `JournalEntry`, `TradeComment`, `Note`
 
-Trade cache: 5-minute TTL on `Trade.indexedAt`, force refresh bypasses cache, stale fallback on API failure.
+Trade cache: 5-minute TTL on `Trade.indexedAt`, force refresh bypasses cache, stale fallback on API failure. `Trade.signature` is unique per wallet (`@@unique([walletId, signature])`), allowing multiple users to store the same blockchain transactions. Storage uses batched `createMany` (200/batch) with `skipDuplicates: true`.
 
 Dashboard data flow: `/api/dashboard` returns trades + strategies + journals + comments + streak + pre-session status + post-session status + missed trades in one call. Uses timezone-aware `getTradingDay()` to determine "today". `MetadataContext` holds pre-session/post-session status, missed trades, time range filter, and provides reload callbacks. `AppSidebar` reads from context (no individual fetches).
 
@@ -274,12 +276,28 @@ npx prisma generate  # Regenerate client after schema change
 ### Environment Variables
 
 ```env
+# Supabase Auth
+NEXT_PUBLIC_SUPABASE_URL=     # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY= # Supabase anon key
+SUPABASE_SERVICE_ROLE_KEY=    # Supabase service role key
+
+# Database (Supabase PostgreSQL)
+DATABASE_URL=                 # Pooled connection (port 6543, ?pgbouncer=true) for runtime
+DIRECT_URL=                   # Direct connection (port 5432) for migrations
+
+# APIs
 SOLANA_TRACKER_API_KEY=       # Server-side Solana Tracker API key
-NEXT_PUBLIC_SOLANA_TRACKER_API_KEY=  # Client-side (used in solana-tracker.ts browser path)
-DATABASE_URL="file:./dev.db"  # SQLite for dev
-NEXTAUTH_SECRET=              # openssl rand -base64 32
-NEXTAUTH_URL="http://localhost:3000"
+ZERION_API_KEY=               # Zerion API key (EVM chains)
 ```
+
+### Deployment (Vercel)
+
+- Build command: `prisma generate && next build` (cannot run `migrate deploy` at build time — Vercel serverless can't reach DB during build)
+- `postinstall` script runs `prisma generate` for Vercel
+- Migrations must be applied separately via `npx prisma migrate deploy` with `DIRECT_URL`
+- Serverless functions use Supabase connection pooler (port 6543) to avoid connection exhaustion
+- `maxDuration = 60` on `/api/trades` and `/api/dashboard` routes for large wallet fetches
+- Trade storage batched in 200-row chunks to avoid pgBouncer statement timeouts
 
 ### Performance Notes
 - `instrumentation.ts` only loads Sentry in production (`NODE_ENV === 'production'`) to avoid `@prisma/instrumentation` warnings in dev

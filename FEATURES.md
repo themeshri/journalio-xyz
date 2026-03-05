@@ -73,6 +73,8 @@ Last updated: 2026-03-05
 | Mistakes Summary | Rolling discipline score (last 20), top mistake, emotion tags |
 | Quick Stats Bar | Avg win/loss, avg hold, best hour, best/worst trade, top token, win/loss streak, journal streak, hesitation cost |
 | Time Range Filter | 1D/7D/30D/90D/All presets + custom date range picker (top right) |
+| Sync Button | Header icon to refresh all active wallets; shows relative "last synced X ago" time |
+| Loading indicator | Spinner with "Loading trades..." animated text on overview, trade-journal, and history pages |
 
 **Data sources:** `useWallet()` hook (all active wallets), `useMetadata()` (pre/post session status, strategies, trade comments, missed trades), `/api/pre-sessions` and `/api/post-sessions` (yearly data for activity calendar).
 
@@ -269,8 +271,6 @@ Last updated: 2026-03-05
 | Feature | Description |
 |---------|-------------|
 | Profile | Display name input, email (read-only); requires auth |
-| Transaction limit | Dropdown: 25 / 50 / 100 / 200 |
-| Show USD values | Toggle |
 | Timezone | Searchable combobox with all IANA timezones; pre-filled with browser-detected timezone; controls when trading day starts |
 | Trading start time | Time input (HH:mm); determines when pre-session/post-session resets for a new day |
 | Journal view mode | Merged List / By Wallet buttons (localStorage) |
@@ -351,7 +351,8 @@ Last updated: 2026-03-05
 | `lib/solana-tracker.ts` | `getWalletTrades`, `getWalletTokens`, `getTokenData`, `isValidSolanaAddress` | Solana Tracker API client; browser requests proxy through `/api/solana/*` |
 | `lib/contexts/` | `DashboardProviders`, `MetadataContext`, `TradeContext`, `WalletIdentityContext`, `BalanceContext` | Split contexts for identity, trades, metadata (incl. post-session status), balances |
 | `lib/chains.ts` | `CHAIN_CONFIG`, `detectChainFromAddress` | Multi-chain support (Solana, Base, BNB) |
-| `lib/auth.ts` | `authOptions` | NextAuth config (credentials provider, JWT) |
+| `lib/auth-helper.ts` | `requireAuth`, `getAuthUser`, `ensureUserExists` | Supabase server-side auth (session check, returns userId or 401) |
+| `lib/supabase-auth.ts` | `supabaseAuth` | Client-side Supabase auth (signIn, signOut with localStorage cleanup, redirect) |
 | `lib/prisma.ts` | `prisma` | Prisma client singleton |
 
 ---
@@ -367,17 +368,17 @@ Last updated: 2026-03-05
 | `journalio_journal_view_mode` | Trade Journal, Settings | UI preference (merged/grouped) |
 | `journalio_migration_v1_complete` | LocalStorageMigration | Migration flag |
 
-### Database Models (Prisma + SQLite)
+### Database Models (Prisma + PostgreSQL / Supabase)
 
 | Model | Purpose |
 |-------|---------|
 | `User` | User accounts (NextAuth) |
 | `Account` / `Session` / `VerificationToken` | NextAuth internals |
 | `Wallet` | Multi-chain wallet storage (address, chain, nickname, dex) |
-| `Trade` | Cached transactions with 5-min TTL on `indexedAt` |
+| `Trade` | Cached transactions with 5-min TTL on `indexedAt`; unique per wallet (`@@unique([walletId, signature])`) |
 | `TradeEdit` | Manual overrides for trade data |
 | `PaperedPlay` | Missed trades with hypothetical trade details, miss reasons, outcome, strategy link |
-| `UserSettings` | Display name, tx limit, USD toggle, dark mode, timezone, trading start time |
+| `UserSettings` | Display name, dark mode, timezone, trading start time |
 | `Strategy` | Named strategies with rule groups (JSON) |
 | `GlobalRule` | Global trading rules shown in pre-session checklist |
 | `PreSession` | Daily pre-session checklist data (one per user per day) |

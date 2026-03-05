@@ -1,110 +1,84 @@
-# Solana Wallet Tracker
+# Journalio — Solana Trading Journal
 
-A Next.js application for tracking Solana wallet transactions and token balances using the Solana Tracker API.
+A full-featured trading journal for Solana (and EVM) traders. Track trades, journal entries, strategies, missed opportunities, and analyze your performance over time.
 
 ## Features
 
-- ✅ Wallet address input with validation
-- ✅ Real-time transaction history display
-- ✅ Token swap details (from token → to token)
-- ✅ Transaction amounts with USD values
-- ✅ Formatted timestamps
-- ✅ DEX/program information (Raydium, Pump.fun, Jupiter, etc.)
-- ✅ Transaction signatures with links to Solana Explorer
-- ✅ Loading states and error handling
-- ✅ Responsive design with Tailwind CSS
+- Multi-wallet support (Solana + EVM chains)
+- Automatic trade fetching and cycle detection via Solana Tracker API
+- Pre-session checklists and post-session reviews
+- Per-trade journaling with strategy rules, emotions, and discipline scoring
+- Missed trades tracker with hypothetical P/L
+- Strategy management with grouped rules
+- Analytics dashboard with 15+ chart types
+- GitHub-style activity calendar
+- Gamified daily checklist
+- Last synced time indicator in header
+- Supabase Auth (Google/Twitter OAuth, email magic links)
+
+See [FEATURES.md](./FEATURES.md) for the full feature breakdown.
 
 ## Tech Stack
 
-- **Framework**: Next.js 15+ with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **API**: Solana Tracker API
-- **HTTP Client**: Axios
-- **Date Formatting**: date-fns
+- **Framework**: Next.js 15.5 (App Router), React 19, TypeScript
+- **Styling**: Tailwind CSS v4, shadcn/ui
+- **Database**: PostgreSQL (Supabase) via Prisma ORM
+- **Auth**: Supabase Auth
+- **APIs**: Solana Tracker, Zerion (EVM)
+- **Deployment**: Vercel
 
-## Setup Instructions
+## Setup
 
-### 1. Install Dependencies
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Configure API Key
+### 2. Configure environment
 
-1. Copy the example environment file:
 ```bash
-cp .env.local.example .env.local
+cp .env.example .env
 ```
 
-2. Get your API key from [Solana Tracker](https://docs.solanatracker.io/)
+Fill in your Supabase, Solana Tracker, and Zerion credentials. See `.env.example` for required variables.
 
-3. Add your API key to `.env.local`:
-```env
-NEXT_PUBLIC_SOLANA_TRACKER_API_KEY=your_api_key_here
+For Supabase:
+- `DATABASE_URL` — Use the **connection pooler** URI (port 6543, `?pgbouncer=true`) for serverless
+- `DIRECT_URL` — Use the **direct** URI (port 5432) for migrations
+
+### 3. Set up the database
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
 ```
 
-### 3. Run the Development Server
+### 4. Run locally
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Usage
+## Deployment (Vercel)
 
-1. Enter a valid Solana wallet address (32-44 characters, base58 format)
-2. Click "Search" to fetch the latest transactions
-3. View detailed transaction information including:
-   - Token swap details
-   - Transaction amounts and USD values
-   - Timestamps
-   - DEX used (Raydium, Pump.fun, etc.)
-   - Transaction signatures with links to Solscan
+1. Link project: `vercel link`
+2. Add env vars: `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SOLANA_TRACKER_API_KEY`, `ZERION_API_KEY`
+3. Deploy: `vercel --prod`
 
-## Project Structure
+The build script runs `prisma generate && next build`. Migrations must be applied separately (Vercel serverless cannot reach the DB at build time).
 
-```
-test-solana-traker/
-├── app/
-│   ├── layout.tsx          # Root layout
-│   ├── page.tsx            # Main page component
-│   └── globals.css         # Global styles
-├── components/
-│   ├── WalletInput.tsx     # Wallet address input with validation
-│   ├── TransactionList.tsx # Transaction list display
-│   ├── LoadingSpinner.tsx  # Loading state component
-│   └── ErrorMessage.tsx    # Error display component
-├── lib/
-│   └── solana-tracker.ts   # API service for Solana Tracker
-├── .env.local              # Environment variables (create this)
-├── .env.local.example      # Example environment file
-└── README.md
-```
-
-## API Integration
-
-This project uses the [Solana Tracker API](https://docs.solanatracker.io/) with the following endpoints:
-
-- `GET /wallet/latest-trades` - Fetch wallet transaction history
-- `GET /wallet/tokens` - Fetch wallet token balances
-
-## Error Handling
-
-The application handles various error scenarios:
-- Invalid wallet addresses
-- API key issues
-- Rate limiting
-- Network errors
-- Wallets with no transactions
-
-## Build for Production
+## Development
 
 ```bash
-npm run build
-npm start
+npm run dev           # Dev server
+npm run build         # Production build
+npm run lint          # Linting
+npm run test          # Jest tests
+npx prisma studio     # DB GUI
+npx prisma migrate dev --name <name>  # New migration
 ```
 
 ## License
