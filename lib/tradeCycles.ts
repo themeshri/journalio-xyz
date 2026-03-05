@@ -1,6 +1,19 @@
-// Using any[] instead of specific Trade type for flexibility with Zerion API
-
 import { type Chain, CHAIN_CONFIG } from './chains'
+
+/** Minimal trade shape required by trade cycle calculations */
+export interface TradeInput {
+  signature: string
+  timestamp: number
+  type: string
+  tokenIn: { address: string; symbol: string; name?: string; logoURI?: string; decimals?: number; marketCap?: number } | null
+  tokenOut: { address: string; symbol: string; name?: string; logoURI?: string; decimals?: number; marketCap?: number } | null
+  amountIn: number
+  amountOut: number
+  priceUSD: number
+  valueUSD: number
+  dex: string
+  maker: string
+}
 
 /**
  * Constants used in trade cycle calculations
@@ -25,8 +38,8 @@ export interface TradeGroup {
   tokenMint: string;         // Token address
   chain: Chain;              // Which chain this trade is on
   walletAddress: string;     // Which wallet this trade belongs to
-  buys: any[];             // All buy transactions
-  sells: any[];            // All sell transactions
+  buys: TradeInput[];             // All buy transactions
+  sells: TradeInput[];            // All sell transactions
   totalBuyAmount: number;    // Total tokens bought
   totalSellAmount: number;   // Total tokens sold
   totalBuyValue: number;     // Total USD spent
@@ -70,7 +83,7 @@ type TradeDirection = 'buy' | 'sell' | null;
  * - Sell: We give away the token (it's in tokenIn / "from" field)
  * - Null: Token not involved or appears in both sides (shouldn't happen)
  */
-function determineTradeDirection(trade: any, tokenMint: string): TradeDirection {
+function determineTradeDirection(trade: TradeInput, tokenMint: string): TradeDirection {
   const isTokenOut = trade.tokenOut?.address === tokenMint;
   const isTokenIn = trade.tokenIn?.address === tokenMint;
 
@@ -112,9 +125,9 @@ function isEffectivelyZero(balance: number): boolean {
  * @returns Updated map (functional approach)
  */
 function addTradeToTokenMap(
-  tokenMap: Map<string, any[]>,
+  tokenMap: Map<string, TradeInput[]>,
   tokenMint: string,
-  trade: any
+  trade: TradeInput
 ): void {
   const existingTrades = tokenMap.get(tokenMint);
   if (existingTrades) {
@@ -131,8 +144,8 @@ function addTradeToTokenMap(
  * @param trades - Array of all trades
  * @returns Map of token addresses to their associated trades
  */
-function groupTradesByToken(trades: any[]): Map<string, any[]> {
-  const tokenMap = new Map<string, any[]>();
+function groupTradesByToken(trades: TradeInput[]): Map<string, TradeInput[]> {
+  const tokenMap = new Map<string, TradeInput[]>();
 
   trades.forEach(trade => {
     const tokenOutMint = trade.tokenOut?.address;
@@ -163,7 +176,7 @@ function groupTradesByToken(trades: any[]): Map<string, any[]> {
  * @param tokenMint - The token address to find
  * @returns The token symbol, or empty string if not found
  */
-function extractTokenSymbol(trade: any, tokenMint: string): string {
+function extractTokenSymbol(trade: TradeInput, tokenMint: string): string {
   if (trade.tokenOut?.address === tokenMint) {
     return trade.tokenOut.symbol || '';
   }
@@ -206,7 +219,7 @@ function shouldStartNewGroup(
  */
 function processTradeIntoGroup(
   group: TradeGroup,
-  trade: any,
+  trade: TradeInput,
   tradeDirection: TradeDirection,
   currentBalance: number
 ): number {
@@ -250,7 +263,7 @@ function processTradeIntoGroup(
  * @param tokenTrades - All trades involving this token
  * @returns Array of trade groups representing distinct trading cycles
  */
-function createTradeGroupsForToken(tokenMint: string, tokenTrades: any[], chain: Chain, walletAddress: string): TradeGroup[] {
+function createTradeGroupsForToken(tokenMint: string, tokenTrades: TradeInput[], chain: Chain, walletAddress: string): TradeGroup[] {
   // Validate input
   if (tokenTrades.length === 0) {
     return [];
@@ -362,7 +375,7 @@ function finalizeTradeGroupSorting(group: TradeGroup): void {
  * 4. A new cycle starts when balance returns to ~0 and a new buy occurs
  * 5. Track buys, sells, P/L, and completion status for each cycle
  */
-export function calculateTradeCycles(trades: any[], chain: Chain = 'solana', walletAddress: string = ''): TradeCycle[] {
+export function calculateTradeCycles(trades: TradeInput[], chain: Chain = 'solana', walletAddress: string = ''): TradeCycle[] {
   // Handle empty input
   if (!trades || trades.length === 0) {
     return [];

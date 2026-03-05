@@ -1,6 +1,6 @@
 // Shared server utility: fetch cached trades from DB, compute trade cycles, apply fee deduction
 import { prisma } from '@/lib/prisma'
-import { calculateTradeCycles, flattenTradeCycles, type FlattenedTrade } from '@/lib/tradeCycles'
+import { calculateTradeCycles, flattenTradeCycles, type FlattenedTrade, type TradeInput } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { type Chain } from '@/lib/chains'
 
@@ -68,20 +68,18 @@ async function resolveWalletTrades(
   if (dbTrades.length === 0) return []
 
   const feeRate = APP_FEE_RATES[dex] || 0
-  const trades = dbTrades.map((t) => ({
+  const trades: TradeInput[] = dbTrades.map((t) => ({
     signature: t.signature,
     timestamp: t.timestamp,
     type: t.type,
     tokenIn: t.tokenInData ? JSON.parse(t.tokenInData) : null,
     tokenOut: t.tokenOutData ? JSON.parse(t.tokenOutData) : null,
-    amountIn: t.amountIn,
-    amountOut: t.amountOut,
-    priceUSD: t.priceUSD,
+    amountIn: t.amountIn ?? 0,
+    amountOut: t.amountOut ?? 0,
+    priceUSD: t.priceUSD ?? 0,
     valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
     dex: t.dex,
     maker: address,
-    _chain: chain,
-    _walletAddress: address,
   }))
 
   const cycles = calculateTradeCycles(trades, chain, address)

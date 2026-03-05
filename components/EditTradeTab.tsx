@@ -1,8 +1,7 @@
 'use client'
 
 import React, { useState, useCallback } from 'react'
-import { type FlattenedTrade } from '@/lib/tradeCycles'
-import { type Trade } from '@/lib/solana-tracker'
+import { type FlattenedTrade, type TradeInput } from '@/lib/tradeCycles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,7 +34,7 @@ function formatTimestamp(timestamp: number) {
 
 export function EditTradeTab({ trade }: EditTradeTabProps) {
   const allTxs = [...trade.buys, ...trade.sells].sort(
-    (a: Trade, b: Trade) => a.timestamp - b.timestamp
+    (a: TradeInput, b: TradeInput) => a.timestamp - b.timestamp
   )
 
   const [wholeEdit, setWholeEdit] = useState<WholeTradeEdit>({})
@@ -109,7 +108,7 @@ export function EditTradeTab({ trade }: EditTradeTabProps) {
     }
   }, [txEdits, wholeEdit, hasWholeEdits, trade])
 
-  const isBuy = (tx: Trade) => trade.buys.includes(tx)
+  const isBuy = (tx: TradeInput) => trade.buys.includes(tx)
 
   return (
     <div className="space-y-4">
@@ -164,7 +163,7 @@ export function EditTradeTab({ trade }: EditTradeTabProps) {
       <div>
         <h4 className="text-sm font-medium mb-3">Transactions ({allTxs.length})</h4>
         <div className="space-y-3">
-          {allTxs.map((tx: Trade, idx: number) => {
+          {allTxs.map((tx: TradeInput, idx: number) => {
             const type = isBuy(tx) ? 'Buy' : 'Sell'
             const edit = txEdits[tx.signature] || {}
 

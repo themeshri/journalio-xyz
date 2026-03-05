@@ -121,14 +121,14 @@ const JournalModal = memo(function JournalModal({
   // Migrate old buyCategory -> strategy if needed
   const initialStrategy = initialData?.strategy || initialData?.buyCategory || '';
   const [strategy, setStrategy] = useState(initialStrategy);
-  const [emotionalState] = useState('');
-  const [buyNotes] = useState('');
+  const emotionalState = '';
+  const buyNotes = '';
   const [buyRating, setBuyRating] = useState(initialData?.buyRating || 0);
   const [exitPlan, setExitPlan] = useState(initialData?.exitPlan || '');
   const [sellRating, setSellRating] = useState(initialData?.sellRating || 0);
   const [followedExitRule, setFollowedExitRule] = useState<boolean | null>(initialData?.followedExitRule ?? null);
   const [sellMistakes, setSellMistakes] = useState<string[]>(initialData?.sellMistakes || []);
-  const [sellNotes] = useState('');
+  const sellNotes = '';
   // Multi-image: stored as JSON array string in DB, backward-compat with single base64 string
   const [attachments, setAttachments] = useState<string[]>(() => {
     const raw = initialData?.attachment;

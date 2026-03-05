@@ -4,9 +4,19 @@ import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { getWalletTrades as getSolanaWalletTrades } from '@/lib/solana-tracker'
 import { getWalletTrades as getEvmWalletTrades } from '@/lib/zerion'
 import { type Chain, isEvmChain } from '@/lib/chains'
-import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
+import { calculateTradeCycles, flattenTradeCycles, type TradeInput } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { invalidatePrefix } from '@/lib/server/analytics-cache'
+import { type FlattenedTrade } from '@/lib/tradeCycles'
+
+interface TradesResponse {
+  trades: TradeInput[]
+  cached: boolean
+  cachedAt: Date | string
+  stale?: boolean
+  error?: string
+  flattenedTrades?: FlattenedTrade[]
+}
 
 // Allow up to 60s for fetching trades from external APIs
 export const maxDuration = 60
@@ -30,8 +40,6 @@ export async function GET(request: NextRequest) {
     if (!walletAddress) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 })
     }
-
-    console.log('Processing request for wallet:', walletAddress, 'chain:', chain)
 
     // Find or create wallet (with chain support)
     let wallet = await prisma.wallet.findFirst({
@@ -79,26 +87,26 @@ export async function GET(request: NextRequest) {
 
     // Return cached data if fresh and not forcing refresh
     if (!forceRefresh && cacheAge < CACHE_DURATION && cachedTrades.length > 0) {
-      const trades = cachedTrades.map(trade => ({
+      const trades: TradeInput[] = cachedTrades.map(trade => ({
         signature: trade.signature,
         timestamp: trade.timestamp,
         type: trade.type,
         tokenIn: trade.tokenInData ? JSON.parse(trade.tokenInData) : null,
         tokenOut: trade.tokenOutData ? JSON.parse(trade.tokenOutData) : null,
-        amountIn: trade.amountIn,
-        amountOut: trade.amountOut,
-        priceUSD: trade.priceUSD,
+        amountIn: trade.amountIn ?? 0,
+        amountOut: trade.amountOut ?? 0,
+        priceUSD: trade.priceUSD ?? 0,
         valueUSD: trade.valueUSD,
         dex: trade.dex,
         maker: walletAddress,
       }))
 
-      const response: any = { trades, cached: true, cachedAt: cachedTrades[0].indexedAt }
+      const response: TradesResponse = { trades, cached: true, cachedAt: cachedTrades[0].indexedAt }
       if (wantCycles) {
         const feeRate = APP_FEE_RATES[dex] || 0
         const adjusted = feeRate > 0
-          ? trades.map((t: any) => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
-          : trades.map((t: any) => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
+          ? trades.map(t => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
+          : trades.map(t => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
         const cycles = calculateTradeCycles(adjusted, chain, walletAddress)
         response.flattenedTrades = flattenTradeCycles(cycles)
       }
@@ -107,18 +115,13 @@ export async function GET(request: NextRequest) {
 
     // Fetch fresh data from appropriate API
     try {
-      console.log('Fetching trades for:', walletAddress, 'chain:', chain);
       const apiTrades = isEvmChain(chain)
         ? await getEvmWalletTrades(walletAddress, 1000, chain)
         : await getSolanaWalletTrades(walletAddress, 1000);
-      console.log('Retrieved', apiTrades?.length || 0, `trades from ${isEvmChain(chain) ? 'Zerion' : 'Solana Tracker'}`);
-
       // Find existing trade signatures to only process new ones
       const existingSignatures = new Set(cachedTrades.map(t => t.signature));
       const newTrades = apiTrades.filter(trade => !existingSignatures.has(trade.signature));
       
-      console.log(`Found ${newTrades.length} new trades out of ${apiTrades.length} total trades`);
-
       // Cache new trades in batches (pgBouncer can timeout on large single inserts)
       if (newTrades.length > 0) {
         const BATCH_SIZE = 200
@@ -154,18 +157,17 @@ export async function GET(request: NextRequest) {
             console.error(`Failed to store batch ${i / BATCH_SIZE + 1}:`, batchError instanceof Error ? batchError.message : batchError)
           }
         }
-        console.log(`Successfully cached ${storedCount}/${newTrades.length} new trades`);
       }
 
       // Invalidate analytics cache for this wallet on fresh fetch
       invalidatePrefix(walletAddress)
 
-      const freshResponse: any = { trades: apiTrades, cached: false, cachedAt: new Date().toISOString() }
+      const freshResponse: TradesResponse = { trades: apiTrades, cached: false, cachedAt: new Date().toISOString() }
       if (wantCycles) {
         const feeRate = APP_FEE_RATES[dex] || 0
         const adjusted = feeRate > 0
-          ? apiTrades.map((t: any) => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
-          : apiTrades.map((t: any) => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
+          ? apiTrades.map(t => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
+          : apiTrades.map(t => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
         const cycles = calculateTradeCycles(adjusted, chain, walletAddress)
         freshResponse.flattenedTrades = flattenTradeCycles(cycles)
       }
@@ -175,21 +177,21 @@ export async function GET(request: NextRequest) {
       
       // If API fails, return cached data even if stale
       if (cachedTrades.length > 0) {
-        const trades = cachedTrades.map(trade => ({
+        const trades: TradeInput[] = cachedTrades.map(trade => ({
           signature: trade.signature,
           timestamp: trade.timestamp,
           type: trade.type,
           tokenIn: trade.tokenInData ? JSON.parse(trade.tokenInData) : null,
           tokenOut: trade.tokenOutData ? JSON.parse(trade.tokenOutData) : null,
-          amountIn: trade.amountIn,
-          amountOut: trade.amountOut,
-          priceUSD: trade.priceUSD,
+          amountIn: trade.amountIn ?? 0,
+          amountOut: trade.amountOut ?? 0,
+          priceUSD: trade.priceUSD ?? 0,
           valueUSD: trade.valueUSD,
           dex: trade.dex,
           maker: walletAddress,
         }))
 
-        const staleResponse: any = {
+        const staleResponse: TradesResponse = {
           trades,
           cached: true,
           stale: true,
@@ -199,8 +201,8 @@ export async function GET(request: NextRequest) {
         if (wantCycles) {
           const feeRate = APP_FEE_RATES[dex] || 0
           const adjusted = feeRate > 0
-            ? trades.map((t: any) => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
-            : trades.map((t: any) => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
+            ? trades.map(t => ({ ...t, valueUSD: t.valueUSD * (1 - feeRate), _chain: chain, _walletAddress: walletAddress }))
+            : trades.map(t => ({ ...t, _chain: chain, _walletAddress: walletAddress }))
           const cycles = calculateTradeCycles(adjusted, chain, walletAddress)
           staleResponse.flattenedTrades = flattenTradeCycles(cycles)
         }

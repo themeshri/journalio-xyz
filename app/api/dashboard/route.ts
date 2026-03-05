@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { parseWalletParams, resolveFlattenedTrades, sanitizeForJSON } from '@/lib/server/resolve-trades'
-import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
+import { calculateTradeCycles, flattenTradeCycles, type TradeInput } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
 import { type Chain } from '@/lib/chains'
@@ -93,20 +93,18 @@ async function resolveWalletTradesWithRaw(
   if (dbTrades.length === 0) return { trades: [], flattenedTrades: [], cached: false }
 
   const feeRate = APP_FEE_RATES[dex] || 0
-  const trades = dbTrades.map((t) => ({
+  const trades: TradeInput[] = dbTrades.map((t) => ({
     signature: t.signature,
     timestamp: t.timestamp,
     type: t.type,
     tokenIn: t.tokenInData ? JSON.parse(t.tokenInData) : null,
     tokenOut: t.tokenOutData ? JSON.parse(t.tokenOutData) : null,
-    amountIn: t.amountIn,
-    amountOut: t.amountOut,
-    priceUSD: t.priceUSD,
+    amountIn: t.amountIn ?? 0,
+    amountOut: t.amountOut ?? 0,
+    priceUSD: t.priceUSD ?? 0,
     valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
     dex: t.dex,
     maker: address,
-    _chain: chain,
-    _walletAddress: address,
   }))
 
   const cycles = calculateTradeCycles(trades, chain, address)

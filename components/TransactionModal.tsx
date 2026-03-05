@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
-import { Trade } from '@/lib/solana-tracker';
+import { type TradeInput } from '@/lib/tradeCycles';
 import { formatPrice, formatMarketCap } from '@/lib/formatters';
 import { explorerTxUrl, type Chain } from '@/lib/chains';
 import { format } from 'date-fns';
@@ -14,7 +14,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 
 interface TransactionModalProps {
-  trades: Trade[];
+  trades: TradeInput[];
   title: string;
   onClose: () => void;
   chain?: Chain;
