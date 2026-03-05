@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { DashboardProviders } from '@/lib/contexts'
 import { StaleDataBanner } from '@/components/StaleDataBanner'
@@ -46,7 +46,10 @@ export default function DashboardLayout({
           <AppSidebar />
           <SidebarInset>
             <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-              <GlobalFilterBar />
+              <SidebarTrigger className="md:hidden" />
+              <div className="hidden md:block">
+                <GlobalFilterBar />
+              </div>
               <div className="ml-auto flex items-center gap-2">
                 <SyncButton />
                 <ThemeToggle />
