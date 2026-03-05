@@ -1,6 +1,7 @@
 import { validateBody, updateNoteSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth-helper'
 
 function parseNote(n: any) {
   return {
@@ -15,12 +16,21 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
     const body = await request.json()
     const validation = validateBody(updateNoteSchema, body)
     if ('error' in validation) return validation.error
-    const v = validation.data
 
+    const existing = await prisma.note.findUnique({ where: { id } })
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const v = validation.data
     const note = await prisma.note.update({
       where: { id },
       data: {
@@ -41,7 +51,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const userId = auth.userId
+
     const { id } = await params
+
+    const existing = await prisma.note.findUnique({ where: { id } })
+    if (!existing || existing.userId !== userId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
     await prisma.note.delete({ where: { id } })
     return NextResponse.json({ ok: true })
   } catch (error) {

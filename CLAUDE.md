@@ -124,6 +124,29 @@ Legacy (not used in dashboard): `SummaryView.tsx`
 | `validations.ts` | Zod schemas + `validateBody` | Input validation for all POST/PATCH API endpoints |
 | `prisma.ts` | `prisma` | Prisma client singleton |
 | `zerion.ts` | `getWalletTrades` | Zerion API client for EVM chains (Base, BNB) |
+| `rate-limit.ts` | `rateLimit`, `rateLimitByUser` | In-memory rate limiter (per IP or per user); auto-cleanup of expired entries |
+| `env.ts` | `validateEnv` | Startup validation of required environment variables; imported in `instrumentation.ts` |
+
+## Security
+
+### Rate Limiting
+- Proxy routes (`/api/solana/*`, `/api/evm/*`): 30 req/min per IP via `rateLimit()`
+- Auth sync (`/api/auth/sync-user`): 10 req/min per IP
+- Expensive endpoints (`/api/trades`, `/api/dashboard`): 30 req/min per user via `rateLimitByUser()`
+- In-memory per-instance store (no external dependency); sufficient for serverless abuse protection
+
+### Auth & Multi-Tenancy
+- All `[id]` routes verify ownership (`userId` match) and return 404 (not 403) to prevent resource enumeration
+- `requireAuth()` validates Supabase session server-side on all authenticated endpoints
+- All DB queries scoped by `userId`
+
+### Headers
+- Security headers in `next.config.js`: X-Frame-Options DENY, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Content-Security-Policy
+- CSP allows `connect-src` to `self` + Supabase + Solana Tracker + Zerion APIs only
+
+### Error Handling
+- API routes return generic error messages to clients; internal details logged server-side only
+- Environment variables validated at startup via `lib/env.ts` in `instrumentation.ts`
 
 ## API Routes
 

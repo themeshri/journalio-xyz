@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createServerClient } from '@supabase/ssr'
+import { rateLimit } from '@/lib/rate-limit'
+
+const checkRateLimit = rateLimit({ limit: 10, windowSeconds: 60, prefix: 'auth-sync' })
 
 export async function POST(request: NextRequest) {
+  const limited = checkRateLimit(request)
+  if (limited) return limited
+
   try {
     const { id, email, name, image } = await request.json()
 

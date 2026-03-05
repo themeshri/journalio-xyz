@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { dedup } from '@/lib/server/request-dedup';
+import { rateLimit } from '@/lib/rate-limit';
 
 const API_BASE_URL = 'https://data.solanatracker.io';
 const API_KEY = process.env.SOLANA_TRACKER_API_KEY;
+
+const checkRateLimit = rateLimit({ limit: 30, windowSeconds: 60, prefix: 'solana-proxy' });
 
 // Validate Solana wallet address (base58, 32-44 characters)
 function isValidSolanaAddress(address: string): boolean {
@@ -15,6 +18,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ) {
+  const limited = checkRateLimit(request);
+  if (limited) return limited;
+
   try {
     const { address } = await params;
     const { searchParams } = new URL(request.url);

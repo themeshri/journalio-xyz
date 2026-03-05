@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { rateLimit } from '@/lib/rate-limit'
 
 const API_BASE_URL = 'https://api.zerion.io/v1'
 const API_KEY = process.env.ZERION_API_KEY
+
+const checkRateLimit = rateLimit({ limit: 30, windowSeconds: 60, prefix: 'evm-proxy' })
 
 function isValidEvmAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address)
@@ -11,6 +14,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ) {
+  const limited = checkRateLimit(request)
+  if (limited) return limited
+
   try {
     const { address } = await params
     const { searchParams } = new URL(request.url)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
+import { rateLimitByUser } from '@/lib/rate-limit'
 import { parseWalletParams, resolveFlattenedTrades, sanitizeForJSON } from '@/lib/server/resolve-trades'
 import { calculateTradeCycles, flattenTradeCycles, type TradeInput } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
@@ -125,11 +126,17 @@ async function resolveWalletTradesWithRaw(
 }
 
 // GET /api/dashboard?addresses=a1,a2&chains=solana,base&dexes=fomo,other
+const checkUserRate = rateLimitByUser({ limit: 30, windowSeconds: 60, prefix: 'dashboard' })
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
+
+    const userLimited = checkUserRate(userId)
+    if (userLimited) return userLimited
+
     await ensureUserExists(userId, auth.email)
 
     const { searchParams } = new URL(request.url)

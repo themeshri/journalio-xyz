@@ -43,6 +43,11 @@ export async function POST(request: NextRequest) {
 
     // If id provided, update existing note
     if (v.id) {
+      const existing = await prisma.note.findUnique({ where: { id: v.id } })
+      if (!existing || existing.userId !== userId) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+
       const note = await prisma.note.update({
         where: { id: v.id },
         data: {

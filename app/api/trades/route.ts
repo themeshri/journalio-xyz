@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
+import { rateLimitByUser } from '@/lib/rate-limit'
 import { getWalletTrades as getSolanaWalletTrades } from '@/lib/solana-tracker'
 import { getWalletTrades as getEvmWalletTrades } from '@/lib/zerion'
 import { type Chain, isEvmChain } from '@/lib/chains'
@@ -21,12 +22,17 @@ interface TradesResponse {
 // Allow up to 60s for fetching trades from external APIs
 export const maxDuration = 60
 
+const checkUserRate = rateLimitByUser({ limit: 30, windowSeconds: 60, prefix: 'trades' })
+
 // GET - Get trades for a wallet (from cache or API)
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
+
+    const userLimited = checkUserRate(userId)
+    if (userLimited) return userLimited
 
     const { searchParams } = new URL(request.url)
     const walletAddress = searchParams.get('address')
@@ -209,15 +215,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(staleResponse)
       }
 
-      // Return more specific error
+      // Log details server-side, return generic message to client
       const errorMessage = apiError instanceof Error ? apiError.message : 'Unknown API error';
       const apiName = isEvmChain(chain) ? 'Zerion' : 'Solana Tracker';
-      throw new Error(`${apiName} API failed: ${errorMessage}`)
+      console.error(`${apiName} API failed:`, errorMessage)
+      return NextResponse.json({ error: 'Failed to fetch trades' }, { status: 502 })
     }
   } catch (error) {
     console.error('Error fetching trades:', error)
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    const message = error instanceof Error ? error.message : 'Failed to fetch trades'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch trades' }, { status: 500 })
   }
 }

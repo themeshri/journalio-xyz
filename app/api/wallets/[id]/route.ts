@@ -19,12 +19,8 @@ export async function DELETE(
       where: { id },
     })
 
-    if (!wallet) {
-      return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
-    }
-
-    if (wallet.userId !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!wallet || wallet.userId !== userId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     await prisma.wallet.delete({
@@ -58,12 +54,8 @@ export async function PATCH(
       where: { id },
     })
 
-    if (!wallet) {
-      return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
-    }
-
-    if (wallet.userId !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!wallet || wallet.userId !== userId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     // Use transaction for default toggle to prevent race conditions

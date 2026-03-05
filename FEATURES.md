@@ -324,6 +324,22 @@ Last updated: 2026-03-05
 | GET | `/api/solana/token/[mint]` | No | Proxy → Solana Tracker token data |
 | POST | `/api/auth/sync-user` | Session | Sync authenticated Supabase user to DB |
 
+### Rate Limiting
+
+| Target | Limit | Key |
+|--------|-------|-----|
+| `/api/solana/*`, `/api/evm/*` proxy routes | 30 req/min | Per IP |
+| `/api/auth/sync-user` | 10 req/min | Per IP |
+| `/api/trades`, `/api/dashboard` | 30 req/min | Per user |
+
+### Security Headers
+
+All responses include: X-Frame-Options (DENY), HSTS, X-Content-Type-Options (nosniff), Referrer-Policy, Permissions-Policy, Content-Security-Policy.
+
+### Multi-Tenancy
+
+All `[id]` routes verify ownership and return 404 (not 403) to prevent resource enumeration. All DB queries scoped by `userId`.
+
 ---
 
 ## 13. Core Libraries
@@ -346,6 +362,8 @@ Last updated: 2026-03-05
 | `lib/chains.ts` | `CHAIN_CONFIG`, `detectChainFromAddress` | Multi-chain support (Solana, Base, BNB) |
 | `lib/auth-helper.ts` | `requireAuth`, `getAuthUser`, `ensureUserExists` | Supabase server-side auth (session check, returns userId or 401) |
 | `lib/supabase-auth.ts` | `supabaseAuth` | Client-side Supabase auth (signIn, signOut with localStorage cleanup, redirect) |
+| `lib/rate-limit.ts` | `rateLimit`, `rateLimitByUser` | In-memory rate limiter (per IP or per user) with auto-cleanup |
+| `lib/env.ts` | `validateEnv` | Startup validation of required env vars; imported in `instrumentation.ts` |
 | `lib/prisma.ts` | `prisma` | Prisma client singleton |
 
 ---

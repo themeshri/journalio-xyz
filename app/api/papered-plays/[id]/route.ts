@@ -16,8 +16,7 @@ export async function DELETE(
     const { id } = await params
 
     const play = await prisma.paperedPlay.findUnique({ where: { id } })
-    if (!play) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (play.userId !== userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!play || play.userId !== userId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     await prisma.paperedPlay.delete({ where: { id } })
     return NextResponse.json({ success: true })
@@ -43,8 +42,7 @@ export async function PATCH(
     if ('error' in validation) return validation.error
 
     const play = await prisma.paperedPlay.findUnique({ where: { id } })
-    if (!play) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (play.userId !== userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!play || play.userId !== userId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     // Build update data from all provided fields
     const data: Record<string, unknown> = {}
