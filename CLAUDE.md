@@ -6,7 +6,7 @@
 
 ## Overview
 
-Solana trading journal with pre-session checklists, post-session reviews, trade cycle analysis, strategy management, and missed trade tracking. Dashboard-based UI with sidebar navigation. Gamified daily checklist and GitHub-style activity calendar on the home page.
+Solana trading journal with pre-session checklists, post-session reviews, trade cycle analysis, strategy management, and missed trade tracking. Dashboard-based UI with sidebar navigation. Session hero card and GitHub-style activity calendar on the home page.
 
 ## Tech Stack
 
@@ -26,18 +26,18 @@ app/
 ├── layout.tsx                 # Root layout (fonts, ErrorBoundary, SessionProvider)
 ├── (dashboard)/
 │   ├── layout.tsx             # Dashboard layout (WalletProvider, SidebarProvider, AppSidebar)
-│   ├── page.tsx               # Overview — daily checklist, KPIs, activity calendar, recent trades
+│   ├── page.tsx               # Overview — session hero, KPIs, activity calendar, recent trades
 │   ├── diary/
 │   │   ├── pre-session/       # Daily pre-trading checklist
 │   │   ├── post-session/      # End-of-day review
 │   │   └── notes/             # General notes with tagging
 │   ├── trade-journal/         # Trade cycle table with journal modals
-│   ├── history/               # Tabbed: Transactions | Pre-Sessions | Journal
-│   ├── chart-lab/             # Advanced charts (calendar, distribution, equity, holding-time)
-│   ├── analytics/             # Charts (Cumulative P/L, Duration, Trading Hours)
+│   ├── history/               # Tabbed: Sessions | Journal | Transactions | Missed Trades | Attachments
+│   ├── chart-lab/             # Analytics charts (calendar, distribution, equity, holding-time)
+│   ├── analytics/             # Analytics overview (Cumulative P/L, Duration, Trading Hours)
 │   ├── missed-trades/         # Papered plays tracker (API-backed)
 │   ├── strategies/            # Strategy CRUD + global rules (DB-backed)
-│   ├── wallet-management/     # Saved wallets CRUD (localStorage)
+│   ├── wallet-management/     # Wallets CRUD (localStorage)
 │   └── settings/              # User preferences incl. timezone + trading start time (API-backed)
 ├── api/                       # API routes (see below)
 └── auth/signin/               # NextAuth sign-in page
@@ -48,7 +48,7 @@ app/
 ```
 RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
   └── DashboardLayout (Suspense → WalletProvider → SidebarProvider)
-        ├── AppSidebar (nav links, active wallet display)
+        ├── AppSidebar (nav links, active wallet display, dark mode toggle, collapse)
         └── SidebarInset → header (GlobalFilterBar, SyncButton + last synced time, ThemeToggle, AccountDropdown) + main content area
 ```
 
@@ -56,17 +56,17 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 
 | Route | Page | Storage | Description |
 |-------|------|---------|-------------|
-| `/` | Overview | API | Daily checklist, KPI cards, activity calendar, recent trades, strategy/mistakes summaries — time-range filtered |
+| `/` | Overview | API | Session hero card, KPI cards, activity calendar, recent trades — time-range filtered |
 | `/diary/pre-session` | Pre-Session | API (DB) | Daily checklist: energy, mindset, limits, market context, rules |
 | `/diary/post-session` | Post-Session | API (DB) | End-of-day review: rating, emotions, lessons, rules adherence, plan for tomorrow |
 | `/diary/notes` | Notes | API (DB) | General notes with title, content, and tags |
 | `/trade-journal` | Trade Journal | API (DB) | Trade cycles table with JournalModal for per-cycle notes |
-| `/history` | History | API (DB) | 3 tabs: Transactions (API), Pre-Sessions (API), Journal (API) |
-| `/chart-lab` | Chart Lab | API | Advanced charts: calendar P/L, distribution, equity curve, holding time — sub-routed |
-| `/analytics` | Analytics | API | Recharts: cumulative P/L, duration, hours, discipline — time-range filtered |
+| `/history` | History | API (DB) | 5 tabs: Sessions, Journal, Transactions, Missed Trades, Attachments |
+| `/chart-lab` | Analytics | API | Advanced charts: calendar P/L, distribution, equity curve, holding time — sub-routed |
+| `/analytics` | Analytics Overview | API | Recharts: cumulative P/L, duration, hours, discipline — time-range filtered |
 | `/missed-trades` | Missed Trades | API (DB) | Track tokens you saw but didn't trade, with potential multiplier |
 | `/strategies` | Strategies | API (DB) | Named strategies (entry/exit/stop-loss conditions) + global rules |
-| `/wallet-management` | Wallet Mgmt | localStorage | Add/remove/switch saved wallets |
+| `/wallet-management` | Wallets | localStorage | Add/remove/switch saved wallets |
 | `/settings` | Settings | API (DB) | Display name, timezone, trading start time, journal view mode, trade comments |
 
 ## Key Components
@@ -74,8 +74,9 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 | Component | File | Description |
 |-----------|------|-------------|
 | `SyncButton` | `components/SyncButton.tsx` | Sync all active wallets + shows "last synced X ago" relative time |
-| `AppSidebar` | `components/app-sidebar.tsx` | Sidebar nav with wallet display, pre-session status dot (reads from MetadataContext) |
-| `DailyChecklist` | `components/overview/DailyChecklist.tsx` | Gamified 3-item checklist (pre-session, post-session, journals) with progress bar |
+| `AppSidebar` | `components/app-sidebar.tsx` | Sidebar nav with wallet display, pre-session status dot, dark mode toggle, collapse button |
+| `SessionHero` | `components/overview/SessionHero.tsx` | Tabbed hero card (Pre-Session/Active/Post-Session) with session-scoped stats, rules, timer |
+| `SessionPills` | `components/overview/SessionHero.tsx` | Segmented pill tabs for SessionHero, rendered in header row |
 | `ActivityCalendar` | `components/overview/ActivityCalendar.tsx` | GitHub-style yearly heatmap with 0-5 activity score per day |
 | `KPICards` | `components/overview/KPICards.tsx` | 7-card horizontal strip (P/L, win rate, profit factor, avg P/L, trades, Sharpe, streak) |
 | `RecentCycles` | `components/overview/RecentCycles.tsx` | Last 8 completed trades with journal status |
@@ -102,7 +103,7 @@ Legacy (not used in dashboard): `SummaryView.tsx`
 | `time-filters.ts` | `TimePreset`, `TimeRange`, `presetToRange`, `filterTradesByRange` | Shared time filter types + utilities (client and server) |
 | `solana-tracker.ts` | `isValidSolanaAddress`, `getWalletTrades`, `getWalletTokens`, `getTokenData` | Solana Tracker API client; browser requests proxy through `/api/solana/*` |
 | `tradeCycles.ts` | `TradeInput`, `calculateTradeCycles`, `flattenTradeCycles` | Groups txs by token → splits into buy/sell cycles by balance; `TradeInput` is the typed trade shape used across API routes |
-| `contexts/` | `DashboardProviders`, `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext` | Split context: identity, trades, metadata (strategies/journals/streak/time-filter/pre-session/post-session/missed-trades), balances |
+| `contexts/` | `DashboardProviders`, `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext` | Split context: identity, trades, metadata (strategies/journals/streak/time-filter/pre-session/post-session/missed-trades/timezone/tradingStartTime), balances |
 | `analytics.ts` → `analytics/` | Re-export barrel; modules: `core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`, `types`, `helpers` | Analytics computation split by domain |
 | `server/resolve-trades.ts` | `resolveFlattenedTrades`, `applyDateFilter`, `parseWalletParams`, `sanitizeForJSON` | Server-side trade resolution with TTL cache, dedup, date filtering |
 | `local-storage.ts` | `safeLocalStorage` | Safe localStorage wrapper with quota error handling and toast notifications |
@@ -222,12 +223,11 @@ Analytics data flow: 6 server-side endpoints (`/api/analytics/*`) accept optiona
 ### Home Page Layout
 
 ```
-Row 1: Header + TimeRangeFilter
-Row 2: DailyChecklist (pre-session, post-session, journals — gamified with progress bar)
+Row 1: Header + SessionPills + TimeRangeFilter
+Row 2: SessionHero (tabbed: Pre-Session/Active/Post-Session with session-scoped stats)
 Row 3: KPICards (7 metrics)
-Row 4: RecentCycles (left 3 cols) + ActivityCalendar (right 2 cols)
-Row 5: StrategySummary + MistakesSummary
-Row 6: QuickStatsBar
+Row 4: RecentCycles (left 3 cols) + Evaluation (right 2 cols)
+Row 5: ActivityCalendar (full width)
 ```
 
 ### Activity Calendar Scoring (0-5 per day)

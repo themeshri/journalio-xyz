@@ -30,15 +30,14 @@ Last updated: 2026-03-05
 
 **Route:** `/`
 
-### Daily Checklist (Gamified)
+### Session Hero Card
 
 | Feature | Description |
 |---------|-------------|
-| Progress bar | Visual completion percentage (0/3 to 3/3) with emerald fill |
-| Pre-Session item | Done/to-do status, links to `/diary/pre-session` |
-| Post-Session item | Done/to-do status, links to `/diary/post-session` |
-| Journals item | Shows "X of Y trades" journaled from last 48h, links to journal or opens first unjournaled trade |
-| All done state | Emerald accent with "All caught up" message when all 3 complete |
+| Segmented pills | Pre-Session / Active / Post-Session tabs in header row, auto-selects current state, allows manual override |
+| Pre-Session tab | Blue gradient; shows trading day date; CTA to start or "complete" with view/edit link |
+| Active tab | Green gradient; session timer (from pre-session savedAt), session intent, global rules (up to 5), session-scoped stats (trades, P/L, journal progress — only trades after session start); CTAs to journal trade or end session |
+| Post-Session tab | Amber/emerald gradient; CTA to start post-session, "wrap up" for unjournaled trades, or "all done" state |
 
 ### KPI Cards (7 metrics)
 
@@ -170,18 +169,21 @@ Last updated: 2026-03-05
 
 **Route:** `/history`
 
+Underline-style tab navigation.
+
 | Tab | Features |
 |-----|----------|
-| Pre-Sessions | Table (date, time, energy badge, emotion, sentiment, SOL trend, max trades, max loss, intent); click row → detail dialog |
+| Sessions | Table (date, time, energy badge, emotion, sentiment, SOL trend, max trades, max loss, intent); click row → detail dialog |
 | Journal | Table (token, trade #, strategy, emotion badge, buy rating, exit plan, sell rating, followed exit badge, mistakes); click row → detail dialog |
 | Transactions | Raw transaction table (paginated, 50/page) with refresh button for force re-fetch |
-| Chartbook | Image gallery of trade screenshots/attachments from journal entries |
+| Missed Trades | Missed trade entries from papered plays |
+| Attachments | Image gallery of trade screenshots/attachments from journal entries |
 
 ---
 
 ## 7. Analytics
 
-**Route:** `/analytics`
+**Routes:** `/analytics` (overview), `/chart-lab/calendar`, `/chart-lab/equity`, `/chart-lab/distribution`, `/chart-lab/holding-time`
 
 | Section | Type | Description |
 |---------|------|-------------|
@@ -415,6 +417,6 @@ User does post-session → DB via /api/post-sessions (timezone-aware "today")
 User logs missed trades → DB via /api/papered-plays
 User manages strategies → DB via /api/strategies
        ↓
-Home page: DailyChecklist shows pre/post/journal status; ActivityCalendar shows yearly heatmap
+Home page: SessionHero shows pre/active/post session state; ActivityCalendar shows yearly heatmap
 Analytics page computes everything from: flattenedTrades + journals + comments + strategies + missed trades
 ```
