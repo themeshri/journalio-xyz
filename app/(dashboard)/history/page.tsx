@@ -1270,7 +1270,7 @@ function ChartbookTab() {
 // --- Main page ---
 
 export default function HistoryPage() {
-  const { allTrades, isAnyLoading, hasActiveWallets, refreshAll } = useWallet()
+  const { allTrades, isAnyLoading, hasActiveWallets, refreshAll, initialized } = useWallet()
   const searchParams = useSearchParams()
   const router = useRouter()
   const activeTab = searchParams.get('tab') || 'sessions'
@@ -1303,11 +1303,7 @@ export default function HistoryPage() {
         </TabsContent>
 
         <TabsContent value="transactions">
-          {!hasActiveWallets ? (
-            <p className="text-sm text-muted-foreground py-4">
-              Activate a wallet in Wallet Management to view trade history.
-            </p>
-          ) : isAnyLoading && allTrades.length === 0 ? (
+          {!initialized || (isAnyLoading && allTrades.length === 0) ? (
             <div className="py-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                 <div className="h-4 w-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
@@ -1315,6 +1311,10 @@ export default function HistoryPage() {
               </div>
               <TableRowsSkeleton rows={5} cols={6} />
             </div>
+          ) : !hasActiveWallets ? (
+            <p className="text-sm text-muted-foreground py-4">
+              Activate a wallet in Wallet Management to view trade history.
+            </p>
           ) : (
             <div>
               <div className="flex items-center justify-between mb-4 mt-4">

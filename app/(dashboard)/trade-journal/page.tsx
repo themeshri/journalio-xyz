@@ -52,7 +52,7 @@ export default function TradeJournalPage() {
     activeWallets, flattenedTrades: baseTrades, isAnyLoading, hasActiveWallets, allTrades,
     tradeComments, strategies, journalMap, updateJournalEntry,
     walletTokens, loadingBalances, balancesFetched, balanceError,
-    refreshAll,
+    refreshAll, initialized,
   } = useWallet()
 
   // Modal state
@@ -140,18 +140,7 @@ export default function TradeJournalPage() {
     }
   }, [journalModalTrade, journalMap, flattenedTrades, updateJournalEntry])
 
-  if (!hasActiveWallets) {
-    return (
-      <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Trade Journal</h1>
-        <p className="text-sm text-muted-foreground">
-          Go to Wallet Management to add a wallet and start journaling.
-        </p>
-      </div>
-    )
-  }
-
-  if (isAnyLoading && allTrades.length === 0) {
+  if (!initialized || (isAnyLoading && allTrades.length === 0)) {
     return (
       <div className="pt-8">
         <h1 className="text-xl font-semibold mb-6">Trade Journal</h1>
@@ -160,6 +149,17 @@ export default function TradeJournalPage() {
           <span>Loading trades<span className="animate-pulse">...</span></span>
         </div>
         <TableRowsSkeleton rows={5} cols={8} />
+      </div>
+    )
+  }
+
+  if (!hasActiveWallets) {
+    return (
+      <div className="max-w-xl pt-8">
+        <h1 className="text-xl font-semibold mb-2">Trade Journal</h1>
+        <p className="text-sm text-muted-foreground">
+          Go to Wallet Management to add a wallet and start journaling.
+        </p>
       </div>
     )
   }

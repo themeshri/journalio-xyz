@@ -133,7 +133,7 @@ const tabErrorFallback = (
 )
 
 export default function AnalyticsPage() {
-  const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades, tradeComments, strategies: allStrategies, journalMap, activeWallets } = useWallet()
+  const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades, tradeComments, strategies: allStrategies, journalMap, activeWallets, initialized } = useWallet()
   const { timeRange, timePreset, setTimeFilter } = useMetadata()
 
   const [activeTab, setActiveTab] = useState<'overview' | 'time' | 'discipline' | 'strategy' | 'missed'>('overview')
@@ -345,18 +345,7 @@ export default function AnalyticsPage() {
     (activeTab === 'strategy' && strategyLoading) ||
     (activeTab === 'missed' && missedLoading)
 
-  if (!hasActiveWallets) {
-    return (
-      <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Analytics</h1>
-        <p className="text-sm text-muted-foreground">
-          Activate a wallet in Wallet Management to view trading analytics.
-        </p>
-      </div>
-    )
-  }
-
-  if (isAnyLoading && allTrades.length === 0) {
+  if (!initialized || (isAnyLoading && allTrades.length === 0)) {
     return (
       <div className="max-w-4xl pt-8">
         <h1 className="text-xl font-semibold mb-6">Analytics</h1>
@@ -366,6 +355,17 @@ export default function AnalyticsPage() {
           <ChartSkeleton />
           <ChartSkeleton />
         </div>
+      </div>
+    )
+  }
+
+  if (!hasActiveWallets) {
+    return (
+      <div className="max-w-xl pt-8">
+        <h1 className="text-xl font-semibold mb-2">Analytics</h1>
+        <p className="text-sm text-muted-foreground">
+          Activate a wallet in Wallet Management to view trading analytics.
+        </p>
       </div>
     )
   }
