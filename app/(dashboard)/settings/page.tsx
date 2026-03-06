@@ -435,7 +435,7 @@ export default function SettingsPage() {
               ) : (
                 <>
                   <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${
-                    c.rating === 'positive' ? 'bg-emerald-500' : c.rating === 'negative' ? 'bg-red-500' : 'bg-zinc-400'
+                    c.rating === 'positive' ? 'bg-amber-500' : c.rating === 'negative' ? 'bg-red-500' : 'bg-zinc-400'
                   }`} />
                   <span className="flex-1 text-xs">{c.label}</span>
                   {deleteCommentConfirm === c.id ? (

@@ -106,7 +106,7 @@ function truncateText(text: string, max: number) {
 }
 
 function energyColor(level: number): string {
-  if (level >= 8) return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+  if (level >= 8) return 'bg-amber-500/10 text-amber-600 border-amber-500/30'
   if (level >= 5) return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30'
   if (level >= 3) return 'bg-orange-500/10 text-orange-600 border-orange-500/30'
   if (level >= 1) return 'bg-red-500/10 text-red-600 border-red-500/30'
@@ -116,7 +116,7 @@ function energyColor(level: number): string {
 function sentimentColor(sentiment: string): string {
   switch (sentiment) {
     case 'bullish':
-      return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+      return 'bg-amber-500/10 text-amber-600 border-amber-500/30'
     case 'bearish':
       return 'bg-red-500/10 text-red-600 border-red-500/30'
     default:
@@ -127,7 +127,7 @@ function sentimentColor(sentiment: string): string {
 function solTrendColor(trend: string): string {
   switch (trend) {
     case 'up':
-      return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+      return 'bg-amber-500/10 text-amber-600 border-amber-500/30'
     case 'down':
       return 'bg-red-500/10 text-red-600 border-red-500/30'
     default:
@@ -142,7 +142,7 @@ function capitalize(s: string): string {
 function emotionalStateColor(state: string): string {
   switch (state) {
     case 'Confident':
-      return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+      return 'bg-amber-500/10 text-amber-600 border-amber-500/30'
     case 'Anxious':
       return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30'
     case 'FOMO':
@@ -363,7 +363,7 @@ function JournalDetailDialog({
             </DetailRow>
             <DetailRow label="Followed Exit Rule">
               {entry.followedExitRule === true ? (
-                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
                   Yes
                 </Badge>
               ) : entry.followedExitRule === false ? (
@@ -471,7 +471,7 @@ function PostSessionDetailDialog({
 
           <DetailRow label="Rules Followed">
             {session.rulesFollowed === true ? (
-              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Yes</Badge>
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">Yes</Badge>
             ) : session.rulesFollowed === false ? (
               <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">No</Badge>
             ) : (
@@ -654,7 +654,7 @@ function SessionsTab() {
                     </TableCell>
                     <TableCell className="text-center">
                       {s.rulesFollowed === true ? (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs">
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs">
                           Rules ✓
                         </Badge>
                       ) : s.rulesFollowed === false ? (
@@ -789,7 +789,7 @@ function JournalHistoryTab() {
                 </TableCell>
                 <TableCell className="text-center">
                   {e.followedExitRule === true ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
                       Yes
                     </Badge>
                   ) : e.followedExitRule === false ? (
@@ -860,7 +860,7 @@ function getMissReasonLabel(reason: string | null): string {
 
 function outcomeColor(outcome: string | null): string {
   switch (outcome) {
-    case 'win': return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+    case 'win': return 'bg-amber-500/10 text-amber-600 border-amber-500/30'
     case 'loss': return 'bg-red-500/10 text-red-600 border-red-500/30'
     case 'breakeven': return 'bg-zinc-500/10 text-zinc-600 border-zinc-500/30'
     default: return 'bg-zinc-500/10 text-muted-foreground border-zinc-500/30'
@@ -934,21 +934,21 @@ function MissedTradeDetailDialog({
             )}
             {play.potentialMultiplier != null && (
               <DetailRow label="Multiplier">
-                <span className={`font-mono tabular-nums font-medium ${play.potentialMultiplier >= 1 ? 'text-emerald-500' : 'text-red-500'}`}>
+                <span className={`font-mono tabular-nums font-medium ${play.potentialMultiplier >= 1 ? 'text-lime-500' : 'text-red-500'}`}>
                   {play.potentialMultiplier.toFixed(2)}x
                 </span>
               </DetailRow>
             )}
             {play.peakMultiplier != null && (
               <DetailRow label="Peak Multiplier">
-                <span className="font-mono tabular-nums font-medium text-emerald-500">
+                <span className="font-mono tabular-nums font-medium text-lime-500">
                   {play.peakMultiplier.toFixed(2)}x
                 </span>
               </DetailRow>
             )}
             {play.potentialPnL != null && (
               <DetailRow label="Potential P/L">
-                <span className={`font-mono tabular-nums font-medium ${play.potentialPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                <span className={`font-mono tabular-nums font-medium ${play.potentialPnL >= 0 ? 'text-lime-500' : 'text-red-500'}`}>
                   {play.potentialPnL >= 0 ? '+' : ''}{formatValue(play.potentialPnL)}
                 </span>
               </DetailRow>
@@ -1025,7 +1025,7 @@ function MissedTradesTab() {
         {totalMissedPnL !== 0 && (
           <>
             <span>&middot;</span>
-            <span className={totalMissedPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+            <span className={totalMissedPnL >= 0 ? 'text-lime-500' : 'text-red-500'}>
               {totalMissedPnL >= 0 ? '+' : ''}{formatValue(totalMissedPnL)} missed
             </span>
           </>
@@ -1082,7 +1082,7 @@ function MissedTradesTab() {
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums text-sm">
                   {p.potentialMultiplier != null ? (
-                    <span className={p.potentialMultiplier >= 1 ? 'text-emerald-500' : 'text-red-500'}>
+                    <span className={p.potentialMultiplier >= 1 ? 'text-lime-500' : 'text-red-500'}>
                       {p.potentialMultiplier.toFixed(2)}x
                     </span>
                   ) : (
@@ -1091,7 +1091,7 @@ function MissedTradesTab() {
                 </TableCell>
                 <TableCell className="text-right font-mono tabular-nums text-sm">
                   {p.potentialPnL != null ? (
-                    <span className={p.potentialPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                    <span className={p.potentialPnL >= 0 ? 'text-lime-500' : 'text-red-500'}>
                       {p.potentialPnL >= 0 ? '+' : ''}{formatValue(p.potentialPnL)}
                     </span>
                   ) : (
@@ -1224,7 +1224,7 @@ function ChartbookTab() {
                   {formatTimestamp(img.date)}
                 </span>
                 {img.pnl !== null && (
-                  <span className={`text-xs font-mono font-medium ${img.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  <span className={`text-xs font-mono font-medium ${img.pnl >= 0 ? 'text-lime-500' : 'text-red-500'}`}>
                     {img.pnl >= 0 ? '+' : ''}{formatValue(img.pnl)}
                   </span>
                 )}
@@ -1245,7 +1245,7 @@ function ChartbookTab() {
                   #{selectedImage.tradeNumber}
                 </span>
                 {selectedImage.pnl !== null && (
-                  <span className={`text-sm font-mono font-medium ${selectedImage.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  <span className={`text-sm font-mono font-medium ${selectedImage.pnl >= 0 ? 'text-lime-500' : 'text-red-500'}`}>
                     {selectedImage.pnl >= 0 ? '+' : ''}{formatValue(selectedImage.pnl)}
                   </span>
                 )}

@@ -99,7 +99,7 @@ export default function EquityPage() {
         <Card>
           <CardContent className="pt-4 text-center">
             <p className="text-xs text-muted-foreground">Total P/L</p>
-            <p className={`text-lg font-mono font-bold ${stats.totalPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+            <p className={`text-lg font-mono font-bold ${stats.totalPnl >= 0 ? 'text-lime-500' : 'text-red-500'}`}>
               {stats.totalPnl >= 0 ? '+' : ''}{formatValue(stats.totalPnl)}
             </p>
           </CardContent>
@@ -159,7 +159,7 @@ export default function EquityPage() {
                     return (
                       <div className="rounded border bg-popover p-2 text-xs shadow-md">
                         <p className="font-medium">Trade #{d.trade} — {d.token}</p>
-                        <p className={d.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                        <p className={d.pnl >= 0 ? 'text-lime-500' : 'text-red-500'}>
                           P/L: {d.pnl >= 0 ? '+' : ''}{formatValue(d.pnl)}
                         </p>
                         <p className="text-muted-foreground">

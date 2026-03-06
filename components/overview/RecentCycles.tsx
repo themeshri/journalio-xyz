@@ -140,15 +140,15 @@ export const RecentCycles = forwardRef<RecentCyclesHandle, RecentCyclesProps>(
                         </TableCell>
                         <TableCell
                           className={`text-xs py-1.5 text-right font-mono tabular-nums font-medium ${
-                            t.profitLoss >= 0 ? 'text-emerald-500' : 'text-red-500'
+                            t.profitLoss >= 0 ? 'text-lime-500' : 'text-red-500'
                           }`}
                         >
                           {formatValue(t.profitLoss, true)}
                         </TableCell>
                         <TableCell className="text-xs py-1.5 text-center">
                           {isJournaled ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-500">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="inline-flex items-center gap-1 text-amber-500">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                               <span className="text-[10px]">Journaled</span>
                             </span>
                           ) : (

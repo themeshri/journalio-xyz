@@ -35,7 +35,7 @@ interface KPICardsProps {
 
 function Sparkline({ data, positive }: { data: { value: number }[]; positive: boolean }) {
   if (data.length < 2) return <div className="w-[80px] h-[40px]" />
-  const color = positive ? '#10b981' : '#ef4444'
+  const color = positive ? '#F59E0B' : '#ef4444'
   return (
     <AreaChart width={80} height={40} data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
       <defs>
@@ -96,7 +96,7 @@ function DonutRing({ winPct, lossPct }: { winPct: number; lossPct: number }) {
   let cursor = 0
 
   if (winPct > 0.1) {
-    segments.push({ path: wedgePath(cursor, cursor + winPct), color: '#10b981' })
+    segments.push({ path: wedgePath(cursor, cursor + winPct), color: '#F59E0B' })
     cursor += winPct
   }
   if (evenPct > 0.1) {
@@ -128,11 +128,11 @@ function ProfitBar({ avgWin, avgLoss, ratio }: { avgWin: number; avgLoss: number
     <div className="space-y-1 w-full">
       <p className="text-[10px] text-muted-foreground text-center font-mono">{ratio}</p>
       <div className="flex h-1.5 rounded-full overflow-hidden bg-zinc-800">
-        <div className="bg-emerald-500 rounded-l-full" style={{ width: `${winPct}%` }} />
+        <div className="bg-amber-500 rounded-l-full" style={{ width: `${winPct}%` }} />
         <div className="bg-red-500 rounded-r-full" style={{ width: `${100 - winPct}%` }} />
       </div>
       <div className="flex justify-between text-[9px] font-mono tabular-nums">
-        <span className="text-emerald-500">{formatValue(avgWin, true)}</span>
+        <span className="text-amber-500">{formatValue(avgWin, true)}</span>
         <span className="text-red-500">{formatValue(-avgLoss, true)}</span>
       </div>
     </div>
@@ -150,15 +150,15 @@ function DotIndicator({ factor }: { factor: number }) {
     const pos = i / (count - 1)
     if (pos < 0.35) return 'bg-red-500'
     if (pos < 0.5) return 'bg-amber-500'
-    return 'bg-emerald-500'
+    return 'bg-amber-500'
   })
   // Override: color by position in the filled range
-  // Red for low positions, yellow for mid, green for high
+  // Red for low positions, yellow for mid, gold for high
   const result = Array.from({ length: count }).map((_, i) => {
     if (i >= filled) return 'bg-zinc-700'
     if (i < 2) return 'bg-red-500'
-    if (i < 4) return 'bg-amber-500'
-    return 'bg-emerald-500'
+    if (i < 4) return 'bg-yellow-500'
+    return 'bg-amber-500'
   })
   return (
     <div className="flex gap-0.5">
@@ -239,7 +239,7 @@ export function KPICards({ trades }: KPICardsProps) {
           <div className="flex flex-col items-center justify-center">
             <DonutRing winPct={stats.winRate} lossPct={stats.lossRate} />
             <div className="flex gap-2 text-[10px] font-mono tabular-nums -mt-0.5">
-              <span className="text-emerald-500">{stats.winCount}</span>
+              <span className="text-amber-500">{stats.winCount}</span>
               <span className="text-zinc-500">{stats.evenCount}</span>
               <span className="text-red-500">{stats.lossCount}</span>
             </div>
@@ -287,7 +287,7 @@ export function KPICards({ trades }: KPICardsProps) {
             </p>
           </div>
           <div className="flex flex-col items-end justify-center gap-1 text-[10px] font-mono tabular-nums">
-            <span className="text-emerald-500">W {stats.avgWinDuration > 0 ? formatDurationNoSec(stats.avgWinDuration) : '-'}</span>
+            <span className="text-amber-500">W {stats.avgWinDuration > 0 ? formatDurationNoSec(stats.avgWinDuration) : '-'}</span>
             <span className="text-red-500">L {stats.avgLossDuration > 0 ? formatDurationNoSec(stats.avgLossDuration) : '-'}</span>
           </div>
         </CardContent>

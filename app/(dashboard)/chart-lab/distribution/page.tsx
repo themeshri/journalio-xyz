@@ -92,7 +92,7 @@ export default function DistributionPage() {
         <Card>
           <CardContent className="pt-4 text-center">
             <p className="text-xs text-muted-foreground">Avg Winner</p>
-            <p className="text-lg font-mono font-bold text-emerald-500">+{formatValue(stats.avgWin)}</p>
+            <p className="text-lg font-mono font-bold text-lime-500">+{formatValue(stats.avgWin)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -111,7 +111,7 @@ export default function DistributionPage() {
           <CardContent className="pt-4 text-center">
             <p className="text-xs text-muted-foreground">Record</p>
             <p className="text-lg font-mono font-bold">
-              <span className="text-emerald-500">{stats.wins}W</span>
+              <span className="text-lime-500">{stats.wins}W</span>
               {' / '}
               <span className="text-red-500">{stats.losses}L</span>
             </p>

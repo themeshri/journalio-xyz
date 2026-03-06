@@ -142,7 +142,7 @@ export function Evaluation({ trades }: EvaluationProps) {
             <div
               key={i}
               className={`w-4 h-3.5 rounded-[2px] flex items-center justify-center text-[8px] font-bold text-white ${
-                r === 'W' ? 'bg-emerald-500' : 'bg-red-500'
+                r === 'W' ? 'bg-amber-500' : 'bg-red-500'
               }`}
             >
               {r}

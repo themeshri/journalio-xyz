@@ -82,9 +82,9 @@ export function getDayColorClass(pnl: number, maxPnl: number, maxLoss: number): 
   if (pnl === 0) return 'bg-zinc-800'
   if (pnl > 0) {
     const intensity = Math.min(pnl / (maxPnl || 1), 1)
-    if (intensity > 0.66) return 'bg-emerald-500'
-    if (intensity > 0.33) return 'bg-emerald-600/70'
-    return 'bg-emerald-700/50'
+    if (intensity > 0.66) return 'bg-amber-500'
+    if (intensity > 0.33) return 'bg-amber-600/70'
+    return 'bg-amber-700/50'
   }
   const intensity = Math.min(Math.abs(pnl) / (maxLoss || 1), 1)
   if (intensity > 0.66) return 'bg-red-500'

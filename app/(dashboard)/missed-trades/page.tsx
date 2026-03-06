@@ -433,7 +433,7 @@ export default function MissedTradesPage() {
             {(multiplier > 0 || potentialPnL !== 0) && (
               <div className="flex gap-4 mt-3 text-xs font-mono tabular-nums">
                 {multiplier > 0 && (
-                  <span className={multiplier >= 1 ? 'text-emerald-600' : 'text-red-600'}>
+                  <span className={multiplier >= 1 ? 'text-lime-500' : 'text-red-600'}>
                     Multiplier: {multiplier.toFixed(1)}x
                   </span>
                 )}
@@ -443,7 +443,7 @@ export default function MissedTradesPage() {
                   </span>
                 )}
                 {potentialPnL !== 0 && (
-                  <span className={potentialPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                  <span className={potentialPnL >= 0 ? 'text-lime-500' : 'text-red-600'}>
                     P/L: {potentialPnL >= 0 ? '+' : ''}{formatValue(potentialPnL)}
                   </span>
                 )}
@@ -540,7 +540,7 @@ export default function MissedTradesPage() {
           <span>{totalMissed} missed trade{totalMissed !== 1 ? 's' : ''}</span>
           {wouldBeWinners > 0 && <span>{wouldBeWinners} would have been winner{wouldBeWinners !== 1 ? 's' : ''}</span>}
           {totalMissedProfit > 0 && (
-            <span className="text-emerald-600 font-medium">
+            <span className="text-amber-500 font-medium">
               Missed profit: +{formatValue(totalMissedProfit)}
             </span>
           )}
@@ -604,7 +604,7 @@ export default function MissedTradesPage() {
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums text-xs">
                     {play.potentialMultiplier
-                      ? <span className={play.potentialMultiplier >= 1 ? 'text-emerald-600' : 'text-red-600'}>
+                      ? <span className={play.potentialMultiplier >= 1 ? 'text-lime-500' : 'text-red-600'}>
                           {play.potentialMultiplier.toFixed(1)}x
                         </span>
                       : <span className="text-muted-foreground">&mdash;</span>
@@ -612,7 +612,7 @@ export default function MissedTradesPage() {
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums text-xs">
                     {play.potentialPnL != null
-                      ? <span className={play.potentialPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                      ? <span className={play.potentialPnL >= 0 ? 'text-lime-500' : 'text-red-600'}>
                           {play.potentialPnL >= 0 ? '+' : ''}{formatValue(play.potentialPnL)}
                         </span>
                       : <span className="text-muted-foreground">&mdash;</span>
@@ -621,7 +621,7 @@ export default function MissedTradesPage() {
                   <TableCell className="text-xs">
                     {play.outcome ? (
                       <span className={`capitalize ${
-                        play.outcome === 'win' ? 'text-emerald-600' :
+                        play.outcome === 'win' ? 'text-lime-500' :
                         play.outcome === 'loss' ? 'text-red-600' :
                         'text-muted-foreground'
                       }`}>

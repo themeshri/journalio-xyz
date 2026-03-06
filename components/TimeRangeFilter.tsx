@@ -64,7 +64,7 @@ export function TimeRangeFilter({ value, preset, onChange }: TimeRangeFilterProp
           onClick={() => handlePreset(p.value)}
           className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${
             preset === p.value
-              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600'
+              ? 'border-amber-500 bg-amber-500/10 text-amber-600'
               : 'border-border text-muted-foreground hover:bg-muted/50'
           }`}
         >
@@ -77,7 +77,7 @@ export function TimeRangeFilter({ value, preset, onChange }: TimeRangeFilterProp
           <button
             className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${
               preset === 'custom'
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600'
+                ? 'border-amber-500 bg-amber-500/10 text-amber-600'
                 : 'border-border text-muted-foreground hover:bg-muted/50'
             }`}
           >

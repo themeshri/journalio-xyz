@@ -49,7 +49,7 @@ function ratingLabel(rating: string | undefined) {
 }
 
 function ratingColor(rating: string | undefined) {
-  if (rating === 'positive') return 'text-emerald-500'
+  if (rating === 'positive') return 'text-amber-500'
   if (rating === 'negative') return 'text-red-500'
   return 'text-muted-foreground'
 }
@@ -189,7 +189,7 @@ export function DayDetailModal({
               <div className="grid grid-cols-3 gap-3 mt-2">
                 <div className="rounded-lg border p-3 text-center">
                   <p className="text-[10px] text-muted-foreground">P/L</p>
-                  <p className={`text-lg font-mono tabular-nums font-bold ${selectedDay.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  <p className={`text-lg font-mono tabular-nums font-bold ${selectedDay.pnl >= 0 ? 'text-lime-500' : 'text-red-500'}`}>
                     {selectedDay.pnl >= 0 ? '+' : ''}{formatValue(selectedDay.pnl)}
                   </p>
                 </div>
@@ -207,7 +207,7 @@ export function DayDetailModal({
               <div className="grid grid-cols-2 gap-3 mt-1">
                 <div className="rounded-lg border p-3 text-center">
                   <p className="text-[10px] text-muted-foreground">Best Trade</p>
-                  <p className="text-sm font-mono tabular-nums font-semibold text-emerald-500">+{formatValue(dayDetail.bestTrade)}</p>
+                  <p className="text-sm font-mono tabular-nums font-semibold text-lime-500">+{formatValue(dayDetail.bestTrade)}</p>
                 </div>
                 <div className="rounded-lg border p-3 text-center">
                   <p className="text-[10px] text-muted-foreground">Worst Trade</p>
@@ -282,7 +282,7 @@ export function DayDetailModal({
                 >
                   <div className="flex items-center gap-2">
                     {preSessions.find(p => p.date === selectedDay.date) ? (
-                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <CheckCircle className="h-4 w-4 text-amber-500" />
                     ) : (
                       <XCircle className="h-4 w-4 text-muted-foreground" />
                     )}
@@ -308,7 +308,7 @@ export function DayDetailModal({
                 >
                   <div className="flex items-center gap-2">
                     {postSessions.find(p => p.date === selectedDay.date) ? (
-                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <CheckCircle className="h-4 w-4 text-amber-500" />
                     ) : (
                       <XCircle className="h-4 w-4 text-muted-foreground" />
                     )}
@@ -375,7 +375,7 @@ export function DayDetailModal({
                               </div>
                             </TableCell>
                             <TableCell className={`text-xs text-right font-mono tabular-nums ${
-                              trade.profitLoss >= 0 ? 'text-emerald-500' : 'text-red-500'
+                              trade.profitLoss >= 0 ? 'text-lime-500' : 'text-red-500'
                             }`}>
                               {trade.profitLoss >= 0 ? '+' : ''}{formatValue(trade.profitLoss)}
                             </TableCell>
@@ -385,7 +385,7 @@ export function DayDetailModal({
                             <TableCell className="text-center">
                               <span className={`text-xs ${
                                 hasJournal 
-                                  ? 'text-emerald-500 font-medium' 
+                                  ? 'text-amber-500 font-medium' 
                                   : 'text-muted-foreground'
                               }`}>
                                 {hasJournal ? 'Journaled' : 'Not journaled'}

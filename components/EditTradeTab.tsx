@@ -151,7 +151,7 @@ export function EditTradeTab({ trade }: EditTradeTabProps) {
         </div>
         <div className="text-xs text-muted-foreground">
           P/L:{' '}
-          <span className={`font-mono font-medium ${displayPL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <span className={`font-mono font-medium ${displayPL >= 0 ? 'text-lime-500' : 'text-red-500'}`}>
             {displayPL >= 0 ? '+' : ''}${displayPL.toFixed(2)}
           </span>
         </div>
@@ -174,8 +174,8 @@ export function EditTradeTab({ trade }: EditTradeTabProps) {
                     <span
                       className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                         type === 'Buy'
-                          ? 'bg-emerald-500/10 text-emerald-600'
-                          : 'bg-red-500/10 text-red-600'
+                          ? 'bg-lime-500/10 text-lime-500'
+                          : 'bg-red-500/10 text-red-500'
                       }`}
                     >
                       {type}

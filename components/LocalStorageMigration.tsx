@@ -93,7 +93,7 @@ async function migrateStrategies(): Promise<number> {
           body: JSON.stringify({
             name: s.name,
             description: s.description || '',
-            color: s.color || '#10b981',
+            color: s.color || '#F59E0B',
             icon: s.icon || '📋',
             ruleGroups: s.ruleGroups || [],
             isArchived: s.isArchived || false,
@@ -315,7 +315,7 @@ export function LocalStorageMigration() {
   return (
     <div className="fixed inset-0 z-50 bg-background/90 flex items-center justify-center">
       <div className="text-center space-y-3">
-        <div className="h-8 w-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="h-8 w-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-medium">Migrating your data to the database...</p>
         <p className="text-xs text-muted-foreground">This only happens once</p>
       </div>

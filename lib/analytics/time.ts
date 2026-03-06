@@ -11,7 +11,7 @@ import { HOUR_LABELS, DAY_LABELS, isHourInSession } from './helpers'
 
 export const DEFAULT_TRADING_SESSIONS: TradingSession[] = [
   { name: 'Morning Degen', startHour: 5, endHour: 9, color: '#f59e0b' },
-  { name: 'Peak Hours', startHour: 9, endHour: 14, color: '#10b981' },
+  { name: 'Peak Hours', startHour: 9, endHour: 14, color: '#F59E0B' },
   { name: 'Afternoon', startHour: 14, endHour: 18, color: '#3b82f6' },
   { name: 'Evening', startHour: 18, endHour: 22, color: '#8b5cf6' },
   { name: 'Late Night', startHour: 22, endHour: 2, color: '#ef4444' },

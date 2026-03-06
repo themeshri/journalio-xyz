@@ -177,7 +177,7 @@ export const createManualTradesSchema = z.object({
 export const createStrategySchema = z.object({
   name: z.string().min(1, 'name is required').transform(s => s.trim()),
   description: z.string().optional().default(''),
-  color: z.string().optional().default('#10b981'),
+  color: z.string().optional().default('#F59E0B'),
   icon: z.string().optional().default('📋'),
   ruleGroups: z.array(z.any()).optional().default([]),
   isArchived: z.boolean().optional().default(false),

@@ -206,7 +206,7 @@ export function ManualTradeDialog({ walletAddress, chain, onClose, onSaved }: Ma
             <p className="text-xs text-muted-foreground">
               Sell total: <span className="font-mono text-foreground">${sellValue.toFixed(2)}</span>
               {' | '}P/L:{' '}
-              <span className={`font-mono font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`font-mono font-medium ${pl >= 0 ? 'text-lime-500' : 'text-red-500'}`}>
                 {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
               </span>
             </p>

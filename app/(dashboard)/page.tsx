@@ -105,7 +105,7 @@ export default function OverviewPage() {
       <div className="max-w-xl pt-8">
         <h1 className="text-xl font-semibold mb-2">Home</h1>
         <p className="text-sm text-muted-foreground">
-          <Link href="/wallet-management" className="text-emerald-600 hover:underline">Add a wallet</Link> in Wallet Management to start tracking trades.
+          <Link href="/wallet-management" className="text-amber-600 hover:underline">Add a wallet</Link> in Wallet Management to start tracking trades.
         </p>
       </div>
     )

@@ -64,7 +64,7 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
             <CardTitle className="text-sm">P/L Calendar</CardTitle>
             <span
               className={`text-xs font-mono tabular-nums font-semibold ${
-                calData.totalPnL >= 0 ? 'text-emerald-500' : 'text-red-500'
+                calData.totalPnL >= 0 ? 'text-lime-500' : 'text-red-500'
               }`}
             >
               {calData.totalPnL >= 0 ? '+' : ''}{formatValue(calData.totalPnL)}
@@ -113,7 +113,7 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
                     {day.tradeCount > 0 && (
                       <span
                         className={`text-[7px] font-mono tabular-nums ${
-                          pnl >= 0 ? 'text-emerald-600' : 'text-red-600'
+                          pnl >= 0 ? 'text-lime-500' : 'text-red-600'
                         }`}
                       >
                         {pnl >= 0 ? '+' : ''}{Math.abs(pnl) >= 1000 ? `${(pnl / 1000).toFixed(1)}k` : pnl.toFixed(0)}
@@ -127,7 +127,7 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
               <div className="h-8 rounded flex items-center justify-center">
                 <span
                   className={`text-[8px] font-mono tabular-nums ${
-                    week.weeklyPnL >= 0 ? 'text-emerald-500' : 'text-red-500'
+                    week.weeklyPnL >= 0 ? 'text-lime-500' : 'text-red-500'
                   }`}
                 >
                   {week.weeklyPnL !== 0 ? (week.weeklyPnL >= 0 ? '+' : '') + formatValue(week.weeklyPnL) : ''}

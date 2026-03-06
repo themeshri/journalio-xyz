@@ -40,10 +40,10 @@ function formatDurationFromDate(savedAt: string): string {
   return `${minutes}m`
 }
 
-function PulseDot({ color }: { color: 'blue' | 'green' | 'amber' }) {
+function PulseDot({ color }: { color: 'purple' | 'gold' | 'amber' }) {
   const colorClasses = {
-    blue: 'bg-blue-500',
-    green: 'bg-emerald-500',
+    purple: 'bg-violet-500',
+    gold: 'bg-amber-500',
     amber: 'bg-amber-500',
   }
   return (
@@ -88,12 +88,12 @@ export function SessionPills({
             }`}
           >
             {isDone && (
-              <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+              <CheckCircle2 className="h-3 w-3 text-amber-500 shrink-0" />
             )}
             {key === 'active' && autoTab === 'active' && (
               <span className="relative flex h-1.5 w-1.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
               </span>
             )}
             {label}
@@ -175,10 +175,10 @@ export function SessionHero({
 
   // Gradient + border colors per tab
   const gradients: Record<Tab, string> = {
-    pre: 'border-blue-200 dark:border-blue-800/40 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/10',
-    active: 'border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/10',
+    pre: 'border-violet-200 dark:border-violet-800/40 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/10',
+    active: 'border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/10',
     post: postSessionDone
-      ? 'border-emerald-200 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/10'
+      ? 'border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/10'
       : 'border-amber-200 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/10',
   }
 
@@ -221,10 +221,10 @@ function PreSessionPanel({ preSessionDone, today }: { preSessionDone: boolean; t
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500">
               <Check className="h-3 w-3 text-white" />
             </div>
-            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Pre-session complete</span>
+            <span className="text-sm font-medium text-amber-600 dark:text-amber-400">Pre-session complete</span>
           </div>
           <p className="text-xs text-muted-foreground">
             {today}
@@ -248,20 +248,20 @@ function PreSessionPanel({ preSessionDone, today }: { preSessionDone: boolean; t
     <div className="flex items-center justify-between gap-4">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <PulseDot color="blue" />
-          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Not started</span>
+          <PulseDot color="purple" />
+          <span className="text-xs font-medium text-violet-600 dark:text-violet-400">Not started</span>
         </div>
         <p className="text-xs text-muted-foreground">
           {today}
         </p>
-        <h2 className="text-lg font-semibold mb-1">Before you trade, set your intent.</h2>
+        <h2 className="text-lg font-heading font-semibold mb-1">Before you trade, set your intent.</h2>
         <p className="text-sm text-muted-foreground">
           Your best trades come from sessions where you started with a plan.
         </p>
       </div>
       <Link
         href="/diary/pre-session"
-        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 transition-colors shrink-0"
+        className="inline-flex items-center gap-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 transition-colors shrink-0"
       >
         Start Pre-Session
         <ArrowRight className="h-3.5 w-3.5" />
@@ -308,8 +308,8 @@ function ActivePanel({
       <div className="min-w-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <PulseDot color="green" />
-            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <PulseDot color="gold" />
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
               Session Active{sessionDuration ? ` · ${sessionDuration}` : ''}
             </span>
           </div>
@@ -320,7 +320,7 @@ function ActivePanel({
           )}
         </div>
 
-        <h2 className="text-lg font-semibold mb-1">Session in progress</h2>
+        <h2 className="text-lg font-heading font-semibold mb-1">Session in progress</h2>
         {preSessionData?.sessionIntent && (
           <p className="text-sm text-muted-foreground mb-3">
             Your plan: <span className="text-foreground font-medium">{preSessionData.sessionIntent}</span>
@@ -331,7 +331,7 @@ function ActivePanel({
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
             {rules.slice(0, 5).map((rule) => (
               <div key={rule.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Shield className="h-3 w-3 text-emerald-500 shrink-0" />
+                <Shield className="h-3 w-3 text-amber-500 shrink-0" />
                 <span>{rule.text}</span>
               </div>
             ))}
@@ -346,7 +346,7 @@ function ActivePanel({
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <span className="font-mono text-foreground">
-              <span className={sessionPL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+              <span className={sessionPL >= 0 ? 'text-lime-500' : 'text-red-500'}>
                 {sessionPL >= 0 ? '+' : ''}{formatValue(sessionPL)}
               </span>
             </span>
@@ -363,7 +363,7 @@ function ActivePanel({
       <div className="flex flex-col items-end gap-2 shrink-0">
         <button
           onClick={onJournalClick}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium px-4 py-2 transition-colors"
         >
           + Journal Trade
         </button>
@@ -400,12 +400,12 @@ function PostSessionPanel({
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500">
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500">
               <Check className="h-3 w-3 text-white" />
             </div>
-            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">All Done</span>
+            <span className="text-sm font-medium text-amber-600 dark:text-amber-400">All Done</span>
           </div>
-          <h2 className="text-lg font-semibold mb-1">All caught up for today</h2>
+          <h2 className="text-lg font-heading font-semibold mb-1">All caught up for today</h2>
           <p className="text-sm text-muted-foreground">
             Pre-session, post-session, and all {journalProgress.total} trade{journalProgress.total !== 1 ? 's' : ''} journaled. Nice work.
           </p>
@@ -430,7 +430,7 @@ function PostSessionPanel({
             <PulseDot color="amber" />
             <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Wrap Up</span>
           </div>
-          <h2 className="text-lg font-semibold mb-1">Journal your remaining trades</h2>
+          <h2 className="text-lg font-heading font-semibold mb-1">Journal your remaining trades</h2>
           <p className="text-sm text-muted-foreground">
             {journalRemaining} of {journalProgress.total} trade{journalProgress.total !== 1 ? 's' : ''} still need a journal entry.
           </p>
@@ -454,7 +454,7 @@ function PostSessionPanel({
           <PulseDot color="amber" />
           <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Not started</span>
         </div>
-        <h2 className="text-lg font-semibold mb-1">Close the loop on your session.</h2>
+        <h2 className="text-lg font-heading font-semibold mb-1">Close the loop on your session.</h2>
         <p className="text-sm text-muted-foreground">
           Review your day, log your emotions, and plan for tomorrow.
         </p>

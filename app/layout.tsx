@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { DM_Sans, JetBrains_Mono } from 'next/font/google'
+import { DM_Sans, JetBrains_Mono, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -15,12 +15,17 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
 })
 
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+})
+
 export const metadata: Metadata = {
   title: {
     default: 'Journalio',
     template: '%s',
   },
-  description: 'Your Solana trading journal and wallet tracker',
+  description: 'Premium trading journal and analytics for Solana, Base, and BNB traders',
 }
 
 export default function RootLayout({
@@ -30,7 +35,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${dmSans.variable} ${jetbrainsMono.variable} font-sans`}>
+      <body className={`${dmSans.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} font-sans`}>
         <ErrorBoundary>
           <Providers>{children}</Providers>
           <Toaster />

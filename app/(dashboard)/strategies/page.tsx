@@ -54,7 +54,7 @@ import { toast } from 'sonner'
 // ─── Constants ────────────────────────────────────────────────
 
 const PRESET_COLORS = [
-  '#10b981', // emerald
+  '#F59E0B', // gold
   '#3b82f6', // blue
   '#f59e0b', // amber
   '#ef4444', // red
@@ -81,7 +81,7 @@ const TEMPLATES: StrategyTemplate[] = [
     name: 'Solana Momentum',
     description: 'High-volume meme plays with strong social buzz',
     icon: '🚀',
-    color: '#10b981',
+    color: '#F59E0B',
     ruleGroups: [
       {
         name: 'Entry Criteria',

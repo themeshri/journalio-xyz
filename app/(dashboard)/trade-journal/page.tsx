@@ -216,14 +216,14 @@ export default function TradeJournalPage() {
         <TableCell className="text-right">
           <div
             className={`font-mono tabular-nums text-sm font-medium ${
-              trade.profitLoss >= 0 ? 'text-emerald-600' : 'text-red-600'
+              trade.profitLoss >= 0 ? 'text-lime-500' : 'text-red-500'
             }`}
           >
             {formatValue(trade.profitLoss, true)}
           </div>
           <div
             className={`font-mono tabular-nums text-xs ${
-              plPercent >= 0 ? 'text-emerald-600' : 'text-red-600'
+              plPercent >= 0 ? 'text-lime-500' : 'text-red-500'
             }`}
           >
             {formatPercentage(plPercent)}
@@ -272,7 +272,7 @@ export default function TradeJournalPage() {
             if (total === 0) return <span className="text-xs text-muted-foreground">&mdash;</span>
             const followed = journal.ruleResults.filter((r: any) => r.followed).length
             const pct = Math.round((followed / total) * 100)
-            const color = pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-red-600'
+            const color = pct >= 75 ? 'text-amber-500' : pct >= 50 ? 'text-amber-600' : 'text-red-500'
             return (
               <span className={`text-xs font-mono tabular-nums font-medium ${color}`}>
                 {pct}%
@@ -306,14 +306,14 @@ export default function TradeJournalPage() {
         <TableCell className="text-center">
           <span className="font-mono tabular-nums text-sm">
             <button
-              className="text-emerald-600 hover:underline underline-offset-2"
+              className="text-lime-500 hover:underline underline-offset-2"
               onClick={(e) => { e.stopPropagation(); setBuysModalTrade(trade) }}
             >
               {trade.buys.length}
             </button>
             <span className="text-muted-foreground mx-1">|</span>
             <button
-              className="text-red-600 hover:underline underline-offset-2"
+              className="text-red-500 hover:underline underline-offset-2"
               onClick={(e) => { e.stopPropagation(); setSellsModalTrade(trade) }}
             >
               {trade.sells.length}
@@ -369,7 +369,7 @@ export default function TradeJournalPage() {
         {/* Actions */}
         <TableCell className="text-center">
           {journal ? (
-            <span className="text-xs text-emerald-600 font-medium">Journaled</span>
+            <span className="text-xs text-amber-500 font-medium">Journaled</span>
           ) : (
             <span className="text-xs text-muted-foreground">Not Journaled</span>
           )}

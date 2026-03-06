@@ -47,12 +47,12 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const DAYS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 
 function getScoreColor(score: number): string {
-  if (score === 0) return 'bg-zinc-800/50'
-  if (score === 1) return 'bg-emerald-900/60'
-  if (score === 2) return 'bg-emerald-700/70'
-  if (score === 3) return 'bg-emerald-600/80'
-  if (score === 4) return 'bg-emerald-500'
-  return 'bg-emerald-400'
+  if (score === 0) return 'bg-slate-800/50'
+  if (score === 1) return 'bg-amber-900/60'
+  if (score === 2) return 'bg-amber-700/70'
+  if (score === 3) return 'bg-amber-600/80'
+  if (score === 4) return 'bg-amber-500'
+  return 'bg-amber-400'
 }
 
 function buildActivityData(
@@ -387,10 +387,10 @@ export function ActivityCalendar({
                                   <p>{activity.tradeCount} trade{activity.tradeCount !== 1 ? 's' : ''} · ${activity.pnl >= 0 ? '+' : ''}${activity.pnl.toFixed(2)}</p>
                                 )}
                                 <p className="flex items-center gap-1.5">
-                                  <span className={activity.preSession ? 'text-emerald-400' : 'text-zinc-500'}>
+                                  <span className={activity.preSession ? 'text-amber-400' : 'text-zinc-500'}>
                                     {activity.preSession ? '✓' : '○'} Pre
                                   </span>
-                                  <span className={activity.postSession ? 'text-emerald-400' : 'text-zinc-500'}>
+                                  <span className={activity.postSession ? 'text-amber-400' : 'text-zinc-500'}>
                                     {activity.postSession ? '✓' : '○'} Post
                                   </span>
                                 </p>

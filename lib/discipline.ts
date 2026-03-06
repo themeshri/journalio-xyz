@@ -43,7 +43,7 @@ export function computeTradeDiscipline(
 
 export interface RollingDisciplineResult {
   percentage: number
-  color: 'red' | 'yellow' | 'emerald'
+  color: 'red' | 'yellow' | 'gold'
 }
 
 export function computeRollingDiscipline(
@@ -64,22 +64,22 @@ export function computeRollingDiscipline(
   return { percentage: avg, color }
 }
 
-export function disciplineColor(percentage: number): 'red' | 'yellow' | 'emerald' {
+export function disciplineColor(percentage: number): 'red' | 'yellow' | 'gold' {
   if (percentage <= 33) return 'red'
   if (percentage <= 66) return 'yellow'
-  return 'emerald'
+  return 'gold'
 }
 
 export function disciplineBgClass(percentage: number): string {
   const c = disciplineColor(percentage)
   if (c === 'red') return 'bg-red-500'
   if (c === 'yellow') return 'bg-yellow-500'
-  return 'bg-emerald-500'
+  return 'bg-amber-500'
 }
 
 export function disciplineColorClass(percentage: number): string {
   const c = disciplineColor(percentage)
   if (c === 'red') return 'text-red-500'
   if (c === 'yellow') return 'text-yellow-500'
-  return 'text-emerald-500'
+  return 'text-amber-500'
 }

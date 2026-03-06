@@ -202,7 +202,7 @@ export default function PostSessionPage() {
             onClick={() => update('rulesFollowed', true)}
             className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
               data.rulesFollowed === true
-                ? 'bg-emerald-600 text-white border-emerald-600'
+                ? 'bg-amber-600 text-white border-amber-600'
                 : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
             }`}
           >

@@ -105,7 +105,7 @@ const emotionTags = [
 // Strategy loading is now from lib/strategies.ts
 
 function ratingDot(rating: TradeComment['rating']) {
-  if (rating === 'positive') return 'bg-emerald-500';
+  if (rating === 'positive') return 'bg-amber-500';
   if (rating === 'negative') return 'bg-red-500';
   return 'bg-zinc-400';
 }
@@ -376,16 +376,16 @@ const JournalModal = memo(function JournalModal({
             <span>Start: {formatTime(trade.startDate)}</span>
             {trade.endDate && <span>End: {formatTime(trade.endDate)}</span>}
             {trade.duration && <span>Duration: {formatDuration(trade.duration)}</span>}
-            <span className="text-emerald-600">
+            <span className="text-lime-500">
               Buy MC: {formatMarketCap(avgBuyPrice * 1_000_000_000)}
             </span>
             {avgSellPrice > 0 && (
-              <span className="text-red-600">
+              <span className="text-red-500">
                 Sell MC: {formatMarketCap(avgSellPrice * 1_000_000_000)}
               </span>
             )}
             <span
-              className={`font-medium ${trade.profitLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+              className={`font-medium ${trade.profitLoss >= 0 ? 'text-lime-500' : 'text-red-500'}`}
             >
               P/L: {trade.profitLoss >= 0 ? '+' : ''}
               {formatValue(trade.profitLoss)}
@@ -589,7 +589,7 @@ const JournalModal = memo(function JournalModal({
                     onClick={() => setFollowedExitRule(prev => prev === true ? null : true)}
                     className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
                       followedExitRule === true
-                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        ? 'bg-amber-600 text-white border-amber-600'
                         : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
                     }`}
                   >

@@ -107,7 +107,7 @@ export default function HoldingTimePage() {
                       <div className="rounded border bg-popover p-2 text-xs shadow-md">
                         <p className="font-medium">{d.token}</p>
                         <p className="text-muted-foreground">Duration: {formatDuration(d.durationMin * 60 * 1000)}</p>
-                        <p className={d.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                        <p className={d.pnl >= 0 ? 'text-lime-500' : 'text-red-500'}>
                           P/L: {d.pnl >= 0 ? '+' : ''}{formatValue(d.pnl)}
                         </p>
                       </div>

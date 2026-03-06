@@ -93,7 +93,7 @@ export function StrategySummary({ trades, journalMap, strategies }: StrategySumm
         {!hasData ? (
           <div>
             <p className="text-[10px] text-muted-foreground">No strategies tracked yet.</p>
-            <Link href="/strategies" className="text-[10px] text-emerald-500 hover:underline mt-0.5 inline-block">
+            <Link href="/strategies" className="text-[10px] text-amber-500 hover:underline mt-0.5 inline-block">
               Set up strategies &rarr;
             </Link>
           </div>
@@ -104,7 +104,7 @@ export function StrategySummary({ trades, journalMap, strategies }: StrategySumm
                 <p className="text-xs font-medium truncate">{best.name}</p>
                 <p className="text-[10px] text-muted-foreground">
                   {best.tradeCount} trades &middot; {best.winRate}% WR &middot;{' '}
-                  <span className={best.totalPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                  <span className={best.totalPnL >= 0 ? 'text-amber-500' : 'text-red-500'}>
                     {best.totalPnL >= 0 ? '+' : ''}{formatValue(best.totalPnL)}
                   </span>
                 </p>
@@ -123,7 +123,7 @@ export function StrategySummary({ trades, journalMap, strategies }: StrategySumm
               <div className="flex items-center gap-2">
                 <div className="h-1 rounded-full bg-zinc-800 overflow-hidden flex-1">
                   <div
-                    className={`h-full rounded-full ${avgCompliance >= 70 ? 'bg-emerald-500' : avgCompliance >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    className={`h-full rounded-full ${avgCompliance >= 70 ? 'bg-amber-500' : avgCompliance >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
                     style={{ width: `${avgCompliance}%` }}
                   />
                 </div>

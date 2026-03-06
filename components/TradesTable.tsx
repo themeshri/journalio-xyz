@@ -63,9 +63,9 @@ export const TradesTable = memo(function TradesTable({
                 <span
                   className={`text-xs font-medium ${
                     trade.type === 'buy'
-                      ? 'text-emerald-600'
+                      ? 'text-lime-500'
                       : trade.type === 'sell'
-                        ? 'text-red-600'
+                        ? 'text-red-500'
                         : 'text-muted-foreground'
                   }`}
                 >

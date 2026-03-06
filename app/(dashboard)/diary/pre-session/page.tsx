@@ -31,7 +31,7 @@ const emotionalOptions = [
 
 function getEnergyDescription(level: number): { text: string; className: string } | null {
   if (level >= 8)
-    return { text: 'Fully Charged — Sharp, alert, capable of complex analysis', className: 'text-emerald-600' }
+    return { text: 'Fully Charged — Sharp, alert, capable of complex analysis', className: 'text-amber-600' }
   if (level >= 5 && level <= 7)
     return { text: 'Partially Drained — Functional but distractible; stick to simpler setups', className: 'text-yellow-600' }
   if (level >= 3 && level <= 4)
@@ -151,11 +151,11 @@ export default function PreSessionPage() {
   const energyDesc = getEnergyDescription(data.energyLevel)
 
   function getEnergyColor(): string {
-    if (data.energyLevel >= 8) return 'bg-emerald-500 text-white'
+    if (data.energyLevel >= 8) return 'bg-amber-500 text-white'
     if (data.energyLevel >= 5 && data.energyLevel <= 7) return 'bg-yellow-500 text-white'
     if (data.energyLevel >= 3 && data.energyLevel <= 4) return 'bg-orange-500 text-white'
     if (data.energyLevel >= 1 && data.energyLevel <= 2) return 'bg-red-500 text-white'
-    return 'bg-emerald-500 text-white'
+    return 'bg-amber-500 text-white'
   }
 
   if (!loaded) {
@@ -173,7 +173,7 @@ export default function PreSessionPage() {
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-semibold">Pre Session</h1>
           {isCompletedToday ? (
-            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/30">
+            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/30">
               Completed
             </span>
           ) : (
@@ -291,7 +291,7 @@ export default function PreSessionPage() {
                     onClick={() => update('emotionalState', data.emotionalState === option ? '' : option)}
                     className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
                       data.emotionalState === option
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-600 font-medium'
                         : 'border-border text-muted-foreground hover:bg-muted/50'
                     }`}
                   >
@@ -390,7 +390,7 @@ export default function PreSessionPage() {
                     className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
                       data.hasOpenPositions === val
                         ? val
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-600 font-medium'
                           : 'border-zinc-500 bg-zinc-500/10 text-zinc-600 font-medium'
                         : 'border-border text-muted-foreground hover:bg-muted/50'
                     }`}
@@ -418,7 +418,7 @@ export default function PreSessionPage() {
               <div className="flex gap-2">
                 {(['Bullish', 'Neutral', 'Bearish'] as const).map((option) => {
                   const colorMap = {
-                    Bullish: 'border-emerald-500 bg-emerald-500/10 text-emerald-600',
+                    Bullish: 'border-amber-500 bg-amber-500/10 text-amber-600',
                     Neutral: 'border-zinc-500 bg-zinc-500/10 text-zinc-600',
                     Bearish: 'border-red-500 bg-red-500/10 text-red-600',
                   }
@@ -446,7 +446,7 @@ export default function PreSessionPage() {
               <div className="flex gap-2">
                 {(['Up', 'Sideways', 'Down'] as const).map((option) => {
                   const colorMap = {
-                    Up: 'border-emerald-500 bg-emerald-500/10 text-emerald-600',
+                    Up: 'border-amber-500 bg-amber-500/10 text-amber-600',
                     Sideways: 'border-zinc-500 bg-zinc-500/10 text-zinc-600',
                     Down: 'border-red-500 bg-red-500/10 text-red-600',
                   }
@@ -521,7 +521,7 @@ export default function PreSessionPage() {
                     className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
                       data.normalVolume === val
                         ? val
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-600 font-medium'
                           : 'border-yellow-500 bg-yellow-500/10 text-yellow-600 font-medium'
                         : 'border-border text-muted-foreground hover:bg-muted/50'
                     }`}
@@ -546,7 +546,7 @@ export default function PreSessionPage() {
             <div className="border border-dashed rounded-md px-4 py-3">
               <p className="text-sm text-muted-foreground">
                 No rules defined yet.{' '}
-                <Link href="/strategies" className="text-emerald-600 hover:underline">
+                <Link href="/strategies" className="text-amber-600 hover:underline">
                   Add rules on the Strategies page
                 </Link>{' '}
                 to see your checklist here.
@@ -560,7 +560,7 @@ export default function PreSessionPage() {
                   htmlFor={`rule-${rule.id}`}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-md border cursor-pointer transition-colors ${
                     data.rulesChecked.includes(rule.id)
-                      ? 'border-emerald-500 bg-emerald-500/5 text-foreground'
+                      ? 'border-amber-500 bg-amber-500/5 text-foreground'
                       : 'border-border text-muted-foreground hover:bg-muted/50'
                   }`}
                 >
@@ -586,7 +586,7 @@ export default function PreSessionPage() {
             {saving ? 'Saving...' : 'Save'}
           </Button>
           {saved && (
-            <span className="text-xs text-emerald-600 font-medium">Saved</span>
+            <span className="text-xs text-amber-600 font-medium">Saved</span>
           )}
         </div>
       </div>

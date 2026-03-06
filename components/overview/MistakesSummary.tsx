@@ -106,7 +106,7 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
         {!hasData ? (
           <div>
             <p className="text-[10px] text-muted-foreground">Journal trades to see discipline stats.</p>
-            <Link href="/trade-journal" className="text-[10px] text-emerald-500 hover:underline mt-0.5 inline-block">
+            <Link href="/trade-journal" className="text-[10px] text-amber-500 hover:underline mt-0.5 inline-block">
               Start journaling &rarr;
             </Link>
           </div>
@@ -116,7 +116,7 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
               <div className="flex items-center gap-2">
                 <div className="h-1 rounded-full bg-zinc-800 overflow-hidden flex-1">
                   <div
-                    className={`h-full rounded-full ${disciplineScore >= 70 ? 'bg-emerald-500' : disciplineScore >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    className={`h-full rounded-full ${disciplineScore >= 70 ? 'bg-amber-500' : disciplineScore >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
                     style={{ width: `${disciplineScore}%` }}
                   />
                 </div>
@@ -129,7 +129,7 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
                 <p className="text-xs font-medium">{topMistake.name}</p>
                 <p className="text-[10px] text-muted-foreground">
                   {topMistake.count} time{topMistake.count !== 1 ? 's' : ''} &middot; avg{' '}
-                  <span className={topMistake.avgPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                  <span className={topMistake.avgPnL >= 0 ? 'text-amber-500' : 'text-red-500'}>
                     {topMistake.avgPnL >= 0 ? '+' : ''}{formatValue(topMistake.avgPnL)}
                   </span>
                   /trade
@@ -153,7 +153,7 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
                   return totalCost !== 0 ? (
                     <p className="text-[10px] mt-0.5">
                       <span className="text-muted-foreground">Cost: </span>
-                      <span className={`font-mono tabular-nums ${totalCost >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      <span className={`font-mono tabular-nums ${totalCost >= 0 ? 'text-amber-500' : 'text-red-500'}`}>
                         {totalCost >= 0 ? '+' : ''}{formatValue(totalCost)}
                       </span>
                     </p>

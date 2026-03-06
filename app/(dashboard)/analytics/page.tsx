@@ -420,7 +420,7 @@ export default function AnalyticsPage() {
           <span className="text-muted-foreground">Avg P/L</span>
           <span
             className={`ml-2 font-mono tabular-nums font-semibold ${
-              avgPLPerTrade >= 0 ? 'text-emerald-600' : 'text-red-600'
+              avgPLPerTrade >= 0 ? 'text-lime-500' : 'text-red-600'
             }`}
           >
             {avgPLPerTrade >= 0 ? '+' : ''}
@@ -431,7 +431,7 @@ export default function AnalyticsPage() {
           <span className="text-muted-foreground">Total P/L</span>
           <span
             className={`ml-2 font-mono tabular-nums font-semibold ${
-              totalPL >= 0 ? 'text-emerald-600' : 'text-red-600'
+              totalPL >= 0 ? 'text-lime-500' : 'text-red-600'
             }`}
           >
             {totalPL >= 0 ? '+' : ''}
@@ -511,7 +511,7 @@ export default function AnalyticsPage() {
                 <div
                   className={`text-sm font-mono tabular-nums font-semibold ${
                     m.isCurrency
-                      ? m.value >= 0 ? 'text-emerald-600' : 'text-red-600'
+                      ? m.value >= 0 ? 'text-lime-500' : 'text-red-600'
                       : ''
                   }`}
                 >
@@ -729,7 +729,7 @@ export default function AnalyticsPage() {
                     <>
                       <div className="text-[10px] text-muted-foreground">{parseInt(day.date.split('-')[2])}</div>
                       {day.tradeCount > 0 && (
-                        <div className={`text-[10px] font-mono font-medium ${day.pnl >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                        <div className={`text-[10px] font-mono font-medium ${day.pnl >= 0 ? 'text-lime-300' : 'text-red-300'}`}>
                           {day.pnl >= 0 ? '+' : ''}{formatValue(day.pnl)}
                         </div>
                       )}
@@ -738,7 +738,7 @@ export default function AnalyticsPage() {
                 </div>
               ))}
               <div className="p-1.5 text-center flex items-center justify-center">
-                <span className={`text-xs font-mono ${week.weeklyPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <span className={`text-xs font-mono ${week.weeklyPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                   {week.weeklyPnL !== 0 ? `${week.weeklyPnL >= 0 ? '+' : ''}${formatValue(week.weeklyPnL)}` : '-'}
                 </span>
               </div>
@@ -755,7 +755,7 @@ export default function AnalyticsPage() {
                 <span>Trades: {dayData.tradeCount}</span>
                 <span>Wins: {dayData.wins}</span>
                 <span>Losses: {dayData.losses}</span>
-                <span className={dayData.pnl >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                <span className={dayData.pnl >= 0 ? 'text-lime-500' : 'text-red-600'}>
                   P/L: {dayData.pnl >= 0 ? '+' : ''}{formatValue(dayData.pnl)}
                 </span>
               </div>
@@ -880,7 +880,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">P/L</span>
-                    <span className={`font-mono ${s.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span className={`font-mono ${s.totalPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                       {s.totalPnL >= 0 ? '+' : ''}{formatValue(s.totalPnL)}
                     </span>
                   </div>
@@ -920,10 +920,10 @@ export default function AnalyticsPage() {
                   <tr key={d.bucket} className="border-b border-border/50">
                     <td className="p-2 font-medium">{d.bucket}</td>
                     <td className="p-2 text-right font-mono">{d.count}</td>
-                    <td className={`p-2 text-right font-mono ${d.avgPL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <td className={`p-2 text-right font-mono ${d.avgPL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                       {d.avgPL >= 0 ? '+' : ''}{formatValue(d.avgPL)}
                     </td>
-                    <td className={`p-2 text-right font-mono ${d.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <td className={`p-2 text-right font-mono ${d.totalPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                       {d.totalPnL >= 0 ? '+' : ''}{formatValue(d.totalPnL)}
                     </td>
                     <td className="p-2 text-right font-mono">{d.winRate}%</td>
@@ -967,10 +967,10 @@ export default function AnalyticsPage() {
                   <tr key={s.strategyId} className="border-b border-border/50">
                     <td className="p-2 font-medium">{s.strategyName}</td>
                     <td className="p-2 text-right font-mono">{s.tradeCount}</td>
-                    <td className={`p-2 text-right font-mono ${s.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <td className={`p-2 text-right font-mono ${s.totalPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                       {s.totalPnL >= 0 ? '+' : ''}{formatValue(s.totalPnL)}
                     </td>
-                    <td className={`p-2 text-right font-mono ${s.avgPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <td className={`p-2 text-right font-mono ${s.avgPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                       {formatValue(s.avgPnL)}
                     </td>
                     <td className="p-2 text-right font-mono">{s.winRate}%</td>
@@ -978,7 +978,7 @@ export default function AnalyticsPage() {
                       {s.profitFactor === Infinity ? '\u221e' : s.profitFactor.toFixed(2)}
                     </td>
                     <td className="p-2 text-right font-mono">{s.avgFollowRate > 0 ? `${s.avgFollowRate}%` : '-'}</td>
-                    <td className="p-2 text-right font-mono text-emerald-600">+{formatValue(s.bestTrade)}</td>
+                    <td className="p-2 text-right font-mono text-lime-500">+{formatValue(s.bestTrade)}</td>
                     <td className="p-2 text-right font-mono text-red-600">{formatValue(s.worstTrade)}</td>
                   </tr>
                 ))}
@@ -1133,7 +1133,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border p-3">
               <p className="text-[10px] text-muted-foreground mb-1">Actual Trading</p>
-              <div className={`text-sm font-mono font-semibold ${hesitationCost.totalActualPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <div className={`text-sm font-mono font-semibold ${hesitationCost.totalActualPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                 {hesitationCost.totalActualPnL >= 0 ? '+' : ''}{formatValue(hesitationCost.totalActualPnL)}
               </div>
               <p className="text-[10px] text-muted-foreground">{hesitationCost.actualWinRate}% win rate</p>
@@ -1485,7 +1485,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">P/L</span>
-                        <span className={`font-mono tabular-nums ${whatIfResult.original.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <span className={`font-mono tabular-nums ${whatIfResult.original.totalPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                           {formatValue(whatIfResult.original.totalPnL)}
                         </span>
                       </div>
@@ -1501,7 +1501,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Avg P/L</span>
-                        <span className={`font-mono tabular-nums ${whatIfResult.original.avgPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <span className={`font-mono tabular-nums ${whatIfResult.original.avgPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                           {formatValue(whatIfResult.original.avgPnL)}
                         </span>
                       </div>
@@ -1509,7 +1509,7 @@ export default function AnalyticsPage() {
                   </div>
 
                   {/* What-If */}
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
                     <p className="text-xs text-muted-foreground mb-3 font-medium">
                       What-If <span className="text-muted-foreground/70">(-{whatIfResult.tradesRemoved} trades)</span>
                     </p>
@@ -1520,7 +1520,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">P/L</span>
-                        <span className={`font-mono tabular-nums ${whatIfResult.filtered.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <span className={`font-mono tabular-nums ${whatIfResult.filtered.totalPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                           {formatValue(whatIfResult.filtered.totalPnL)}
                         </span>
                       </div>
@@ -1536,7 +1536,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Avg P/L</span>
-                        <span className={`font-mono tabular-nums ${whatIfResult.filtered.avgPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <span className={`font-mono tabular-nums ${whatIfResult.filtered.avgPnL >= 0 ? 'text-lime-500' : 'text-red-600'}`}>
                           {formatValue(whatIfResult.filtered.avgPnL)}
                         </span>
                       </div>

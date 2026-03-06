@@ -108,7 +108,7 @@ export function AppSidebar() {
   const { preSessionDone } = useMetadata()
   const { theme, setTheme } = useTheme()
   const isDark = theme === 'dark'
-  const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
+  const [disciplineDotColor, setDisciplineDotColor] = useState<'gold' | 'yellow' | 'red' | null>(null)
 
   // Compute discipline from journal map (from context)
   useEffect(() => {
@@ -175,7 +175,7 @@ export function AppSidebar() {
       return (
         <span
           className={`ml-auto inline-block h-2 w-2 rounded-full shrink-0 ${
-            preSessionDone ? 'bg-emerald-500' : 'bg-zinc-400'
+            preSessionDone ? 'bg-amber-500' : 'bg-zinc-400'
           }`}
           title={preSessionDone ? 'Completed today' : 'Not completed today'}
         />
@@ -185,7 +185,7 @@ export function AppSidebar() {
       return (
         <span
           className={`ml-auto inline-block h-2 w-2 rounded-full shrink-0 ${
-            disciplineDotColor === 'emerald' ? 'bg-emerald-500' : disciplineDotColor === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+            disciplineDotColor === 'gold' ? 'bg-amber-500' : disciplineDotColor === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
           }`}
           title={`Rolling discipline: ${disciplineDotColor}`}
         />
@@ -317,7 +317,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-4 py-5">
         <div className="flex items-center justify-between">
-          <div className="text-base font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+          <div className="text-base font-heading font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
             Journalio
           </div>
           <button
