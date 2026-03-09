@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
       preSessionDone: false,
       postSessionDone: false,
       missedTrades: [],
-      settings: { timezone: 'UTC', tradingStartTime: '09:00' },
+      settings: { timezone: 'UTC', tradingStartTime: '09:00', onboardingStep: null as number | null },
       yearlyPreSessions: [],
       yearlyPostSessions: [],
       savedWallets: savedWalletsResponse,
@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
     // Fetch user settings for timezone-aware trading day
     const userSettings = await prisma.userSettings.findUnique({
       where: { userId: userId },
-      select: { timezone: true, tradingStartTime: true },
+      select: { timezone: true, tradingStartTime: true, onboardingStep: true },
     })
     const timezone = userSettings?.timezone || 'UTC'
     const tradingStartTime = userSettings?.tradingStartTime || '09:00'
@@ -305,7 +305,7 @@ export async function GET(request: NextRequest) {
       preSessionDone: !!(todayPreSession?.savedAt),
       postSessionDone: !!todayPostSession,
       missedTrades,
-      settings: { timezone, tradingStartTime },
+      settings: { timezone, tradingStartTime, onboardingStep: userSettings?.onboardingStep ?? null },
       yearlyPreSessions: yearlyPreSessionsRaw,
       yearlyPostSessions: yearlyPostSessionsRaw,
       savedWallets: savedWalletsResponse,

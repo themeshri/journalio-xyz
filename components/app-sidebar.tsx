@@ -51,11 +51,12 @@ type NavItem = {
   icon: LucideIcon
   children?: { label: string; href: string }[]
   badge?: 'preSession' | 'discipline'
+  dataTour?: string
 }
 
 const mainNav: NavItem[] = [
   { label: 'Home', href: '/', icon: Home },
-  { label: 'Journal', href: '/trade-journal', icon: BookOpen, badge: 'discipline' },
+  { label: 'Journal', href: '/trade-journal', icon: BookOpen, badge: 'discipline', dataTour: 'nav-journal' },
   {
     label: 'Session Diary',
     href: '/diary',
@@ -215,7 +216,7 @@ export function AppSidebar() {
             isActive={isActive(item.href)}
             tooltip={item.label}
           >
-            <Link href={item.href}>
+            <Link href={item.href} {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}>
               <item.icon />
               <span>{item.label}</span>
               {renderBadge(item.badge)}
@@ -320,7 +321,7 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" data-tour="sidebar">
       <SidebarHeader className="px-4 py-5">
         <div className="flex items-center justify-between">
           <div className="text-base font-semibold tracking-tight group-data-[collapsible=icon]:hidden">

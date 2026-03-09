@@ -38,7 +38,7 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const validation = validateBody(updateSettingsSchema, body)
     if ('error' in validation) return validation.error
-    const { displayName, transactionLimit, showUSDValues, darkMode, timezone, tradingStartTime } = validation.data
+    const { displayName, transactionLimit, showUSDValues, darkMode, timezone, tradingStartTime, onboardingStep } = validation.data
 
     // Find or create settings
     let settings = await prisma.userSettings.findUnique({
@@ -61,6 +61,7 @@ export async function PATCH(request: NextRequest) {
         ...(darkMode !== undefined && { darkMode }),
         ...(timezone !== undefined && { timezone }),
         ...(tradingStartTime !== undefined && { tradingStartTime }),
+        ...(onboardingStep !== undefined && { onboardingStep }),
       },
     })
 

@@ -488,6 +488,25 @@ export default function SettingsPage() {
 
       {/* Actions */}
       <div className="flex gap-2 justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={async () => {
+            try {
+              await fetch('/api/settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ onboardingStep: 0 }),
+              })
+              window.location.reload()
+            } catch {
+              toast.error('Failed to restart onboarding')
+            }
+          }}
+        >
+          Replay Onboarding
+        </Button>
         <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setResetConfirm(true)}>
           Reset to Default
         </Button>

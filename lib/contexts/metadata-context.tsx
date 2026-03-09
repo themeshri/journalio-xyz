@@ -29,6 +29,8 @@ export interface MetadataContextValue {
   setTimeFilter: (range: TimeRange, preset: TimePreset) => void
   timezone: string
   tradingStartTime: string
+  onboardingStep: number | null
+  setOnboardingStep: (step: number | null) => void
 }
 
 export const MetadataContext = createContext<MetadataContextValue | null>(null)

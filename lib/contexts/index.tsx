@@ -166,6 +166,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const userTimezoneRef = useRef<{ timezone: string; tradingStartTime: string }>({ timezone: 'UTC', tradingStartTime: '09:00' })
   const [userTimezone, setUserTimezone] = useState('UTC')
   const [userTradingStartTime, setUserTradingStartTime] = useState('09:00')
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(null)
 
   // ─── Balances ─────────────────────────────────────────
   const [walletTokens, setWalletTokens] = useState<Map<string, WalletToken[]>>(new Map())
@@ -305,6 +306,9 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
           userTimezoneRef.current = { timezone: tz, tradingStartTime: tst }
           setUserTimezone(tz)
           setUserTradingStartTime(tst)
+          if (data.settings.onboardingStep !== undefined) {
+            setOnboardingStep(data.settings.onboardingStep)
+          }
         }
 
         // Hydrate metadata
@@ -676,7 +680,9 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     setTimeFilter,
     timezone: userTimezone,
     tradingStartTime: userTradingStartTime,
-  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter, userTimezone, userTradingStartTime])
+    onboardingStep,
+    setOnboardingStep,
+  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter, userTimezone, userTradingStartTime, onboardingStep, setOnboardingStep])
 
   const balanceValue = useMemo(() => ({
     walletTokens,

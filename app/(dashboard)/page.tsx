@@ -26,7 +26,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, strategies } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, strategies, onboardingStep } = useMetadata()
 
   // Set page title
   useEffect(() => {
@@ -101,16 +101,20 @@ export default function OverviewPage() {
     )
   }
 
+  const onboardingActive = onboardingStep !== null && onboardingStep < 6
+
   if (!hasActiveWallets) {
     return (
       <div className="pt-8 space-y-6">
         <h1 className="text-xl font-semibold">Home</h1>
-        <GettingStarted
-          hasWallets={false}
-          hasTimezone={timezone !== 'UTC'}
-          hasStrategies={strategies.length > 0}
-          preSessionDone={preSessionDone}
-        />
+        {!onboardingActive && (
+          <GettingStarted
+            hasWallets={false}
+            hasTimezone={timezone !== 'UTC'}
+            hasStrategies={strategies.length > 0}
+            preSessionDone={preSessionDone}
+          />
+        )}
       </div>
     )
   }
@@ -155,15 +159,18 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* Getting Started checklist (auto-hides when all steps complete) */}
-      <GettingStarted
-        hasWallets={hasActiveWallets}
-        hasTimezone={timezone !== 'UTC'}
-        hasStrategies={strategies.length > 0}
-        preSessionDone={preSessionDone}
-      />
+      {/* Getting Started checklist (auto-hides when all steps complete or during onboarding) */}
+      {!onboardingActive && (
+        <GettingStarted
+          hasWallets={hasActiveWallets}
+          hasTimezone={timezone !== 'UTC'}
+          hasStrategies={strategies.length > 0}
+          preSessionDone={preSessionDone}
+        />
+      )}
 
       {/* Row 1: Session Hero */}
+      <div data-tour="session-hero">
       <ErrorBoundary fallback={sectionErrorFallback}>
         <SessionHero
           preSessionDone={preSessionDone}
@@ -176,11 +183,14 @@ export default function OverviewPage() {
           tradingStartTime={tradingStartTime}
         />
       </ErrorBoundary>
+      </div>
 
       {/* Row 2: KPI Cards — 7-card horizontal strip */}
+      <div data-tour="kpi-cards">
       <ErrorBoundary fallback={sectionErrorFallback}>
         <KPICards trades={filteredTrades} />
       </ErrorBoundary>
+      </div>
 
       {/* Row 3: Recent Trades + Evaluation */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

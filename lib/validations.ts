@@ -237,4 +237,5 @@ export const updateSettingsSchema = z.object({
   darkMode: z.boolean().optional(),
   timezone: z.string().optional(),
   tradingStartTime: z.string().regex(/^\d{2}:\d{2}$/, 'tradingStartTime must be HH:mm format').optional(),
+  onboardingStep: z.number().int().min(0).max(6).nullable().optional(),
 })

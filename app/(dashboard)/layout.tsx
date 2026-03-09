@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { DashboardProviders } from '@/lib/contexts'
 import { StaleDataBanner } from '@/components/StaleDataBanner'
 import { LocalStorageMigration } from '@/components/LocalStorageMigration'
+import { OnboardingGate } from '@/components/onboarding/OnboardingGate'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AccountDropdown } from '@/components/AccountDropdown'
 import { GlobalFilterBar } from '@/components/GlobalFilterBar'
@@ -57,6 +58,7 @@ export default function DashboardLayout({
                 <AccountDropdown />
               </div>
             </header>
+            <OnboardingGate />
             <div className="flex-1 overflow-auto px-6 py-6">
               <LocalStorageMigration />
               <StaleDataBanner />
