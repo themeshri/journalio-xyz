@@ -43,6 +43,17 @@ import {
   Pie,
 } from 'recharts'
 import { Separator } from '@/components/ui/separator'
+import {
+  GlowFilter,
+  GlowAreaGradient,
+  GradientBarDefs,
+  HatchPatternDefs,
+  DottedBackgroundPattern,
+  CustomGradientBar,
+  CustomHatchedBar,
+  CustomDuotoneBar,
+  ActivePingingDot,
+} from '@/lib/chart-effects'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
@@ -925,6 +936,9 @@ export default function AnalyticsPage() {
                     <p className="text-xs text-muted-foreground mb-3">Equity curve comparison</p>
                     <ChartContainer config={whatIfEquityConfig} className="h-[220px] w-full">
                       <LineChart data={whatIfEquityData}>
+                        <defs>
+                          <GlowFilter id="whatif-glow" color="var(--color-actualPnL)" stdDeviation={2.5} />
+                        </defs>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis dataKey="tradeIndex" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
@@ -938,7 +952,7 @@ export default function AnalyticsPage() {
                             />
                           }
                         />
-                        <Line type="monotone" dataKey="actualPnL" stroke="var(--color-actualPnL)" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="actualPnL" stroke="var(--color-actualPnL)" strokeWidth={2} dot={false} filter="url(#whatif-glow)" />
                         <Line type="monotone" dataKey="filteredPnL" stroke="var(--color-filteredPnL)" strokeWidth={2} strokeDasharray="6 3" dot={false} />
                       </LineChart>
                     </ChartContainer>
@@ -967,6 +981,10 @@ export default function AnalyticsPage() {
           <h2 className="text-sm font-semibold mb-4">Cumulative P/L</h2>
           <ChartContainer config={plConfig} className="h-[250px] w-full">
             <LineChart data={plData}>
+              <defs>
+                <GlowFilter id="pl-glow" color="var(--color-cumulativePL)" stdDeviation={3} />
+                <GlowAreaGradient id="pl-area-grad" color="var(--color-cumulativePL)" topOpacity={0.2} />
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis
                 dataKey="date"
@@ -991,7 +1009,8 @@ export default function AnalyticsPage() {
                   />
                 }
               />
-              <Line type="monotone" dataKey="cumulativePL" stroke="var(--color-cumulativePL)" strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="cumulativePL" stroke="none" fill="url(#pl-area-grad)" />
+              <Line type="monotone" dataKey="cumulativePL" stroke="var(--color-cumulativePL)" strokeWidth={2} dot={false} filter="url(#pl-glow)" activeDot={<ActivePingingDot />} />
             </LineChart>
           </ChartContainer>
         </section>
@@ -1003,11 +1022,16 @@ export default function AnalyticsPage() {
           <h2 className="text-sm font-semibold mb-4">Trade Duration Distribution</h2>
           <ChartContainer config={durationConfig} className="h-[220px] w-full">
             <BarChart data={durationData}>
+              <defs>
+                <GradientBarDefs id="duration-grad" color="var(--color-count)" />
+                <DottedBackgroundPattern id="duration-dots" />
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <rect width="100%" height="100%" fill="url(#duration-dots)" />
               <XAxis dataKey="bucket" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="count" fill="var(--color-count)" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="count" fill="url(#duration-grad)" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ChartContainer>
         </section>
@@ -1028,6 +1052,10 @@ export default function AnalyticsPage() {
           </div>
           <ChartContainer config={hoursConfig} className="h-[220px] w-full">
             <BarChart data={hoursData}>
+              <defs>
+                <GradientBarDefs id="hours-grad-green" color="oklch(0.527 0.154 163.225)" />
+                <GradientBarDefs id="hours-grad-red" color="oklch(0.577 0.245 27.325)" />
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="hour" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={2} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -1047,7 +1075,7 @@ export default function AnalyticsPage() {
                     key={index}
                     fill={
                       entry.count === 0 ? 'var(--color-count)'
-                        : entry.avgPL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'
+                        : entry.avgPL >= 0 ? 'url(#hours-grad-green)' : 'url(#hours-grad-red)'
                     }
                   />
                 ))}
@@ -1096,7 +1124,7 @@ export default function AnalyticsPage() {
               {week.days.map((day, di) => (
                 <div
                   key={di}
-                  className={`p-1.5 min-h-[52px] border-r text-center cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all ${
+                  className={`p-1.5 min-h-[52px] border-r text-center cursor-pointer hover:ring-1 hover:ring-primary/30 hover:shadow-[0_0_8px_rgba(16,185,129,0.2)] transition-all ${
                     day && day.tradeCount > 0 ? getDayColorClass(day.pnl, calMaxPnl, calMaxLoss) : 'bg-zinc-100 dark:bg-zinc-800/30'
                   } ${selectedDay === day?.date ? 'ring-2 ring-primary' : ''}`}
                   onClick={() => day && day.tradeCount > 0 && setSelectedDay(selectedDay === day.date ? null : day.date)}
@@ -1162,7 +1190,13 @@ export default function AnalyticsPage() {
           <p className="text-xs text-muted-foreground mb-3">Total P/L by hour of day</p>
           <ChartContainer config={hourlyPLConfig} className="h-[220px] w-full">
             <BarChart data={hourlyPerfData}>
+              <defs>
+                <GradientBarDefs id="hourly-grad-green" color="oklch(0.527 0.154 163.225)" />
+                <GradientBarDefs id="hourly-grad-red" color="oklch(0.577 0.245 27.325)" />
+                <DottedBackgroundPattern id="hourly-dots" />
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <rect width="100%" height="100%" fill="url(#hourly-dots)" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={2} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
               <ReferenceLine y={0} stroke="var(--border)" />
@@ -1178,7 +1212,7 @@ export default function AnalyticsPage() {
               />
               <Bar dataKey="totalPnL" radius={[2, 2, 0, 0]}>
                 {hourlyPerfData.map((entry, index) => (
-                  <Cell key={index} fill={entry.totalPnL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'} />
+                  <Cell key={index} fill={entry.totalPnL >= 0 ? 'url(#hourly-grad-green)' : 'url(#hourly-grad-red)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -1202,6 +1236,10 @@ export default function AnalyticsPage() {
           <h2 className="text-sm font-semibold mb-4">Day of Week Performance</h2>
           <ChartContainer config={dayOfWeekConfig} className="h-[200px] w-full">
             <BarChart data={dayOfWeekData}>
+              <defs>
+                <GradientBarDefs id="dow-grad-green" color="oklch(0.527 0.154 163.225)" />
+                <HatchPatternDefs id="dow-hatch-red" color="oklch(0.577 0.245 27.325)" />
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
@@ -1218,7 +1256,7 @@ export default function AnalyticsPage() {
               />
               <Bar dataKey="totalPnL" radius={[3, 3, 0, 0]}>
                 {dayOfWeekData.map((entry, index) => (
-                  <Cell key={index} fill={entry.totalPnL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'} />
+                  <Cell key={index} fill={entry.totalPnL >= 0 ? 'url(#dow-grad-green)' : 'url(#dow-hatch-red)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -1332,6 +1370,10 @@ export default function AnalyticsPage() {
           <p className="text-xs text-muted-foreground mb-3">Difference in avg P/L when rule is followed vs skipped</p>
           <ChartContainer config={ruleImpactConfig} className="w-full" style={{ height: `${ruleImpactData.length * 32 + 40}px` }}>
             <BarChart data={ruleImpactData} layout="vertical" margin={{ left: 20, right: 20 }}>
+              <defs>
+                <GradientBarDefs id="rule-grad-green" color="oklch(0.527 0.154 163.225)" />
+                <HatchPatternDefs id="rule-hatch-red" color="oklch(0.577 0.245 27.325)" />
+              </defs>
               <CartesianGrid horizontal={false} strokeDasharray="3 3" />
               <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
               <YAxis dataKey="ruleText" type="category" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={180} />
@@ -1348,7 +1390,7 @@ export default function AnalyticsPage() {
               />
               <Bar dataKey="impact" radius={[0, 3, 3, 0]}>
                 {ruleImpactData.map((entry, index) => (
-                  <Cell key={index} fill={entry.impact >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'} />
+                  <Cell key={index} fill={entry.impact >= 0 ? 'url(#rule-grad-green)' : 'url(#rule-hatch-red)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -1361,6 +1403,10 @@ export default function AnalyticsPage() {
           <h2 className="text-sm font-semibold mb-4">Checklist Completion vs P/L</h2>
           <ChartContainer config={completionConfig} className="h-[200px] w-full">
             <BarChart data={completionData}>
+              <defs>
+                <GradientBarDefs id="comp-grad-green" color="oklch(0.527 0.154 163.225)" />
+                <GradientBarDefs id="comp-grad-red" color="oklch(0.577 0.245 27.325)" />
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="range" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
@@ -1377,7 +1423,7 @@ export default function AnalyticsPage() {
               />
               <Bar dataKey="avgPnL" radius={[3, 3, 0, 0]}>
                 {completionData.map((entry, index) => (
-                  <Cell key={index} fill={entry.avgPnL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'} />
+                  <Cell key={index} fill={entry.avgPnL >= 0 ? 'url(#comp-grad-green)' : 'url(#comp-grad-red)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -1488,6 +1534,10 @@ export default function AnalyticsPage() {
         {commentPerfData.length > 0 ? (
           <ChartContainer config={commentPerfConfig} className="w-full" style={{ height: `${commentPerfData.length * 36 + 40}px` }}>
             <BarChart data={commentPerfData} layout="vertical" margin={{ left: 20, right: 20 }}>
+              <defs>
+                <GradientBarDefs id="comment-grad-green" color="oklch(0.527 0.154 163.225)" />
+                <GradientBarDefs id="comment-grad-red" color="oklch(0.577 0.245 27.325)" />
+              </defs>
               <CartesianGrid horizontal={false} strokeDasharray="3 3" />
               <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
               <YAxis dataKey="label" type="category" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={160} />
@@ -1503,7 +1553,7 @@ export default function AnalyticsPage() {
               />
               <Bar dataKey="totalPnL" radius={[0, 3, 3, 0]}>
                 {commentPerfData.map((entry, index) => (
-                  <Cell key={index} fill={entry.totalPnL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'} />
+                  <Cell key={index} fill={entry.totalPnL >= 0 ? 'url(#comment-grad-green)' : 'url(#comment-grad-red)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -1519,6 +1569,9 @@ export default function AnalyticsPage() {
           <p className="text-xs text-muted-foreground mb-3">% of positive comments out of all non-neutral comments assigned</p>
           <ChartContainer config={efficiencyConfig} className="h-[250px] w-full">
             <LineChart data={efficiencyData}>
+              <defs>
+                <GlowFilter id="eff-glow" color="oklch(0.527 0.154 163.225)" stdDeviation={2.5} />
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="tradeIndex" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} label={{ value: 'Trade #', position: 'insideBottomRight', offset: -5, fontSize: 10 }} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
@@ -1530,7 +1583,7 @@ export default function AnalyticsPage() {
                   />
                 }
               />
-              <Line type="monotone" dataKey="cumulativeEfficiency" stroke="var(--color-cumulativeEfficiency)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="cumulativeEfficiency" stroke="var(--color-cumulativeEfficiency)" strokeWidth={2} dot={false} filter="url(#eff-glow)" activeDot={<ActivePingingDot />} />
               <Line type="monotone" dataKey="rollingEfficiency" stroke="var(--color-rollingEfficiency)" strokeWidth={1.5} strokeDasharray="4 2" dot={false} />
             </LineChart>
           </ChartContainer>
@@ -1543,6 +1596,10 @@ export default function AnalyticsPage() {
           <p className="text-xs text-muted-foreground mb-3">See how discipline score correlates with your equity curve</p>
           <ChartContainer config={disciplineEquityConfig} className="h-[280px] w-full">
             <ComposedChart data={disciplineEquityData}>
+              <defs>
+                <GlowFilter id="disc-eq-glow" color="var(--color-cumulativePnL)" stdDeviation={3} />
+                <GlowAreaGradient id="disc-area-grad" color="oklch(0.527 0.154 163.225)" topOpacity={0.15} />
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="tradeIndex" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis yAxisId="pnl" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
@@ -1557,8 +1614,8 @@ export default function AnalyticsPage() {
                   />
                 }
               />
-              <Area yAxisId="discipline" type="monotone" dataKey="disciplineScore" stroke="oklch(0.527 0.154 163.225)" fill="oklch(0.527 0.154 163.225)" fillOpacity={0.1} strokeWidth={1} />
-              <Line yAxisId="pnl" type="monotone" dataKey="cumulativePnL" stroke="var(--color-cumulativePnL)" strokeWidth={2} dot={false} />
+              <Area yAxisId="discipline" type="monotone" dataKey="disciplineScore" stroke="oklch(0.527 0.154 163.225)" fill="url(#disc-area-grad)" strokeWidth={1} />
+              <Line yAxisId="pnl" type="monotone" dataKey="cumulativePnL" stroke="var(--color-cumulativePnL)" strokeWidth={2} dot={false} filter="url(#disc-eq-glow)" activeDot={<ActivePingingDot />} />
             </ComposedChart>
           </ChartContainer>
         </section>
@@ -1577,6 +1634,10 @@ export default function AnalyticsPage() {
           <p className="text-xs text-muted-foreground mb-3">Average P/L when trading with each emotional state</p>
           <ChartContainer config={behaviorBarConfig} className="w-full" style={{ height: `${behaviorData.emotionPerf.length * 36 + 40}px` }}>
             <BarChart data={behaviorData.emotionPerf} layout="vertical" margin={{ left: 20, right: 20 }}>
+              <defs>
+                <GradientBarDefs id="emo-grad-green" color="oklch(0.527 0.154 163.225)" />
+                <GradientBarDefs id="emo-grad-red" color="oklch(0.577 0.245 27.325)" />
+              </defs>
               <CartesianGrid horizontal={false} strokeDasharray="3 3" />
               <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
               <YAxis dataKey="tag" type="category" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={100} />
@@ -1593,7 +1654,7 @@ export default function AnalyticsPage() {
               />
               <Bar dataKey="avgPnL" radius={[0, 3, 3, 0]}>
                 {behaviorData.emotionPerf.map((entry, index) => (
-                  <Cell key={index} fill={entry.avgPnL >= 0 ? 'oklch(0.527 0.154 163.225)' : 'oklch(0.577 0.245 27.325)'} />
+                  <Cell key={index} fill={entry.avgPnL >= 0 ? 'url(#emo-grad-green)' : 'url(#emo-grad-red)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -1646,6 +1707,9 @@ export default function AnalyticsPage() {
           <h2 className="text-sm font-semibold mb-4">Mistakes Frequency</h2>
           <ChartContainer config={behaviorBarConfig} className="w-full" style={{ height: `${behaviorData.mistakeFreq.length * 36 + 40}px` }}>
             <BarChart data={behaviorData.mistakeFreq} layout="vertical" margin={{ left: 20, right: 20 }}>
+              <defs>
+                <HatchPatternDefs id="mistake-hatch" color="oklch(0.577 0.245 27.325)" />
+              </defs>
               <CartesianGrid horizontal={false} strokeDasharray="3 3" />
               <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis dataKey="label" type="category" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={160} />
@@ -1659,7 +1723,7 @@ export default function AnalyticsPage() {
                   />
                 }
               />
-              <Bar dataKey="count" fill="oklch(0.577 0.245 27.325)" radius={[0, 3, 3, 0]} />
+              <Bar dataKey="count" fill="url(#mistake-hatch)" radius={[0, 3, 3, 0]} />
             </BarChart>
           </ChartContainer>
         </section>
@@ -1737,11 +1801,14 @@ export default function AnalyticsPage() {
               <p className="text-xs text-muted-foreground mb-3">Daily pre-session and post-session completion</p>
               <ChartContainer config={{ preDone: { label: 'Pre-Session', color: 'oklch(0.527 0.154 163.225)' }, postDone: { label: 'Post-Session', color: 'var(--chart-1)' } }} className="h-[200px] w-full">
                 <LineChart data={sessionsData.completionOverTime}>
+                  <defs>
+                    <GlowFilter id="session-comp-glow" color="oklch(0.527 0.154 163.225)" stdDeviation={2} />
+                  </defs>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="stepAfter" dataKey="preDone" stroke="oklch(0.527 0.154 163.225)" strokeWidth={2} dot={false} />
+                  <Line type="stepAfter" dataKey="preDone" stroke="oklch(0.527 0.154 163.225)" strokeWidth={2} dot={false} filter="url(#session-comp-glow)" />
                   <Line type="stepAfter" dataKey="postDone" stroke="var(--chart-1)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ChartContainer>
@@ -1759,6 +1826,9 @@ export default function AnalyticsPage() {
               <p className="text-xs text-muted-foreground mb-3">Pre-session energy level (1-10) vs that day's total P/L</p>
               <ChartContainer config={sessionLineConfig} className="h-[250px] w-full">
                 <ScatterChart margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+                  <defs>
+                    <GlowFilter id="energy-glow" color="oklch(0.527 0.154 163.225)" stdDeviation={2} />
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="energy" type="number" name="Energy" domain={[0, 10]} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} label={{ value: 'Energy Level', position: 'insideBottom', offset: -5, fontSize: 10 }} />
                   <YAxis dataKey="pnl" type="number" name="P/L" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
@@ -1776,7 +1846,7 @@ export default function AnalyticsPage() {
                       )
                     }}
                   />
-                  <Scatter data={sessionsData.energyPerf} fill="oklch(0.527 0.154 163.225)" />
+                  <Scatter data={sessionsData.energyPerf} fill="oklch(0.527 0.154 163.225)" filter="url(#energy-glow)" />
                 </ScatterChart>
               </ChartContainer>
             </section>
@@ -1797,6 +1867,8 @@ export default function AnalyticsPage() {
                       cy="50%"
                       innerRadius={40}
                       outerRadius={80}
+                      cornerRadius={6}
+                      paddingAngle={3}
                     >
                       {sessionsData.emotionalDistData.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
@@ -1825,6 +1897,9 @@ export default function AnalyticsPage() {
               <p className="text-xs text-muted-foreground mb-3">Your self-rated session quality over time (1-10)</p>
               <ChartContainer config={sessionLineConfig} className="h-[200px] w-full">
                 <LineChart data={sessionsData.ratingsTrend}>
+                  <defs>
+                    <GlowFilter id="rating-glow" color="oklch(0.527 0.154 163.225)" stdDeviation={2.5} />
+                  </defs>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 10]} />
@@ -1840,7 +1915,7 @@ export default function AnalyticsPage() {
                       )
                     }}
                   />
-                  <Line type="monotone" dataKey="rating" stroke="oklch(0.527 0.154 163.225)" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="rating" stroke="oklch(0.527 0.154 163.225)" strokeWidth={2} dot={{ r: 3 }} filter="url(#rating-glow)" activeDot={<ActivePingingDot />} />
                 </LineChart>
               </ChartContainer>
             </section>

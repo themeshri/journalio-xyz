@@ -3,7 +3,13 @@
 import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatValue } from '@/lib/formatters'
-import { AreaChart, Area } from 'recharts'
+import { AreaChart, Area, PieChart, Pie, Cell, LabelList } from 'recharts'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 
 /** Format USD without cents (whole dollars only) */
@@ -36,6 +42,7 @@ interface KPICardsProps {
 function Sparkline({ data, positive }: { data: { value: number }[]; positive: boolean }) {
   if (data.length < 2) return <div className="w-[80px] h-[40px]" />
   const color = positive ? '#10b981' : '#ef4444'
+  const glowId = `spark-glow-${positive ? 'g' : 'r'}`
   return (
     <AreaChart width={80} height={40} data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
       <defs>
@@ -43,6 +50,15 @@ function Sparkline({ data, positive }: { data: { value: number }[]; positive: bo
           <stop offset="0%" stopColor={color} stopOpacity={0.3} />
           <stop offset="100%" stopColor={color} stopOpacity={0} />
         </linearGradient>
+        <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+          <feFlood floodColor={color} floodOpacity="0.35" result="color" />
+          <feComposite in="color" in2="blur" operator="in" result="glow" />
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
       <Area
         type="monotone"
@@ -51,73 +67,73 @@ function Sparkline({ data, positive }: { data: { value: number }[]; positive: bo
         strokeWidth={1.5}
         fill={`url(#spark-${positive ? 'g' : 'r'})`}
         isAnimationActive={false}
+        filter={`url(#${glowId})`}
       />
     </AreaChart>
   )
 }
 
-function DonutRing({ winPct, lossPct }: { winPct: number; lossPct: number }) {
-  const size = 48
-  const outerR = 20
-  const innerR = 12
-  const cx = size / 2
-  const cy = size / 2
-  const evenPct = 100 - winPct - lossPct
+const winrateChartConfig = {
+  count: { label: 'Trades' },
+  wins: { label: 'Wins', color: '#10b981' },
+  losses: { label: 'Losses', color: '#ef4444' },
+  even: { label: 'Breakeven', color: '#52525b' },
+} satisfies ChartConfig
 
-  function wedgePath(startPct: number, endPct: number) {
-    if (endPct - startPct >= 99.99) {
-      // Full circle — use two arcs
-      return [
-        `M ${cx} ${cy - outerR}`,
-        `A ${outerR} ${outerR} 0 1 1 ${cx} ${cy + outerR}`,
-        `A ${outerR} ${outerR} 0 1 1 ${cx} ${cy - outerR}`,
-        `Z`,
-        `M ${cx} ${cy - innerR}`,
-        `A ${innerR} ${innerR} 0 1 0 ${cx} ${cy + innerR}`,
-        `A ${innerR} ${innerR} 0 1 0 ${cx} ${cy - innerR}`,
-        `Z`,
-      ].join(' ')
-    }
-    const startAngle = (startPct / 100) * 2 * Math.PI - Math.PI / 2
-    const endAngle = (endPct / 100) * 2 * Math.PI - Math.PI / 2
-    const large = endPct - startPct > 50 ? 1 : 0
-    const ox1 = cx + outerR * Math.cos(startAngle)
-    const oy1 = cy + outerR * Math.sin(startAngle)
-    const ox2 = cx + outerR * Math.cos(endAngle)
-    const oy2 = cy + outerR * Math.sin(endAngle)
-    const ix1 = cx + innerR * Math.cos(endAngle)
-    const iy1 = cy + innerR * Math.sin(endAngle)
-    const ix2 = cx + innerR * Math.cos(startAngle)
-    const iy2 = cy + innerR * Math.sin(startAngle)
-    return `M ${ox1} ${oy1} A ${outerR} ${outerR} 0 ${large} 1 ${ox2} ${oy2} L ${ix1} ${iy1} A ${innerR} ${innerR} 0 ${large} 0 ${ix2} ${iy2} Z`
-  }
+const BASE_RADIUS = 28
+const SIZE_INCREMENT = 8
 
-  const segments: { path: string; color: string }[] = []
-  let cursor = 0
+function WinratePie({ winCount, lossCount, evenCount }: { winCount: number; lossCount: number; evenCount: number }) {
+  const segments = [
+    { name: 'losses', count: lossCount, fill: 'var(--color-losses)' },
+    { name: 'even', count: evenCount, fill: 'var(--color-even)' },
+    { name: 'wins', count: winCount, fill: 'var(--color-wins)' },
+  ]
+    .filter((s) => s.count > 0)
+    .sort((a, b) => a.count - b.count)
 
-  if (winPct > 0.1) {
-    segments.push({ path: wedgePath(cursor, cursor + winPct), color: '#10b981' })
-    cursor += winPct
-  }
-  if (evenPct > 0.1) {
-    segments.push({ path: wedgePath(cursor, cursor + evenPct), color: '#52525b' })
-    cursor += evenPct
-  }
-  if (lossPct > 0.1) {
-    segments.push({ path: wedgePath(cursor, cursor + lossPct), color: '#ef4444' })
-  }
+  const total = segments.reduce((s, d) => s + d.count, 0)
+  if (total === 0) return <div className="w-[80px] h-[80px]" />
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {/* Background */}
-      <circle cx={cx} cy={cy} r={outerR} fill="#27272a" />
-      <circle cx={cx} cy={cy} r={innerR} fill="transparent" />
-      {segments.map((seg, i) => (
-        <path key={i} d={seg.path} fill={seg.color} />
-      ))}
-      {/* Inner hole */}
-      <circle cx={cx} cy={cy} r={innerR} fill="var(--card)" />
-    </svg>
+    <ChartContainer
+      config={winrateChartConfig}
+      className="[&_.recharts-text]:fill-background w-[80px] h-[80px]"
+    >
+      <PieChart>
+        <ChartTooltip
+          content={<ChartTooltipContent nameKey="count" hideLabel />}
+        />
+        {segments.map((entry, index) => {
+          const cumBefore = segments.slice(0, index).reduce((s, d) => s + d.count, 0)
+          const cumAfter = cumBefore + entry.count
+          return (
+            <Pie
+              key={entry.name}
+              data={[entry]}
+              innerRadius={18}
+              outerRadius={BASE_RADIUS + index * SIZE_INCREMENT}
+              dataKey="count"
+              nameKey="name"
+              cornerRadius={4}
+              startAngle={(cumBefore / total) * 360}
+              endAngle={(cumAfter / total) * 360}
+              isAnimationActive={false}
+            >
+              <Cell fill={entry.fill} />
+              <LabelList
+                dataKey="count"
+                stroke="none"
+                fontSize={10}
+                fontWeight={600}
+                fill="currentColor"
+                formatter={(value: number) => value.toString()}
+              />
+            </Pie>
+          )
+        })}
+      </PieChart>
+    </ChartContainer>
   )
 }
 
@@ -229,21 +245,14 @@ export function KPICards({ trades }: KPICardsProps) {
         </CardContent>
       </Card>
 
-      {/* Winrate — left: label+value, right: donut+counts */}
+      {/* Winrate — left: label+value, right: sized pie */}
       <Card>
         <CardContent className="flex items-center justify-between p-4 h-[100px]">
           <div className="flex flex-col justify-center gap-2">
             <p className="text-[11px] text-muted-foreground">Winrate</p>
             <p className="text-lg font-mono tabular-nums font-bold">{stats.winRate}%</p>
           </div>
-          <div className="flex flex-col items-center justify-center">
-            <DonutRing winPct={stats.winRate} lossPct={stats.lossRate} />
-            <div className="flex gap-2 text-[10px] font-mono tabular-nums -mt-0.5">
-              <span className="text-emerald-500">{stats.winCount}</span>
-              <span className="text-zinc-500">{stats.evenCount}</span>
-              <span className="text-red-500">{stats.lossCount}</span>
-            </div>
-          </div>
+          <WinratePie winCount={stats.winCount} lossCount={stats.lossCount} evenCount={stats.evenCount} />
         </CardContent>
       </Card>
 

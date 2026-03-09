@@ -374,7 +374,7 @@ export function ActivityCalendar({
                                 (activity?.tradeCount ?? 0) > 0 ? 'cursor-pointer hover:ring-2 hover:ring-zinc-400 hover:ring-offset-1' : ''
                               }`}
                             >
-                              <span className={`block w-[11px] h-[11px] sm:w-[13px] sm:h-[13px] rounded-[1px] sm:rounded-[2px] ${getScoreColor(score)} ${
+                              <span className={`block w-[11px] h-[11px] sm:w-[13px] sm:h-[13px] rounded-[1px] sm:rounded-[2px] transition-all duration-150 hover:scale-125 ${score > 0 ? 'hover:shadow-[0_0_6px_rgba(16,185,129,0.4)]' : ''} ${getScoreColor(score)} ${
                                 isToday ? 'ring-1 ring-zinc-400' : ''
                               }`} />
                             </button>

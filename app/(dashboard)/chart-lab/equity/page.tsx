@@ -7,6 +7,7 @@ import { formatValue } from '@/lib/formatters'
 import {
   LineChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -14,6 +15,11 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
+import {
+  GlowFilter,
+  GlowAreaGradient,
+  ActivePingingDot,
+} from '@/lib/chart-effects'
 
 export default function EquityPage() {
   const { flattenedTrades } = useWallet()
@@ -150,6 +156,13 @@ export default function EquityPage() {
                     <stop offset={`${zeroOffset}%`} stopColor="oklch(0.577 0.245 27.325)" />
                     <stop offset="100%" stopColor="oklch(0.577 0.245 27.325)" />
                   </linearGradient>
+                  <linearGradient id="equityAreaFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.527 0.154 163.225)" stopOpacity={0.2} />
+                    <stop offset={`${zeroOffset}%`} stopColor="oklch(0.527 0.154 163.225)" stopOpacity={0.05} />
+                    <stop offset={`${zeroOffset}%`} stopColor="oklch(0.577 0.245 27.325)" stopOpacity={0.05} />
+                    <stop offset="100%" stopColor="oklch(0.577 0.245 27.325)" stopOpacity={0.2} />
+                  </linearGradient>
+                  <GlowFilter id="equity-glow" color="oklch(0.527 0.154 163.225)" stdDeviation={3.5} />
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
@@ -179,12 +192,20 @@ export default function EquityPage() {
                   }}
                 />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+                <Area
+                  type="monotone"
+                  dataKey="equity"
+                  stroke="none"
+                  fill="url(#equityAreaFill)"
+                />
                 <Line
                   type="monotone"
                   dataKey="equity"
                   stroke="url(#equityLineColor)"
                   strokeWidth={2}
                   dot={false}
+                  filter="url(#equity-glow)"
+                  activeDot={<ActivePingingDot />}
                 />
               </LineChart>
             </ResponsiveContainer>

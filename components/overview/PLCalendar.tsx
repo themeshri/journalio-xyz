@@ -113,7 +113,7 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
                   <div
                     key={day.date}
                     onClick={() => day.tradeCount > 0 && setSelectedDay(day)}
-                    className={`h-8 rounded flex flex-col items-center justify-center cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 ${colorClass} ${
+                    className={`h-8 rounded flex flex-col items-center justify-center cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:scale-105 hover:shadow-[0_0_8px_rgba(16,185,129,0.3)] ${colorClass} ${
                       isToday ? 'ring-1 ring-zinc-400' : ''
                     }`}
                   >

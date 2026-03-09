@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
+import { GlowFilter } from '@/lib/chart-effects'
 
 export default function HoldingTimePage() {
   const { flattenedTrades } = useWallet()
@@ -84,6 +85,9 @@ export default function HoldingTimePage() {
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+                <defs>
+                  <GlowFilter id="holding-glow" color="oklch(0.527 0.154 163.225)" stdDeviation={2.5} />
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="durationMin"
@@ -116,7 +120,7 @@ export default function HoldingTimePage() {
                 />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
                 <ReferenceLine x={avgDuration} stroke="hsl(var(--primary))" strokeDasharray="3 3" label={{ value: 'Avg', position: 'top', style: { fontSize: 10, fill: 'hsl(var(--primary))' } }} />
-                <Scatter data={data} fill="hsl(var(--primary))" fillOpacity={0.6} r={4} />
+                <Scatter data={data} fill="hsl(var(--primary))" fillOpacity={0.7} r={4} filter="url(#holding-glow)" />
               </ScatterChart>
             </ResponsiveContainer>
           </div>

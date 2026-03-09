@@ -14,6 +14,11 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
+import {
+  GradientBarDefs,
+  HatchPatternDefs,
+  DottedBackgroundPattern,
+} from '@/lib/chart-effects'
 
 /** Nice round bucket edges for P/L distribution */
 const NICE_EDGES = [-10000, -5000, -2000, -1000, -500, -200, -100, -50, -20, -10, 0, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
@@ -153,7 +158,13 @@ export default function DistributionPage() {
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={buckets} margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+                <defs>
+                  <GradientBarDefs id="dist-grad-green" color="oklch(0.527 0.154 163.225)" />
+                  <HatchPatternDefs id="dist-hatch-red" color="oklch(0.577 0.245 27.325)" />
+                  <DottedBackgroundPattern id="dist-dots" />
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <rect width="100%" height="100%" fill="url(#dist-dots)" />
                 <XAxis
                   dataKey="label"
                   tick={{ fontSize: 9 }}
@@ -178,8 +189,7 @@ export default function DistributionPage() {
                   {buckets.map((b, i) => (
                     <Cell
                       key={i}
-                      fill={b.isPositive ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))'}
-                      fillOpacity={0.8}
+                      fill={b.isPositive ? 'url(#dist-grad-green)' : 'url(#dist-hatch-red)'}
                     />
                   ))}
                 </Bar>
