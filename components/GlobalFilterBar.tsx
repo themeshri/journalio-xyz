@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, Filter, X } from 'lucide-react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 
 const OUTCOME_OPTIONS = [
@@ -47,8 +47,6 @@ const DAY_OPTIONS = [
   { value: '6', label: 'Saturday' },
 ]
 
-const FILTER_PAGES = ['/', '/trade-journal', '/history', '/chart-lab']
-
 export function GlobalFilterBar() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -56,9 +54,6 @@ export function GlobalFilterBar() {
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
-
-  // Only show on pages that actually consume filters
-  const showFilter = FILTER_PAGES.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
   // Close panel on click outside
   useEffect(() => {
@@ -84,8 +79,6 @@ export function GlobalFilterBar() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open])
-
-  if (!showFilter) return null
 
   const outcome = searchParams.get('outcome') || 'all'
   const month = searchParams.get('month') || 'all'
@@ -122,7 +115,7 @@ export function GlobalFilterBar() {
         className="h-8 text-xs gap-1.5 -ml-1"
         onClick={() => setOpen(!open)}
       >
-        <SlidersHorizontal className="h-3.5 w-3.5" />
+        <Filter className="h-3.5 w-3.5" />
         Advanced
         {activeCount > 0 && (
           <span className="ml-0.5 bg-primary text-primary-foreground text-[10px] rounded-full px-1.5 py-0.5 leading-none font-medium" aria-label={`${activeCount} active filter${activeCount !== 1 ? 's' : ''}`}>
