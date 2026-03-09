@@ -14,9 +14,7 @@ import { filterTradesByRange } from '@/lib/time-filters'
 import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import Link from 'next/link'
 import { journalKey } from '@/lib/journal-utils'
-import { GettingStarted } from '@/components/overview/GettingStarted'
 
 const sectionErrorFallback = (
   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
@@ -26,7 +24,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, strategies, onboardingStep } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime } = useMetadata()
 
   // Set page title
   useEffect(() => {
@@ -101,20 +99,13 @@ export default function OverviewPage() {
     )
   }
 
-  const onboardingActive = onboardingStep !== null && onboardingStep < 6
-
   if (!hasActiveWallets) {
     return (
       <div className="pt-8 space-y-6">
         <h1 className="text-xl font-semibold">Home</h1>
-        {!onboardingActive && (
-          <GettingStarted
-            hasWallets={false}
-            hasTimezone={timezone !== 'UTC'}
-            hasStrategies={strategies.length > 0}
-            preSessionDone={preSessionDone}
-          />
-        )}
+        <p className="text-sm text-muted-foreground">
+          Add a wallet in <a href="/wallet-management" className="underline hover:text-foreground">Wallet Management</a> to get started.
+        </p>
       </div>
     )
   }
@@ -158,16 +149,6 @@ export default function OverviewPage() {
           <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
         </div>
       </div>
-
-      {/* Getting Started checklist (auto-hides when all steps complete or during onboarding) */}
-      {!onboardingActive && (
-        <GettingStarted
-          hasWallets={hasActiveWallets}
-          hasTimezone={timezone !== 'UTC'}
-          hasStrategies={strategies.length > 0}
-          preSessionDone={preSessionDone}
-        />
-      )}
 
       {/* Row 1: Session Hero */}
       <div data-tour="session-hero">
