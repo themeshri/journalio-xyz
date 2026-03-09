@@ -15,6 +15,39 @@ import {
   Cell,
 } from 'recharts'
 
+/** Nice round bucket edges for P/L distribution */
+const NICE_EDGES = [-10000, -5000, -2000, -1000, -500, -200, -100, -50, -20, -10, 0, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+
+function buildNiceBuckets(pnls: number[]) {
+  const min = Math.min(...pnls)
+  const max = Math.max(...pnls)
+
+  // Find the relevant range of edges
+  let startIdx = 0
+  for (let i = NICE_EDGES.length - 1; i >= 0; i--) {
+    if (NICE_EDGES[i] <= min) { startIdx = i; break }
+  }
+  let endIdx = NICE_EDGES.length - 1
+  for (let i = 0; i < NICE_EDGES.length; i++) {
+    if (NICE_EDGES[i] >= max) { endIdx = i; break }
+  }
+
+  const edges = NICE_EDGES.slice(startIdx, endIdx + 1)
+  // Ensure at least 3 edges
+  if (edges.length < 3) {
+    return edges.length >= 2
+      ? [{ min: edges[0], max: edges[1] }]
+      : [{ min: Math.floor(min), max: Math.ceil(max) }]
+  }
+
+  const bucketDefs: { min: number; max: number }[] = []
+  for (let i = 0; i < edges.length - 1; i++) {
+    bucketDefs.push({ min: edges[i], max: edges[i + 1] })
+  }
+
+  return bucketDefs
+}
+
 export default function DistributionPage() {
   const { flattenedTrades } = useWallet()
 
@@ -23,37 +56,30 @@ export default function DistributionPage() {
     if (completed.length === 0) return { buckets: [], stats: null }
 
     const pnls = completed.map((t) => t.profitLoss)
-    const min = Math.min(...pnls)
-    const max = Math.max(...pnls)
-    const range = max - min
-
+    const range = Math.max(...pnls) - Math.min(...pnls)
     if (range === 0) return { buckets: [], stats: null }
 
-    // Create ~15 buckets
-    const bucketCount = Math.min(15, Math.max(5, Math.ceil(completed.length / 3)))
-    const bucketSize = range / bucketCount
-    const bucketMap = new Map<number, { min: number; max: number; count: number; wins: number }>()
+    const bucketDefs = buildNiceBuckets(pnls)
 
-    for (let i = 0; i < bucketCount; i++) {
-      const bMin = min + i * bucketSize
-      const bMax = min + (i + 1) * bucketSize
-      bucketMap.set(i, { min: bMin, max: bMax, count: 0, wins: 0 })
-    }
-
-    for (const pnl of pnls) {
-      let idx = Math.floor((pnl - min) / bucketSize)
-      if (idx >= bucketCount) idx = bucketCount - 1
-      const b = bucketMap.get(idx)!
-      b.count++
-      if (pnl > 0) b.wins++
-    }
-
-    const bkts = Array.from(bucketMap.values()).map((b) => ({
-      label: `${formatValue(b.min)}`,
-      count: b.count,
-      isPositive: (b.min + b.max) / 2 >= 0,
-      range: `${formatValue(b.min)} to ${formatValue(b.max)}`,
-    }))
+    const bkts = bucketDefs.map((b) => {
+      let count = 0
+      let wins = 0
+      for (const pnl of pnls) {
+        const inBucket = b.max === bucketDefs[bucketDefs.length - 1].max
+          ? pnl >= b.min && pnl <= b.max  // last bucket is inclusive on both ends
+          : pnl >= b.min && pnl < b.max
+        if (inBucket) {
+          count++
+          if (pnl > 0) wins++
+        }
+      }
+      return {
+        label: `${formatValue(b.min)}`,
+        count,
+        isPositive: (b.min + b.max) / 2 >= 0,
+        range: `${formatValue(b.min)} to ${formatValue(b.max)}`,
+      }
+    }).filter((b) => b.count > 0)
 
     const wins = pnls.filter((p) => p > 0).length
     const losses = pnls.filter((p) => p < 0).length

@@ -5,8 +5,8 @@ import { useWallet } from '@/lib/wallet-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatValue } from '@/lib/formatters'
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -91,6 +91,13 @@ export default function EquityPage() {
     return 'Poor'
   }
 
+  // Find min and max equity to compute gradient stop offset
+  const minEquity = Math.min(...equityData.map((d) => d.equity), 0)
+  const maxEquity = Math.max(...equityData.map((d) => d.equity), 0)
+  const range = maxEquity - minEquity
+  // zeroOffset is the percentage position of y=0 from top (0%) to bottom (100%)
+  const zeroOffset = range > 0 ? ((maxEquity) / range) * 100 : 50
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Equity Curve</h1>
@@ -135,11 +142,13 @@ export default function EquityPage() {
         <CardContent>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={equityData} margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
+              <LineChart data={equityData} margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
                 <defs>
-                  <linearGradient id="equityGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  <linearGradient id="equityLineColor" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.527 0.154 163.225)" />
+                    <stop offset={`${zeroOffset}%`} stopColor="oklch(0.527 0.154 163.225)" />
+                    <stop offset={`${zeroOffset}%`} stopColor="oklch(0.577 0.245 27.325)" />
+                    <stop offset="100%" stopColor="oklch(0.577 0.245 27.325)" />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -170,14 +179,14 @@ export default function EquityPage() {
                   }}
                 />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                <Area
+                <Line
                   type="monotone"
                   dataKey="equity"
-                  stroke="hsl(var(--primary))"
-                  fill="url(#equityGradient)"
+                  stroke="url(#equityLineColor)"
                   strokeWidth={2}
+                  dot={false}
                 />
-              </AreaChart>
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </CardContent>

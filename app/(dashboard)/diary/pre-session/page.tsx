@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { FormSkeleton } from '@/components/skeletons'
+import { Check } from 'lucide-react'
 import { useMetadata } from '@/lib/wallet-context'
 import { loadRules, type GlobalRule } from '@/lib/rules'
 import {
@@ -465,6 +466,13 @@ export default function PreSessionPage() {
                     className="sr-only"
                     aria-label={`Acknowledge rule: ${rule.text}`}
                   />
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
+                    data.rulesChecked.includes(rule.id)
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-zinc-300 dark:border-zinc-600'
+                  }`}>
+                    {data.rulesChecked.includes(rule.id) && <Check className="h-3.5 w-3.5" />}
+                  </span>
                   <span className="text-sm">{rule.text}</span>
                 </label>
               ))}

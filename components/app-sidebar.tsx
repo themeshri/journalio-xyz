@@ -78,6 +78,8 @@ const mainNav: NavItem[] = [
       { label: 'Discipline', href: '/analytics?tab=discipline' },
       { label: 'Strategy', href: '/analytics?tab=strategy' },
       { label: 'Missed Trades', href: '/analytics?tab=missed' },
+      { label: 'Behavior', href: '/analytics?tab=behavior' },
+      { label: 'Sessions', href: '/analytics?tab=sessions' },
       { label: 'Calendar', href: '/chart-lab/calendar' },
       { label: 'Equity Curve', href: '/chart-lab/equity' },
       { label: 'Distribution', href: '/chart-lab/distribution' },

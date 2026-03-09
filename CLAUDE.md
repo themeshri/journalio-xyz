@@ -323,4 +323,4 @@ ZERION_API_KEY=               # Zerion API key (EVM chains)
 
 ---
 <!-- Auto-updated by post-commit hook -->
-Last updated: 2026-03-05
+Last updated: 2026-03-09
