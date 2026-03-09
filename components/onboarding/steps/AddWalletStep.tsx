@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { CheckCircle2, ArrowRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ const DEX_OPTIONS = [
 ] as const
 
 export function AddWalletStep({ onNext }: AddWalletStepProps) {
-  const { reloadWallets, setWalletActive } = useWallet()
+  const { savedWallets, reloadWallets, setWalletActive } = useWallet()
   const [address, setAddress] = useState('')
   const [nickname, setNickname] = useState('')
   const [selectedChain, setSelectedChain] = useState<Chain>('solana')
@@ -29,6 +29,21 @@ export function AddWalletStep({ onNext }: AddWalletStepProps) {
   const [error, setError] = useState('')
   const [added, setAdded] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // Track which wallet we just added so we can activate it once savedWallets updates
+  const pendingActivation = useRef<{ address: string; chain: Chain } | null>(null)
+
+  // When savedWallets updates and we have a pending activation, activate the wallet
+  // This ensures setWalletActive sees the fresh savedWallets (no stale closure)
+  useEffect(() => {
+    if (!pendingActivation.current) return
+    const { address, chain } = pendingActivation.current
+    const found = savedWallets.some(w => w.address === address && w.chain === chain)
+    if (found) {
+      pendingActivation.current = null
+      setWalletActive(address, chain, true)
+    }
+  }, [savedWallets, setWalletActive])
 
   function handleAddressChange(value: string) {
     setAddress(value)
@@ -72,8 +87,9 @@ export function AddWalletStep({ onNext }: AddWalletStepProps) {
         setError(data.error || 'Failed to add wallet')
         return
       }
+      // Queue activation for when savedWallets updates with the new wallet
+      pendingActivation.current = { address: trimmed, chain: selectedChain }
       await reloadWallets()
-      setWalletActive(trimmed, selectedChain, true)
       setAdded(true)
       toast.success('Wallet added')
     } catch {
