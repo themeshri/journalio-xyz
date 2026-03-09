@@ -77,7 +77,7 @@ export function SyncButton() {
     <div className="flex items-center gap-1.5">
       {lastSyncedAt && !isSyncing && (
         <span className="text-[11px] text-muted-foreground/70">
-          {formatTimeAgo(lastSyncedAt)}
+          Synced {formatTimeAgo(lastSyncedAt)}
         </span>
       )}
       <TooltipProvider delayDuration={200}>

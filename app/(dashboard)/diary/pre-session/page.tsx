@@ -19,6 +19,8 @@ import {
 } from '@/lib/pre-sessions'
 import { getTradingDay } from '@/lib/trading-day'
 import { toast } from 'sonner'
+import { RatingScale } from '@/components/ui/rating-scale'
+import { YesNoToggle } from '@/components/ui/yes-no-toggle'
 
 const emotionalOptions = [
   'Calm',
@@ -150,14 +152,6 @@ export default function PreSessionPage() {
 
   const energyDesc = getEnergyDescription(data.energyLevel)
 
-  function getEnergyColor(): string {
-    if (data.energyLevel >= 8) return 'bg-emerald-500 text-white'
-    if (data.energyLevel >= 5 && data.energyLevel <= 7) return 'bg-yellow-500 text-white'
-    if (data.energyLevel >= 3 && data.energyLevel <= 4) return 'bg-orange-500 text-white'
-    if (data.energyLevel >= 1 && data.energyLevel <= 2) return 'bg-red-500 text-white'
-    return 'bg-emerald-500 text-white'
-  }
-
   if (!loaded) {
     return (
       <div className="max-w-xl pt-8">
@@ -188,75 +182,17 @@ export default function PreSessionPage() {
       </div>
 
       <div className="space-y-6">
-        {/* Market Snapshot */}
-        <section>
-          <details className="group">
-            <summary className="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-              <Label className="text-sm font-medium cursor-pointer">Market Snapshot</Label>
-              <span className="text-xs text-muted-foreground">(coming soon)</span>
-              <svg className="w-3.5 h-3.5 text-muted-foreground transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </summary>
-
-            <div className="border border-border rounded-lg p-4 space-y-3 mt-2">
-              <p className="text-sm text-foreground font-medium">
-                {displayDate} &middot; {displayTime}
-              </p>
-
-              <div className="grid grid-cols-4 gap-3">
-                {(['BTC', 'ETH', 'SOL', 'BNB'] as const).map((symbol) => (
-                  <div key={symbol}>
-                    <p className="text-xs text-muted-foreground">{symbol}</p>
-                    <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Fear & Greed</p>
-                  <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">24h Volume</p>
-                  <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
-                </div>
-              </div>
-            </div>
-          </details>
-        </section>
-
-        <Separator />
-
         {/* Section 1: Energy Meter */}
         <section>
           <Label className="text-sm font-medium mb-2 block">Energy Meter</Label>
           <p className="text-xs text-muted-foreground mb-2">
             Rate your "starting battery" before the session begins (1 = empty, 10 = fully charged)
           </p>
-          <div className="flex gap-0.5" role="group" aria-label="Energy level">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => update('energyLevel', n)}
-                className={`w-8 h-8 text-sm rounded transition-colors ${
-                  n <= data.energyLevel
-                    ? getEnergyColor()
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-                aria-label={`Energy level ${n} out of 10`}
-              >
-                {n}
-              </button>
-            ))}
-            {data.energyLevel > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
-                {data.energyLevel}/10
-              </span>
-            )}
-          </div>
+          <RatingScale
+            value={data.energyLevel}
+            onChange={(n) => update('energyLevel', n)}
+            label=""
+          />
 
           {energyDesc && (
             <p className={`text-xs mt-2 ${energyDesc.className}`}>{energyDesc.text}</p>
@@ -309,7 +245,7 @@ export default function PreSessionPage() {
                 id="session-intent"
                 value={data.sessionIntent}
                 onChange={(e) => update('sessionIntent', e.target.value)}
-                placeholder="e.g., scalp 2 setups max, research only, manage open positions"
+                placeholder="e.g. Focus on SOL pairs only. Max 2 scalps. Stick to 5-minute chart setups. No trading in first 30 minutes."
                 rows={2}
                 className="resize-none"
               />
@@ -381,24 +317,10 @@ export default function PreSessionPage() {
               <Label className="text-xs text-muted-foreground mb-2 block">
                 Do you have open positions to manage first?
               </Label>
-              <div className="flex gap-2">
-                {([true, false] as const).map((val) => (
-                  <button
-                    key={String(val)}
-                    type="button"
-                    onClick={() => update('hasOpenPositions', data.hasOpenPositions === val ? null : val)}
-                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
-                      data.hasOpenPositions === val
-                        ? val
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
-                          : 'border-zinc-500 bg-zinc-500/10 text-zinc-600 font-medium'
-                        : 'border-border text-muted-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    {val ? 'Yes' : 'No'}
-                  </button>
-                ))}
-              </div>
+              <YesNoToggle
+                value={data.hasOpenPositions}
+                onChange={(val) => update('hasOpenPositions', val)}
+              />
             </div>
           </div>
         </section>
@@ -473,31 +395,16 @@ export default function PreSessionPage() {
               <Label className="text-xs text-muted-foreground mb-2 block">
                 Any major news or events today?
               </Label>
-              <div className="flex gap-2">
-                {([true, false] as const).map((val) => (
-                  <button
-                    key={String(val)}
-                    type="button"
-                    onClick={() => {
-                      const newVal = data.majorNews === val ? null : val
-                      setData((prev) => ({
-                        ...prev,
-                        majorNews: newVal,
-                        majorNewsNote: newVal === false ? '' : prev.majorNewsNote,
-                      }))
-                    }}
-                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
-                      data.majorNews === val
-                        ? val
-                          ? 'border-yellow-500 bg-yellow-500/10 text-yellow-600 font-medium'
-                          : 'border-zinc-500 bg-zinc-500/10 text-zinc-600 font-medium'
-                        : 'border-border text-muted-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    {val ? 'Yes' : 'No'}
-                  </button>
-                ))}
-              </div>
+              <YesNoToggle
+                value={data.majorNews}
+                onChange={(val) => {
+                  setData((prev) => ({
+                    ...prev,
+                    majorNews: val,
+                    majorNewsNote: val === false ? '' : prev.majorNewsNote,
+                  }))
+                }}
+              />
               {data.majorNews === true && (
                 <Input
                   value={data.majorNewsNote}
@@ -512,24 +419,10 @@ export default function PreSessionPage() {
               <Label className="text-xs text-muted-foreground mb-2 block">
                 Normal volume today?
               </Label>
-              <div className="flex gap-2">
-                {([true, false] as const).map((val) => (
-                  <button
-                    key={String(val)}
-                    type="button"
-                    onClick={() => update('normalVolume', data.normalVolume === val ? null : val)}
-                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
-                      data.normalVolume === val
-                        ? val
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
-                          : 'border-yellow-500 bg-yellow-500/10 text-yellow-600 font-medium'
-                        : 'border-border text-muted-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    {val ? 'Yes' : 'No'}
-                  </button>
-                ))}
-              </div>
+              <YesNoToggle
+                value={data.normalVolume}
+                onChange={(val) => update('normalVolume', val)}
+              />
             </div>
           </div>
         </section>
@@ -581,9 +474,50 @@ export default function PreSessionPage() {
 
         <Separator />
 
+        {/* Market Snapshot (coming soon) */}
+        <section>
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <Label className="text-sm font-medium cursor-pointer">Market Snapshot</Label>
+              <span className="text-xs text-muted-foreground">(coming soon)</span>
+              <svg className="w-3.5 h-3.5 text-muted-foreground transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </summary>
+
+            <div className="border border-border rounded-lg p-4 space-y-3 mt-2">
+              <p className="text-sm text-foreground font-medium">
+                {displayDate} &middot; {displayTime}
+              </p>
+
+              <div className="grid grid-cols-4 gap-3">
+                {(['BTC', 'ETH', 'SOL', 'BNB'] as const).map((symbol) => (
+                  <div key={symbol}>
+                    <p className="text-xs text-muted-foreground">{symbol}</p>
+                    <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Fear & Greed</p>
+                  <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">24h Volume</p>
+                  <p className="text-sm font-mono text-muted-foreground/60">&mdash;</p>
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <Separator />
+
         <div className="flex items-center gap-3">
           <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? 'Saving...' : isCompletedToday ? 'Update Pre-Session' : 'Save Pre-Session'}
           </Button>
           {saved && (
             <span className="text-xs text-emerald-600 font-medium">Saved</span>

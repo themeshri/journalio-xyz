@@ -108,6 +108,9 @@ export default function TradeJournalPage() {
     })
     if (saved) {
       updateJournalEntry(key, saved)
+      toast.success('Trade journaled')
+    } else {
+      toast.error('Failed to save journal entry')
     }
     setJournalModalTrade(null)
   }, [journalModalTrade, updateJournalEntry])
@@ -123,6 +126,10 @@ export default function TradeJournalPage() {
     })
     if (saved) {
       updateJournalEntry(key, saved)
+      toast.success('Saved — moving to next trade')
+    } else {
+      toast.error('Failed to save journal entry')
+      return // Don't advance on failure
     }
 
     // Find next un-journaled trade (use updated map with the new entry)
@@ -206,7 +213,10 @@ export default function TradeJournalPage() {
             <div>
               <div className="font-semibold text-sm">{trade.token}</div>
               <div className="text-xs text-muted-foreground">
-                {relativeTime(trade.startDate)} | {truncateAddress(trade.tokenMint)}
+                {relativeTime(trade.startDate)} |{' '}
+                <span title={trade.tokenMint} className="cursor-help">
+                  {truncateAddress(trade.tokenMint)}
+                </span>
               </div>
             </div>
           </div>
@@ -452,9 +462,9 @@ export default function TradeJournalPage() {
         />
       )}
       {journalModalTrade && (() => {
-        const hasNextUnjournaled = flattenedTrades.some(
-          (t) => t !== journalModalTrade && !journalMap[journalKey(t)]
-        )
+        const unjournaled = flattenedTrades.filter((t) => !journalMap[journalKey(t)])
+        const hasNextUnjournaled = unjournaled.some((t) => t !== journalModalTrade)
+        const currentIdx = unjournaled.indexOf(journalModalTrade)
         return (
           <JournalModal
             key={`${journalModalTrade.tokenMint}-${journalModalTrade.tradeNumber}-${journalModalTrade.walletAddress}`}
@@ -464,6 +474,8 @@ export default function TradeJournalPage() {
             onSave={handleJournalSave}
             onSaveAndNext={hasNextUnjournaled ? handleJournalSaveAndNext : undefined}
             onClose={() => setJournalModalTrade(null)}
+            currentIndex={currentIdx >= 0 ? currentIdx + 1 : undefined}
+            totalCount={unjournaled.length > 0 ? unjournaled.length : undefined}
           />
         )
       })()}

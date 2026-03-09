@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { AccountDropdown } from '@/components/AccountDropdown'
 import { GlobalFilterBar } from '@/components/GlobalFilterBar'
 import { SyncButton } from '@/components/SyncButton'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
 
 function DashboardSkeleton() {
   return (
@@ -59,6 +60,7 @@ export default function DashboardLayout({
             <div className="flex-1 overflow-auto px-6 py-6">
               <LocalStorageMigration />
               <StaleDataBanner />
+              <Breadcrumbs />
               {children}
             </div>
           </SidebarInset>

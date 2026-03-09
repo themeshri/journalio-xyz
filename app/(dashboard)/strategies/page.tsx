@@ -814,7 +814,7 @@ export default function StrategiesPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground" title="Show archive, icon/color picker, and rule ordering options">
             <span>Advanced</span>
             <button
               type="button"
@@ -913,13 +913,30 @@ export default function StrategiesPage() {
 
       {/* ── Empty State ── */}
       {strategies.length === 0 && !showForm && (
-        <div className="border border-dashed rounded-lg p-6 text-center">
-          <p className="text-sm text-muted-foreground mb-3">
-            No strategies yet. Create your first or start from a template.
+        <div className="border border-dashed rounded-lg p-6">
+          <p className="text-sm text-muted-foreground mb-4 text-center">
+            No strategies yet. Create your own or start from a template.
           </p>
-          <Button size="sm" variant="outline" onClick={openAdd}>
-            + New Strategy
-          </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            {TEMPLATES.map((t) => (
+              <button
+                key={t.name}
+                onClick={() => { openAdd(); applyTemplate(t) }}
+                className="flex items-start gap-3 rounded-lg border p-4 text-left hover:bg-muted/50 transition-colors"
+              >
+                <span className="text-2xl">{t.icon}</span>
+                <div>
+                  <div className="text-sm font-medium">{t.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{t.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="text-center">
+            <Button size="sm" variant="outline" onClick={openAdd}>
+              + Blank Strategy
+            </Button>
+          </div>
         </div>
       )}
 

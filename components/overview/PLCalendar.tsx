@@ -27,8 +27,16 @@ const MONTH_NAMES = [
 export function PLCalendar({ trades, journalMap, preSessions = [], postSessions = [] }: PLCalendarProps) {
   const { tradeComments } = useWallet()
   const now = new Date()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth())
+  const latestTradeDate = useMemo(() => {
+    if (trades.length === 0) return null
+    let latest = 0
+    for (const t of trades) {
+      if (t.startDate > latest) latest = t.startDate
+    }
+    return new Date(latest * 1000)
+  }, [trades])
+  const [year, setYear] = useState(() => latestTradeDate?.getFullYear() ?? now.getFullYear())
+  const [month, setMonth] = useState(() => latestTradeDate?.getMonth() ?? now.getMonth())
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null)
 
   const calData = useMemo(

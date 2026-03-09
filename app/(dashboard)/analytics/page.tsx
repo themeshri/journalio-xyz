@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useWallet, useMetadata, buildWalletQueryParams } from '@/lib/wallet-context'
 import { formatValue, formatDuration } from '@/lib/formatters'
 import {
@@ -41,6 +42,8 @@ import { Separator } from '@/components/ui/separator'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Info } from 'lucide-react'
 
 const durationConfig = {
   count: { label: 'Trades', color: 'var(--chart-1)' },
@@ -136,7 +139,11 @@ export default function AnalyticsPage() {
   const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades, tradeComments, strategies: allStrategies, journalMap, activeWallets, initialized } = useWallet()
   const { timeRange, timePreset, setTimeFilter } = useMetadata()
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'time' | 'discipline' | 'strategy' | 'missed'>('overview')
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const validTabs = ['overview', 'time', 'discipline', 'strategy', 'missed'] as const
+  type TabType = typeof validTabs[number]
+  const activeTab: TabType = validTabs.includes(tabParam as TabType) ? (tabParam as TabType) : 'overview'
 
   const walletQueryParams = useMemo(() => {
     const base = buildWalletQueryParams(activeWallets)
@@ -493,63 +500,54 @@ export default function AnalyticsPage() {
         const gainToPain = lossSum > 0 ? totalCompletedPL / lossSum : (totalCompletedPL > 0 ? Infinity : 0)
 
         const metrics = [
-          { label: 'Avg Winner', value: avgWinner, isCurrency: true },
-          { label: 'Avg Loser', value: avgLoser, isCurrency: true },
-          { label: 'Expectancy', value: expectancy, isCurrency: true },
-          { label: 'Profit Factor', value: profitFactor, isCurrency: false },
-          { label: 'Max Drawdown', value: -maxDD, isCurrency: true },
-          { label: 'Sharpe Ratio', value: sharpe, isCurrency: false },
-          { label: 'Sortino Ratio', value: sortino, isCurrency: false },
-          { label: 'Calmar Ratio', value: calmar, isCurrency: false },
-          { label: 'Gain to Pain', value: gainToPain, isCurrency: false },
+          { label: 'Avg Winner', value: avgWinner, isCurrency: true, tip: 'Average profit on winning trades.' },
+          { label: 'Avg Loser', value: avgLoser, isCurrency: true, tip: 'Average loss on losing trades.' },
+          { label: 'Expectancy', value: expectancy, isCurrency: true, tip: 'Average expected profit per trade. Positive means your strategy is profitable long-term.' },
+          { label: 'Profit Factor', value: profitFactor, isCurrency: false, tip: 'Gross profit / gross loss. Above 1.5 is solid. Above 2.0 is excellent.' },
+          { label: 'Max Drawdown', value: -maxDD, isCurrency: true, tip: 'Largest peak-to-trough decline. Smaller is better — shows worst-case loss scenario.' },
+          { label: 'Sharpe Ratio', value: sharpe, isCurrency: false, tip: 'Return relative to risk. Above 1.0 is good. Above 2.0 is excellent. Below 0 means you\'d be better off in cash.' },
+          { label: 'Sortino Ratio', value: sortino, isCurrency: false, tip: 'Like Sharpe but only penalizes downside risk. Higher is better — rewards strategies with big wins.' },
+          { label: 'Calmar Ratio', value: calmar, isCurrency: false, tip: 'Return / max drawdown. Above 1.0 means your returns outweigh your worst dip.' },
+          { label: 'Gain to Pain', value: gainToPain, isCurrency: false, tip: 'Total gains / total losses. Above 1.0 means gains outweigh pain. Higher is better.' },
         ]
 
         return completedTrades.length > 0 ? (
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mb-8">
-            {metrics.map((m) => (
-              <div key={m.label} className="rounded-lg border bg-card p-3 text-center">
-                <div
-                  className={`text-sm font-mono tabular-nums font-semibold ${
-                    m.isCurrency
-                      ? m.value >= 0 ? 'text-emerald-600' : 'text-red-600'
-                      : ''
-                  }`}
-                >
-                  {m.value === Infinity
-                    ? '\u221e'
-                    : m.isCurrency
-                      ? `${m.value >= 0 ? '+' : ''}${formatValue(m.value)}`
-                      : m.value.toFixed(2)}
+          <TooltipProvider delayDuration={200}>
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mb-8">
+              {metrics.map((m) => (
+                <div key={m.label} className="rounded-lg border bg-card p-3 text-center">
+                  <div
+                    className={`text-sm font-mono tabular-nums font-semibold ${
+                      m.isCurrency
+                        ? m.value >= 0 ? 'text-emerald-600' : 'text-red-600'
+                        : ''
+                    }`}
+                  >
+                    {m.value === Infinity
+                      ? '\u221e'
+                      : m.isCurrency
+                        ? `${m.value >= 0 ? '+' : ''}${formatValue(m.value)}`
+                        : m.value.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-center gap-1">
+                    {m.label}
+                    {m.tip && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                          {m.tip}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">{m.label}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </TooltipProvider>
         ) : null
       })()}
-
-      {/* Tab navigation */}
-      <div className="flex gap-1 mb-8 text-xs">
-        {([
-          ['overview', 'Overview'],
-          ['time', 'Time Analysis'],
-          ['discipline', 'Discipline'],
-          ['strategy', 'Strategy'],
-          ['missed', 'Missed Trades'],
-        ] as const).map(([tab, label]) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1.5 rounded transition-colors ${
-              activeTab === tab
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
 
       {/* Tab loading skeleton */}
       {isTabLoading && (
@@ -574,6 +572,13 @@ export default function AnalyticsPage() {
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
+                interval="preserveStartEnd"
+                tickFormatter={(value, index) => {
+                  // Deduplicate: only show label if different from previous tick
+                  if (index === 0) return value
+                  const prevDate = plData[index - 1]?.date
+                  return prevDate === value ? '' : value
+                }}
               />
               <YAxis
                 tick={{ fontSize: 11 }}
@@ -633,9 +638,15 @@ export default function AnalyticsPage() {
       {hoursData.some((d) => d.count > 0) && (
         <section className="mb-10">
           <h2 className="text-sm font-semibold mb-4">Trading Hours</h2>
-          <p className="text-xs text-muted-foreground mb-3">
-            When your trades start, colored by average profitability
-          </p>
+          <div className="flex items-center gap-4 mb-3">
+            <p className="text-xs text-muted-foreground">
+              When your trades start, colored by average profitability
+            </p>
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground shrink-0">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'oklch(0.527 0.154 163.225)' }} /> Profitable</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: 'oklch(0.577 0.245 27.325)' }} /> Losing</span>
+            </div>
+          </div>
           <ChartContainer config={hoursConfig} className="h-[220px] w-full">
             <BarChart data={hoursData}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />

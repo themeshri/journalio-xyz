@@ -11,7 +11,7 @@ function SignInContent() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Welcome to Journalio</CardTitle>
           <CardDescription>
-            Sign in to your trading journal account
+            Track trades, journal your sessions, and improve your edge.
           </CardDescription>
         </CardHeader>
         <CardContent>

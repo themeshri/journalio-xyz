@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
@@ -160,8 +159,13 @@ export default function NotesPage() {
                         {note.title || 'Untitled'}
                       </p>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {note.content.slice(0, 60) || 'Empty note'}
+                        {note.content.replace(/<[^>]*>/g, '').slice(0, 60) || 'Empty note'}
                       </p>
+                      {note.updatedAt && (
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                          {new Date(note.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </p>
+                      )}
                     </div>
                     <button
                       className="text-muted-foreground hover:text-destructive shrink-0 p-0.5"
@@ -245,11 +249,11 @@ export default function NotesPage() {
               </form>
             </div>
 
-            <Textarea
+            <RichTextEditor
+              content={activeNote.content}
+              onChange={(html) => { setActiveNote({ ...activeNote, content: html }); setIsDirty(true) }}
               placeholder="Write your notes here..."
-              value={activeNote.content}
-              onChange={(e) => { setActiveNote({ ...activeNote, content: e.target.value }); setIsDirty(true) }}
-              className="flex-1 min-h-[300px] resize-none"
+              className="flex-1"
             />
           </>
         )}

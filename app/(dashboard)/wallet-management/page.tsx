@@ -199,7 +199,7 @@ export default function WalletManagementPage() {
             </div>
           </div>
           <div className="flex gap-1.5 items-center">
-            <span className="text-xs text-muted-foreground mr-1">App:</span>
+            <span className="text-xs text-muted-foreground mr-1" title="Which trading app/DEX do you use with this wallet?">App:</span>
             {DEX_OPTIONS.map((opt) => {
               const isSelected = selectedDex === opt.value
               return (
@@ -270,12 +270,27 @@ export default function WalletManagementPage() {
                         <span className="text-xs text-muted-foreground animate-pulse">loading...</span>
                       )}
                       {slot?.error && (
-                        <span className="text-xs text-destructive">error</span>
+                        <span className="text-xs text-destructive flex items-center gap-1.5">
+                          {slot.error}
+                          {!active && (
+                            <button
+                              className="underline hover:no-underline"
+                              onClick={(e) => { e.stopPropagation(); refreshWallet(w.address, w.chain) }}
+                            >
+                              Retry
+                            </button>
+                          )}
+                        </span>
                       )}
                     </div>
                     <p className="font-mono text-xs text-muted-foreground mt-1 truncate">
                       {w.address}
                     </p>
+                    {active && slot?.cacheInfo?.cachedAt && (
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                        Last synced {slot.cacheInfo.cachedAt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
@@ -310,7 +325,9 @@ export default function WalletManagementPage() {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Remove this wallet?</AlertDialogTitle>
-          <AlertDialogDescription>This will remove the wallet from your saved list.</AlertDialogDescription>
+          <AlertDialogDescription>
+            This will remove the wallet and delete all cached trade data for it. This cannot be undone.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

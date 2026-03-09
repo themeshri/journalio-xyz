@@ -157,7 +157,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings')
       if (res.ok) {
         const data = await res.json()
-        setDisplayName(data.displayName || '')
+        setDisplayName(data.displayName || user?.user_metadata?.full_name || user?.user_metadata?.name || '')
         setTimezone(data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
         setTradingStartTime(data.tradingStartTime || '09:00')
       }
@@ -488,7 +488,7 @@ export default function SettingsPage() {
 
       {/* Actions */}
       <div className="flex gap-2 justify-end">
-        <Button variant="outline" size="sm" onClick={() => setResetConfirm(true)}>
+        <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setResetConfirm(true)}>
           Reset to Default
         </Button>
         <Button

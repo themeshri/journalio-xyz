@@ -29,6 +29,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { EditTradeTab } from '@/components/EditTradeTab';
 import { toast } from 'sonner';
+import { RatingScale } from '@/components/ui/rating-scale';
+import { YesNoToggle } from '@/components/ui/yes-no-toggle';
 
 export interface TradeRuleResult {
   ruleId: string;
@@ -69,6 +71,8 @@ interface JournalModalProps {
   onSave: (data: JournalData) => void | Promise<void>;
   onSaveAndNext?: (data: JournalData) => void | Promise<void>;
   onClose: () => void;
+  currentIndex?: number;
+  totalCount?: number;
 }
 
 
@@ -117,6 +121,8 @@ const JournalModal = memo(function JournalModal({
   onSave,
   onSaveAndNext,
   onClose,
+  currentIndex,
+  totalCount,
 }: JournalModalProps) {
   // Migrate old buyCategory -> strategy if needed
   const initialStrategy = initialData?.strategy || initialData?.buyCategory || '';
@@ -371,6 +377,11 @@ const JournalModal = memo(function JournalModal({
               </div>
             )}
             {trade.token} - Trade Journal
+            {currentIndex != null && totalCount != null && totalCount > 1 && (
+              <span className="text-xs font-normal text-muted-foreground ml-auto">
+                {currentIndex} of {totalCount}
+              </span>
+            )}
           </DialogTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
             <span>Start: {formatTime(trade.startDate)}</span>
@@ -471,31 +482,12 @@ const JournalModal = memo(function JournalModal({
               )}
 
 
-              <div>
-                <Label className="text-xs mb-1.5">Rate the entry execution</Label>
-                <div className="flex gap-0.5 mt-1" role="group" aria-label="Entry rating">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setBuyRating(n)}
-                      className={`w-7 h-7 text-sm rounded transition-colors ${
-                        n <= buyRating
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
-                      aria-label={`Rate entry ${n} out of 10`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  {buyRating > 0 && (
-                    <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
-                      {buyRating}/10
-                    </span>
-                  )}
-                </div>
-              </div>
+              <RatingScale
+                value={buyRating}
+                onChange={setBuyRating}
+                size="sm"
+                label="Rate the entry execution"
+              />
 
               <div>
                 <Label htmlFor="exit-plan" className="text-xs mb-1.5">
@@ -546,31 +538,12 @@ const JournalModal = memo(function JournalModal({
 
             <div className="space-y-4">
               {/* Rating */}
-              <div>
-                <Label className="text-xs mb-1.5">Rate the exit</Label>
-                <div className="flex gap-0.5 mt-1" role="group" aria-label="Exit rating">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setSellRating(star)}
-                      className={`w-7 h-7 text-sm rounded transition-colors ${
-                        star <= sellRating
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
-                      aria-label={`Rate ${star} out of 10`}
-                    >
-                      {star}
-                    </button>
-                  ))}
-                  {sellRating > 0 && (
-                    <span className="ml-2 text-xs text-muted-foreground self-center font-mono tabular-nums">
-                      {sellRating}/10
-                    </span>
-                  )}
-                </div>
-              </div>
+              <RatingScale
+                value={sellRating}
+                onChange={setSellRating}
+                size="sm"
+                label="Rate the exit"
+              />
 
               {/* Exit Comment */}
               {exitComments.length > 0 && renderCommentSelect(
@@ -583,29 +556,11 @@ const JournalModal = memo(function JournalModal({
               {/* Followed Exit Rule */}
               <div>
                 <Label className="text-xs mb-1.5">Did you follow your exit rule?</Label>
-                <div className="flex gap-2 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setFollowedExitRule(prev => prev === true ? null : true)}
-                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
-                      followedExitRule === true
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
-                    }`}
-                  >
-                    Yes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFollowedExitRule(prev => prev === false ? null : false)}
-                    className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
-                      followedExitRule === false
-                        ? 'bg-red-600 text-white border-red-600'
-                        : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
-                    }`}
-                  >
-                    No
-                  </button>
+                <div className="mt-1">
+                  <YesNoToggle
+                    value={followedExitRule}
+                    onChange={setFollowedExitRule}
+                  />
                 </div>
               </div>
 
@@ -650,7 +605,8 @@ const JournalModal = memo(function JournalModal({
 
           {/* Attachments */}
           <section>
-            <h4 className="text-sm font-medium mb-3">Attachments</h4>
+            <h4 className="text-sm font-medium mb-1">Attachments</h4>
+            <p className="text-xs text-muted-foreground mb-3">Add chart screenshots or trade setup images for review</p>
 
             {attachments.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mb-3">

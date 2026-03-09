@@ -152,7 +152,7 @@ export const RecentCycles = forwardRef<RecentCyclesHandle, RecentCyclesProps>(
                               <span className="text-[10px]">Journaled</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-amber-500">
+                            <span className="inline-flex items-center gap-1 text-amber-500 hover:text-amber-400 cursor-pointer hover:underline" title="Click to journal this trade">
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                               <span className="text-[10px]">Not journaled</span>
                             </span>

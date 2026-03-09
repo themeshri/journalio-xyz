@@ -74,6 +74,10 @@ const mainNav: NavItem[] = [
     icon: BarChart3,
     children: [
       { label: 'Overview', href: '/analytics' },
+      { label: 'Time Analysis', href: '/analytics?tab=time' },
+      { label: 'Discipline', href: '/analytics?tab=discipline' },
+      { label: 'Strategy', href: '/analytics?tab=strategy' },
+      { label: 'Missed Trades', href: '/analytics?tab=missed' },
       { label: 'Calendar', href: '/chart-lab/calendar' },
       { label: 'Equity Curve', href: '/chart-lab/equity' },
       { label: 'Distribution', href: '/chart-lab/distribution' },

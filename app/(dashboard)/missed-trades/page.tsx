@@ -80,6 +80,7 @@ export default function MissedTradesPage() {
   const [showForm, setShowForm] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [strategies, setStrategies] = useState<Strategy[]>([])
 
   // Filters
@@ -150,6 +151,15 @@ export default function MissedTradesPage() {
   const peakMultiplier = entryPrice > 0 && peakPrice > 0 ? peakPrice / entryPrice : 0
   const potentialPnL = positionSize > 0 && multiplier > 0 ? positionSize * (multiplier - 1) : 0
 
+  // Auto-select outcome when entry and exit prices are both provided
+  useEffect(() => {
+    if (entryPrice > 0 && exitPrice > 0) {
+      if (exitPrice > entryPrice * 1.01) setFormOutcome('win')
+      else if (exitPrice < entryPrice * 0.99) setFormOutcome('loss')
+      else setFormOutcome('breakeven')
+    }
+  }, [entryPrice, exitPrice])
+
   function resetForm() {
     setFormTokenMint('')
     setFormCoinName('')
@@ -165,6 +175,23 @@ export default function MissedTradesPage() {
     setFormNotes('')
   }
 
+  function startEditing(play: PaperedPlay) {
+    setFormTokenMint(play.tokenMint || '')
+    setFormCoinName(play.coinName || '')
+    setFormTokenSymbol(play.tokenSymbol || '')
+    setFormTokenImage(play.tokenImage || '')
+    setFormMissReason((play.missReason as MissReason) || '')
+    setFormEntryPrice(play.entryPrice?.toString() || '')
+    setFormPositionSize(play.hypotheticalPositionSize?.toString() || '')
+    setFormExitPrice(play.exitPrice?.toString() || '')
+    setFormPeakPrice(play.peakMultiplier && play.entryPrice ? (play.peakMultiplier * play.entryPrice).toString() : '')
+    setFormOutcome(play.outcome || 'pending')
+    setFormStrategyId(play.strategyId || '')
+    setFormNotes(play.notes || '')
+    setEditingId(play.id)
+    setShowForm(true)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!formCoinName.trim()) {
@@ -177,37 +204,47 @@ export default function MissedTradesPage() {
     }
 
     setIsSaving(true)
+    const payload = {
+      coinName: formCoinName.trim(),
+      tokenMint: formTokenMint.trim() || null,
+      tokenSymbol: formTokenSymbol.trim() || null,
+      tokenImage: formTokenImage || null,
+      mcWhenSaw: '',
+      ath: '',
+      reasonMissed: formMissReason,
+      missReason: formMissReason,
+      entryPrice: entryPrice || null,
+      entryTime: new Date().toISOString(),
+      exitPrice: exitPrice || null,
+      hypotheticalPositionSize: positionSize || null,
+      outcome: formOutcome || 'pending',
+      potentialMultiplier: multiplier || null,
+      potentialPnL: potentialPnL || null,
+      peakMultiplier: peakMultiplier || null,
+      strategyId: formStrategyId || null,
+      notes: formNotes.trim(),
+    }
+
     try {
-      const res = await fetch('/api/papered-plays', {
-        method: 'POST',
+      const url = editingId ? `/api/papered-plays/${editingId}` : '/api/papered-plays'
+      const method = editingId ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          coinName: formCoinName.trim(),
-          tokenMint: formTokenMint.trim() || null,
-          tokenSymbol: formTokenSymbol.trim() || null,
-          tokenImage: formTokenImage || null,
-          mcWhenSaw: '',
-          ath: '',
-          reasonMissed: formMissReason,
-          missReason: formMissReason,
-          entryPrice: entryPrice || null,
-          entryTime: new Date().toISOString(),
-          exitPrice: exitPrice || null,
-          hypotheticalPositionSize: positionSize || null,
-          outcome: formOutcome || 'pending',
-          potentialMultiplier: multiplier || null,
-          potentialPnL: potentialPnL || null,
-          peakMultiplier: peakMultiplier || null,
-          strategyId: formStrategyId || null,
-          notes: formNotes.trim(),
-        }),
+        body: JSON.stringify(payload),
       })
       if (res.ok) {
-        const newPlay = await res.json()
-        setPlays([newPlay, ...plays])
+        const saved = await res.json()
+        if (editingId) {
+          setPlays(plays.map((p) => p.id === editingId ? saved : p))
+          toast.success('Missed trade updated')
+        } else {
+          setPlays([saved, ...plays])
+          toast.success('Missed trade logged')
+        }
         resetForm()
+        setEditingId(null)
         setShowForm(false)
-        toast.success('Missed trade logged')
       } else {
         toast.error('Failed to save')
       }
@@ -284,7 +321,7 @@ export default function MissedTradesPage() {
         <Button
           variant={showForm ? 'outline' : 'default'}
           size="sm"
-          onClick={() => { setShowForm(!showForm); if (showForm) resetForm() }}
+          onClick={() => { setShowForm(!showForm); if (showForm) { resetForm(); setEditingId(null) } }}
         >
           {showForm ? 'Cancel' : '+ Log Missed Trade'}
         </Button>
@@ -492,7 +529,7 @@ export default function MissedTradesPage() {
               Cancel
             </Button>
             <Button type="submit" size="sm" disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save'}
+              {isSaving ? 'Saving...' : editingId ? 'Update' : 'Save'}
             </Button>
           </div>
         </form>
@@ -637,14 +674,24 @@ export default function MissedTradesPage() {
                     })}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-destructive hover:text-destructive h-7"
-                      onClick={() => setDeleteId(play.id)}
-                    >
-                      Delete
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={() => startEditing(play)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-destructive hover:text-destructive h-7"
+                        onClick={() => setDeleteId(play.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )

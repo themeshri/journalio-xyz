@@ -16,6 +16,7 @@ import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import Link from 'next/link'
 import { journalKey } from '@/lib/journal-utils'
+import { GettingStarted } from '@/components/overview/GettingStarted'
 
 const sectionErrorFallback = (
   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
@@ -25,7 +26,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, strategies } = useMetadata()
 
   // Set page title
   useEffect(() => {
@@ -102,11 +103,14 @@ export default function OverviewPage() {
 
   if (!hasActiveWallets) {
     return (
-      <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Home</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/wallet-management" className="text-emerald-600 hover:underline">Add a wallet</Link> in Wallet Management to start tracking trades.
-        </p>
+      <div className="pt-8 space-y-6">
+        <h1 className="text-xl font-semibold">Home</h1>
+        <GettingStarted
+          hasWallets={false}
+          hasTimezone={timezone !== 'UTC'}
+          hasStrategies={strategies.length > 0}
+          preSessionDone={preSessionDone}
+        />
       </div>
     )
   }
@@ -150,6 +154,14 @@ export default function OverviewPage() {
           <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
         </div>
       </div>
+
+      {/* Getting Started checklist (auto-hides when all steps complete) */}
+      <GettingStarted
+        hasWallets={hasActiveWallets}
+        hasTimezone={timezone !== 'UTC'}
+        hasStrategies={strategies.length > 0}
+        preSessionDone={preSessionDone}
+      />
 
       {/* Row 1: Session Hero */}
       <ErrorBoundary fallback={sectionErrorFallback}>
