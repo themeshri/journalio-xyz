@@ -49,57 +49,43 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const userId = id || authUser.id
+    // The authenticated Supabase user id is the sole source of truth for the
+    // account. Never reconcile by email: a different account could already own
+    // this email, and updating that record (or adopting its id) would merge two
+    // distinct users / allow account takeover.
+    const userId = authUser.id
 
-    // First check if user exists by ID
-    let existingUser = await prisma.user.findUnique({
+    // Only claim the email if no *other* user already holds it (email is @unique).
+    const emailOwner = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    })
+    const canUseEmail = !emailOwner || emailOwner.id === userId
+
+    const user = await prisma.user.upsert({
       where: { id: userId },
+      update: {
+        name: name || undefined,
+        ...(canUseEmail ? { email } : {}),
+        image: image || undefined,
+      },
+      create: {
+        id: userId,
+        // Fall back to null (not a colliding email) when another user owns it.
+        email: canUseEmail ? email : null,
+        name: name || email.split('@')[0],
+        image,
+      },
     })
 
-    // If not found by ID, check by email
-    if (!existingUser) {
-      existingUser = await prisma.user.findUnique({
-        where: { email },
-      })
-    }
+    // Ensure a settings row exists (idempotent).
+    await prisma.userSettings.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id },
+    })
 
-    if (existingUser) {
-      const updatedUser = await prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          name: name || existingUser.name,
-          email: email || existingUser.email,
-          image: image || existingUser.image,
-        },
-      })
-
-      const hasSettings = await prisma.userSettings.findUnique({
-        where: { userId: updatedUser.id },
-      })
-
-      if (!hasSettings) {
-        await prisma.userSettings.create({
-          data: { userId: updatedUser.id },
-        })
-      }
-
-      return NextResponse.json({ user: updatedUser })
-    } else {
-      const newUser = await prisma.user.create({
-        data: {
-          id: userId,
-          email,
-          name: name || email.split('@')[0],
-          image,
-        },
-      })
-
-      await prisma.userSettings.create({
-        data: { userId: newUser.id },
-      })
-
-      return NextResponse.json({ user: newUser })
-    }
+    return NextResponse.json({ user })
   } catch (error) {
     console.error('User sync error:', error)
     return NextResponse.json(

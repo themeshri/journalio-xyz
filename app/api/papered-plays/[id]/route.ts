@@ -44,39 +44,18 @@ export async function PATCH(
     const play = await prisma.paperedPlay.findUnique({ where: { id } })
     if (!play || play.userId !== userId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // Build update data from all provided fields
-    const data: Record<string, unknown> = {}
+    // Build the update from validated data only — the schema has already
+    // coerced/rejected bad types, so no NaN / Invalid Date can reach Prisma.
+    const { entryTime, exitTime, ...rest } = validation.data
+    const data: Record<string, unknown> = { ...rest }
 
-    // String fields
-    const stringFields = ['coinName', 'contractAddr', 'tokenMint', 'tokenSymbol', 'tokenImage',
-      'mcWhenSaw', 'ath', 'reasonMissed', 'howToNotMiss', 'attachment', 'outcome', 'missReason',
-      'strategyId', 'notes']
-    for (const field of stringFields) {
-      if (field in body) {
-        data[field] = body[field] != null ? String(body[field]).trim() : null
-      }
+    // DateTime fields arrive as validated (ISO) strings; convert to Date.
+    if ('entryTime' in validation.data) {
+      data.entryTime = entryTime ? new Date(entryTime) : null
     }
-
-    // Float fields
-    const floatFields = ['entryPrice', 'exitPrice', 'hypotheticalPositionSize',
-      'potentialMultiplier', 'potentialPnL', 'peakMultiplier']
-    for (const field of floatFields) {
-      if (field in body) {
-        data[field] = body[field] != null ? Number(body[field]) : null
-      }
+    if ('exitTime' in validation.data) {
+      data.exitTime = exitTime ? new Date(exitTime) : null
     }
-
-    // Int fields
-    const intFields = ['rulesMetCount', 'rulesTotalCount']
-    for (const field of intFields) {
-      if (field in body) {
-        data[field] = body[field] != null ? Number(body[field]) : null
-      }
-    }
-
-    // DateTime fields
-    if ('entryTime' in body) data.entryTime = body.entryTime ? new Date(body.entryTime) : null
-    if ('exitTime' in body) data.exitTime = body.exitTime ? new Date(body.exitTime) : null
 
     const updatedPlay = await prisma.paperedPlay.update({
       where: { id },

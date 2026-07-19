@@ -21,14 +21,33 @@ import type {
   HesitationCostAnalysis,
 } from '@/lib/analytics'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+/**
+ * Throws on non-2xx responses so SWR surfaces an `error` instead of treating
+ * a 4xx/5xx JSON error body as valid analytics data (which rendered as empty
+ * or zeroed charts with no failure indication).
+ */
+async function parseResponse(r: Response) {
+  if (!r.ok) {
+    let message = `Request failed (${r.status})`
+    try {
+      const body = await r.json()
+      if (body?.error) message = body.error
+    } catch {
+      // non-JSON error body — keep the status-based message
+    }
+    throw new Error(message)
+  }
+  return r.json()
+}
+
+const fetcher = (url: string) => fetch(url).then(parseResponse)
 
 const postFetcher = ([url, body]: [string, string]) =>
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body,
-  }).then(r => r.json())
+  }).then(parseResponse)
 
 const SWR_OPTIONS = {
   revalidateOnFocus: false,

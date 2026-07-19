@@ -56,10 +56,10 @@ export default class ErrorBoundary extends Component<Props, State> {
           role="alert"
           aria-live="assertive"
         >
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-lg w-full">
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg p-6 max-w-lg w-full">
             <div className="flex items-start gap-4">
               <svg
-                className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5"
+                className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -73,18 +73,18 @@ export default class ErrorBoundary extends Component<Props, State> {
                 />
               </svg>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-red-900 mb-2">
+                <h3 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">
                   Something went wrong
                 </h3>
-                <p className="text-sm text-red-700 mb-4">
+                <p className="text-sm text-red-700 dark:text-red-300 mb-4">
                   An unexpected error occurred. Please try again.
                 </p>
                 {this.state.error && process.env.NODE_ENV === 'development' && (
                   <details className="mb-4 text-xs">
-                    <summary className="cursor-pointer text-red-800 font-medium hover:text-red-900">
+                    <summary className="cursor-pointer text-red-800 dark:text-red-300 font-medium hover:text-red-900 dark:hover:text-red-200">
                       Error details (development only)
                     </summary>
-                    <pre className="mt-2 p-3 bg-red-100 rounded text-red-900 overflow-auto">
+                    <pre className="mt-2 p-3 bg-red-100 dark:bg-red-950/60 rounded text-red-900 dark:text-red-200 overflow-auto">
                       {this.state.error.message}
                       {'\n\n'}
                       {this.state.error.stack}

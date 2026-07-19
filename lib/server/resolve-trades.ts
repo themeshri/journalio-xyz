@@ -91,7 +91,10 @@ export async function resolveFlattenedTrades(params: WalletParams): Promise<Flat
   const { addresses, chains, dexes, userId } = params
   if (addresses.length === 0) return []
 
-  const cacheKey = `trades:${addresses.join(',')}:${dexes.join(',')}`
+  // Cache key MUST include userId — resolveWalletTrades scopes DB reads by userId,
+  // so caching by address alone would let one user receive another user's resolved
+  // trades for a shared wallet address within the TTL window.
+  const cacheKey = `trades:${userId}:${addresses.join(',')}:${dexes.join(',')}`
 
   // Check TTL cache first
   const cached = getCached(cacheKey)

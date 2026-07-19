@@ -513,15 +513,21 @@ function SessionsTab() {
   const [preSessions, setPreSessions] = useState<PreSessionFull[]>([])
   const [postSessions, setPostSessions] = useState<PostSessionData[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
   const [selectedPreSession, setSelectedPreSession] = useState<PreSessionFull | null>(null)
   const [selectedPostSession, setSelectedPostSession] = useState<PostSessionData | null>(null)
 
   useEffect(() => {
-    Promise.all([loadPreSessions(), loadPostSessions()]).then(([pre, post]) => {
-      setPreSessions(pre.sort((a, b) => b.date.localeCompare(a.date)))
-      setPostSessions(post.sort((a, b) => b.date.localeCompare(a.date)))
-      setLoaded(true)
-    })
+    Promise.all([loadPreSessions(), loadPostSessions()])
+      .then(([pre, post]) => {
+        setPreSessions(pre.sort((a, b) => b.date.localeCompare(a.date)))
+        setPostSessions(post.sort((a, b) => b.date.localeCompare(a.date)))
+      })
+      .catch((err) => {
+        console.error('Failed to load sessions:', err)
+        setError(true)
+      })
+      .finally(() => setLoaded(true))
   }, [])
 
   const rows = useMemo(() => {
@@ -542,6 +548,14 @@ function SessionsTab() {
 
   if (!loaded) {
     return <div className="py-4"><TableRowsSkeleton rows={3} cols={7} /></div>
+  }
+
+  if (error) {
+    return (
+      <p className="text-sm text-destructive py-4">
+        Failed to load sessions. Please refresh to try again.
+      </p>
+    )
   }
 
   if (rows.length === 0) {
@@ -696,17 +710,31 @@ function SessionsTab() {
 function JournalHistoryTab() {
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
   const [selectedJournal, setSelectedJournal] = useState<JournalEntry | null>(null)
 
   useEffect(() => {
-    loadJournals().then((records) => {
-      setEntries(records.map(journalRecordToEntry))
-      setLoaded(true)
-    })
+    loadJournals()
+      .then((records) => {
+        setEntries(records.map(journalRecordToEntry))
+      })
+      .catch((err) => {
+        console.error('Failed to load journals:', err)
+        setError(true)
+      })
+      .finally(() => setLoaded(true))
   }, [])
 
   if (!loaded) {
     return <div className="py-4"><TableRowsSkeleton rows={3} cols={9} /></div>
+  }
+
+  if (error) {
+    return (
+      <p className="text-sm text-destructive py-4">
+        Failed to load journal entries. Please refresh to try again.
+      </p>
+    )
   }
 
   if (entries.length === 0) {
@@ -1129,14 +1157,20 @@ interface ChartbookImage {
 function ChartbookTab() {
   const [entries, setEntries] = useState<JournalRecord[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
   const [selectedImage, setSelectedImage] = useState<ChartbookImage | null>(null)
   const { flattenedTrades } = useWallet()
 
   useEffect(() => {
-    loadJournals().then((records) => {
-      setEntries(records)
-      setLoaded(true)
-    })
+    loadJournals()
+      .then((records) => {
+        setEntries(records)
+      })
+      .catch((err) => {
+        console.error('Failed to load journals:', err)
+        setError(true)
+      })
+      .finally(() => setLoaded(true))
   }, [])
 
   // Build a map of tokenMint -> trade cycle for P/L lookup
@@ -1188,6 +1222,14 @@ function ChartbookTab() {
 
   if (!loaded) {
     return <div className="py-4"><TableRowsSkeleton rows={2} cols={4} /></div>
+  }
+
+  if (error) {
+    return (
+      <p className="text-sm text-destructive py-4">
+        Failed to load chart images. Please refresh to try again.
+      </p>
+    )
   }
 
   if (images.length === 0) {

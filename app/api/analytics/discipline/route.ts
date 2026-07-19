@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { parseWalletParamsFromBody, resolveFlattenedTrades, applyDateFilter, sanitizeForJSON } from '@/lib/server/resolve-trades'
 import { getCached, setCached } from '@/lib/server/analytics-cache'
 import { requireAuth } from '@/lib/auth-helper'
+import { rateLimitByUser } from '@/lib/rate-limit'
 import {
   computeCommentPerformance,
   computeEfficiency,
@@ -16,11 +17,16 @@ function hashBody(body: Record<string, unknown>): string {
   return createHash('md5').update(JSON.stringify(body)).digest('hex').slice(0, 12)
 }
 
+const checkRateLimit = rateLimitByUser({ limit: 60, windowSeconds: 60, prefix: 'analytics-discipline' })
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
+
+    const limited = checkRateLimit(userId)
+    if (limited) return limited
 
     const body = await request.json()
     const params = parseWalletParamsFromBody(body, userId)

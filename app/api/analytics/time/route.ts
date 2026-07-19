@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { parseWalletParams, resolveFlattenedTrades, applyDateFilter, sanitizeForJSON } from '@/lib/server/resolve-trades'
 import { getCached, setCached } from '@/lib/server/analytics-cache'
 import { requireAuth } from '@/lib/auth-helper'
+import { rateLimitByUser } from '@/lib/rate-limit'
 import {
   computeHourlyPerformance,
   computeDayOfWeekPerformance,
@@ -9,11 +10,16 @@ import {
   computeEnhancedDurationBuckets,
 } from '@/lib/analytics/time'
 
+const checkRateLimit = rateLimitByUser({ limit: 60, windowSeconds: 60, prefix: 'analytics-time' })
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request)
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
+
+    const limited = checkRateLimit(userId)
+    if (limited) return limited
 
     const { searchParams } = new URL(request.url)
     const params = parseWalletParams(searchParams, userId)
