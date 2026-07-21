@@ -1,5 +1,5 @@
 import type { FlattenedTrade } from '../tradeCycles'
-import type { JournalData } from '@/components/JournalModal'
+import type { JournalData } from '@/lib/types/journal'
 import type { TradeComment } from '@/lib/trade-comments'
 
 // Re-export dependency types for convenience

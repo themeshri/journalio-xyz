@@ -11,7 +11,7 @@ import {
   disciplineColorClass,
 } from '../discipline'
 import type { TradeComment } from '../trade-comments'
-import type { JournalData } from '@/components/JournalModal'
+import type { JournalData } from '@/lib/types/journal'
 
 const comments: TradeComment[] = [
   { id: 'pos', category: 'entry', label: 'good', rating: 'positive', createdAt: '' },

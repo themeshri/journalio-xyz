@@ -32,37 +32,11 @@ import { toast } from 'sonner';
 import { RatingScale } from '@/components/ui/rating-scale';
 import { YesNoToggle } from '@/components/ui/yes-no-toggle';
 
-export interface TradeRuleResult {
-  ruleId: string;
-  ruleGroupId: string;
-  followed: boolean;
-}
-
-export interface JournalData {
-  strategy: string;
-  strategyId?: string | null;
-  ruleResults?: TradeRuleResult[];
-  emotionalState: string;
-  buyNotes: string;
-  buyRating: number;
-  exitPlan: string;
-  sellRating: number;
-  followedExitRule: boolean | null;
-  sellMistakes: string[];
-  sellNotes: string;
-  attachment?: string;
-  entryCommentId?: string | null;
-  exitCommentId?: string | null;
-  managementCommentId?: string | null;
-  emotionTag?: string | null;
-  stopLoss?: number | null;
-  takeProfit?: number | null;
-  journaledAt?: string;
-  // Legacy fields preserved for backward compat when reading old data
-  buyCategory?: string;
-  fomoLevel?: number;
-  energyLevel?: number;
-}
+// JournalData / TradeRuleResult moved to lib/types/journal so lib modules can
+// use them without importing the UI layer. Imported for this component's own
+// use and re-exported here for back-compat with existing UI importers.
+import type { JournalData, TradeRuleResult } from '@/lib/types/journal';
+export type { JournalData, TradeRuleResult };
 
 interface JournalModalProps {
   trade: FlattenedTrade;

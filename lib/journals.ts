@@ -1,6 +1,6 @@
 // Journal types and async API helpers
 
-import type { JournalData } from '@/components/JournalModal'
+import type { JournalData } from '@/lib/types/journal'
 
 export type { JournalData }
 

@@ -1,5 +1,5 @@
 import { type TradeComment, getCommentById } from './trade-comments'
-import { type JournalData } from '@/components/JournalModal'
+import { type JournalData } from '@/lib/types/journal'
 
 export function ratingToScore(rating: TradeComment['rating']): number {
   if (rating === 'positive') return 1
