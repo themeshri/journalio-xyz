@@ -1,35 +1,26 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
+  Button,
+  Input,
+  Textarea,
+  Chip,
+  Checkbox,
   Accordion,
-  AccordionContent,
   AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover'
-import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+  Divider,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@heroui/react'
 import { StrategyCardSkeleton } from '@/components/skeletons'
 import {
   type Strategy,
@@ -217,15 +208,15 @@ function createBlankRule(sortOrder: number): StrategyRule {
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Popover placement="bottom-start">
+      <PopoverTrigger>
         <button
           type="button"
           className="w-8 h-8 rounded-md border-2 border-border shrink-0"
           style={{ backgroundColor: value }}
         />
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start">
+      <PopoverContent className="w-auto p-3">
         <div className="grid grid-cols-4 gap-2">
           {PRESET_COLORS.map((c) => (
             <button
@@ -244,8 +235,8 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 
 function IconPicker({ value, onChange }: { value: string; onChange: (i: string) => void }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Popover placement="bottom-start">
+      <PopoverTrigger>
         <button
           type="button"
           className="w-8 h-8 rounded-md border-2 border-border shrink-0 flex items-center justify-center text-lg"
@@ -253,7 +244,7 @@ function IconPicker({ value, onChange }: { value: string; onChange: (i: string) 
           {value}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start">
+      <PopoverContent className="w-auto p-3">
         <div className="grid grid-cols-6 gap-2">
           {PRESET_ICONS.map((ic) => (
             <button
@@ -285,16 +276,18 @@ function RuleEditor({
       <div className="flex-1 space-y-1.5">
         <div className="flex gap-2">
           <Input
+            size="sm"
+            aria-label="Rule description"
             value={rule.text}
-            onChange={(e) => onUpdate({ ...rule, text: e.target.value })}
+            onValueChange={(v) => onUpdate({ ...rule, text: v })}
             placeholder="Rule description..."
             className="text-sm"
           />
           <Button
             type="button"
-            variant="ghost"
+            variant="light"
             size="sm"
-            onClick={onRemove}
+            onPress={onRemove}
             className="shrink-0 px-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
           >
             X
@@ -303,26 +296,27 @@ function RuleEditor({
         <div className="flex items-center gap-4 text-xs">
           <label className="flex items-center gap-1.5 cursor-pointer">
             <Checkbox
-              checked={rule.isRequired}
-              onCheckedChange={(checked) => onUpdate({ ...rule, isRequired: !!checked })}
+              isSelected={rule.isRequired}
+              onValueChange={(checked) => onUpdate({ ...rule, isRequired: !!checked })}
             />
             <span className="text-muted-foreground">Required</span>
           </label>
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">Show:</span>
             <Select
-              value={rule.showWhen}
-              onValueChange={(v) => onUpdate({ ...rule, showWhen: v as StrategyRule['showWhen'] })}
+              aria-label="Show rule when"
+              size="sm"
+              className="w-[100px]"
+              selectedKeys={[rule.showWhen]}
+              onSelectionChange={(keys) => {
+                const v = Array.from(keys)[0]
+                if (v) onUpdate({ ...rule, showWhen: v as StrategyRule['showWhen'] })
+              }}
             >
-              <SelectTrigger className="h-6 text-xs w-[100px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="always">Always</SelectItem>
-                <SelectItem value="winner">Winner</SelectItem>
-                <SelectItem value="loser">Loser</SelectItem>
-                <SelectItem value="breakeven">Breakeven</SelectItem>
-              </SelectContent>
+              <SelectItem key="always">Always</SelectItem>
+              <SelectItem key="winner">Winner</SelectItem>
+              <SelectItem key="loser">Loser</SelectItem>
+              <SelectItem key="breakeven">Breakeven</SelectItem>
             </Select>
           </div>
         </div>
@@ -365,16 +359,18 @@ function RuleGroupEditor({
     <div className="border rounded-lg p-3 space-y-3">
       <div className="flex items-center gap-2">
         <Input
+          size="sm"
+          aria-label="Group name"
           value={group.name}
-          onChange={(e) => onUpdate({ ...group, name: e.target.value })}
+          onValueChange={(v) => onUpdate({ ...group, name: v })}
           placeholder="Group name (e.g., Entry Criteria)"
           className="text-sm font-medium"
         />
         <Button
           type="button"
-          variant="ghost"
+          variant="light"
           size="sm"
-          onClick={onRemove}
+          onPress={onRemove}
           className="shrink-0 px-2 text-xs text-muted-foreground hover:text-destructive"
         >
           Remove Group
@@ -394,9 +390,9 @@ function RuleGroupEditor({
 
       <Button
         type="button"
-        variant="ghost"
+        variant="light"
         size="sm"
-        onClick={addGroupRule}
+        onPress={addGroupRule}
         className="text-xs text-muted-foreground"
       >
         + Add Rule
@@ -409,13 +405,13 @@ function TemplateSelector({ onSelect }: { onSelect: (t: StrategyTemplate) => voi
   const [open, setOpen] = useState(false)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="text-xs">
+    <Popover isOpen={open} onOpenChange={setOpen} placement="bottom-start">
+      <PopoverTrigger>
+        <Button type="button" variant="bordered" size="sm" className="text-xs">
           Use Template
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-2" align="start">
+      <PopoverContent className="w-72 p-2">
         <div className="space-y-1">
           {TEMPLATES.map((t) => (
             <button
@@ -473,35 +469,35 @@ function StrategyCard({
           <span className="text-lg">{strategy.icon}</span>
           <h3 className="text-sm font-semibold">{strategy.name}</h3>
           {strategy.isArchived && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            <Chip size="sm" variant="flat" className="text-[10px] px-1.5 py-0">
               Archived
-            </Badge>
+            </Chip>
           )}
         </div>
         <div className="flex items-center gap-1">
           <Button
             size="sm"
-            variant="ghost"
+            variant="light"
             className="h-7 px-2 text-xs text-muted-foreground"
-            onClick={onArchive}
+            onPress={onArchive}
           >
             {strategy.isArchived ? 'Restore' : 'Archive'}
           </Button>
           <Button
             size="sm"
-            variant="ghost"
+            variant="light"
             className="h-7 px-2 text-xs text-muted-foreground"
-            onClick={onEdit}
-            disabled={disabled}
+            onPress={onEdit}
+            isDisabled={disabled}
           >
             Edit
           </Button>
           <Button
             size="sm"
-            variant="ghost"
+            variant="light"
             className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-            onClick={onRequestDelete}
-            disabled={disabled}
+            onPress={onRequestDelete}
+            isDisabled={disabled}
           >
             Delete
           </Button>
@@ -519,33 +515,33 @@ function StrategyCard({
             {totalRules} rule{totalRules !== 1 ? 's' : ''} ({requiredRules} required)
           </div>
 
-          <Accordion type="multiple" className="w-full">
+          <Accordion selectionMode="multiple" isCompact className="w-full px-0">
             {strategy.ruleGroups
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((group) => (
-                <AccordionItem key={group.id} value={group.id} className="border-b-0">
-                  <AccordionTrigger className="py-1.5 text-xs font-medium text-muted-foreground hover:no-underline">
-                    {group.name} ({group.rules.length})
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-2">
-                    <ul className="space-y-0.5">
-                      {group.rules
-                        .sort((a, b) => a.sortOrder - b.sortOrder)
-                        .map((rule) => (
-                          <li key={rule.id} className="text-sm text-muted-foreground flex items-start gap-2">
-                            <span className={`mt-0.5 ${rule.isRequired ? 'text-foreground' : 'text-muted-foreground/50'}`}>
-                              {rule.isRequired ? '●' : '○'}
-                            </span>
-                            <span>
-                              {rule.text}
-                              {!rule.isRequired && (
-                                <span className="text-muted-foreground/50 ml-1">(optional)</span>
-                              )}
-                            </span>
-                          </li>
-                        ))}
-                    </ul>
-                  </AccordionContent>
+                <AccordionItem
+                  key={group.id}
+                  aria-label={group.name}
+                  classNames={{ trigger: 'py-1.5', title: 'text-xs font-medium text-muted-foreground', content: 'pb-2' }}
+                  title={`${group.name} (${group.rules.length})`}
+                >
+                  <ul className="space-y-0.5">
+                    {group.rules
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((rule) => (
+                        <li key={rule.id} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className={`mt-0.5 ${rule.isRequired ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                            {rule.isRequired ? '●' : '○'}
+                          </span>
+                          <span>
+                            {rule.text}
+                            {!rule.isRequired && (
+                              <span className="text-muted-foreground/50 ml-1">(optional)</span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
                 </AccordionItem>
               ))}
           </Accordion>
@@ -837,7 +833,7 @@ export default function StrategiesPage() {
             </button>
           </label>
           {!showForm && (
-            <Button size="sm" onClick={openAdd}>
+            <Button size="sm" color="primary" onPress={openAdd}>
               + New Strategy
             </Button>
           )}
@@ -856,16 +852,19 @@ export default function StrategiesPage() {
             <IconPicker value={formIcon} onChange={setFormIcon} />
             <ColorPicker value={formColor} onChange={setFormColor} />
             <Input
+              size="sm"
+              aria-label="Strategy name"
               value={formName}
-              onChange={(e) => { setFormName(e.target.value); setFormDirty(true) }}
+              onValueChange={(v) => { setFormName(v); setFormDirty(true) }}
               placeholder="Strategy name"
               className="flex-1"
             />
           </div>
 
           <Textarea
+            aria-label="Strategy description"
             value={formDescription}
-            onChange={(e) => { setFormDescription(e.target.value); setFormDirty(true) }}
+            onValueChange={(v) => { setFormDescription(v); setFormDirty(true) }}
             placeholder="Brief description of this strategy..."
             rows={2}
             className="resize-none"
@@ -873,10 +872,10 @@ export default function StrategiesPage() {
 
           {advancedMode && (
             <>
-              <Separator />
+              <Divider />
 
               <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-2 block">Rule Groups</Label>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Rule Groups</p>
                 <div className="space-y-3">
                   {formGroups.map((group) => (
                     <RuleGroupEditor
@@ -889,9 +888,9 @@ export default function StrategiesPage() {
                 </div>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="bordered"
                   size="sm"
-                  onClick={addGroup}
+                  onPress={addGroup}
                   className="mt-3 text-xs"
                 >
                   + Add Rule Group
@@ -901,10 +900,10 @@ export default function StrategiesPage() {
           )}
 
           <div className="flex gap-2 pt-2">
-            <Button size="sm" onClick={handleSave} disabled={!formName.trim() || saving}>
+            <Button size="sm" color="primary" onPress={handleSave} isDisabled={!formName.trim() || saving}>
               {saving ? 'Saving...' : editingId ? 'Update Strategy' : 'Save Strategy'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={cancelForm}>
+            <Button size="sm" variant="light" onPress={cancelForm}>
               Cancel
             </Button>
           </div>
@@ -933,7 +932,7 @@ export default function StrategiesPage() {
             ))}
           </div>
           <div className="text-center">
-            <Button size="sm" variant="outline" onClick={openAdd}>
+            <Button size="sm" variant="bordered" onPress={openAdd}>
               + Blank Strategy
             </Button>
           </div>
@@ -958,7 +957,7 @@ export default function StrategiesPage() {
       {/* ── Archived Strategies ── */}
       {archivedStrategies.length > 0 && (
         <>
-          <Separator className="my-6" />
+          <Divider className="my-6" />
           <h2 className="text-sm font-medium text-muted-foreground mb-3">
             Archived ({archivedStrategies.length})
           </h2>
@@ -979,7 +978,7 @@ export default function StrategiesPage() {
       )}
 
       {/* ========== GLOBAL RULES SECTION ========== */}
-      <Separator className="my-8" />
+      <Divider className="my-8" />
 
       <div className="mb-4">
         <h2 className="text-lg font-semibold">Global Rules</h2>
@@ -990,14 +989,16 @@ export default function StrategiesPage() {
 
       <div className="flex gap-2 mb-4">
         <Input
+          size="sm"
+          aria-label="New global rule"
           value={newRule}
-          onChange={(e) => setNewRule(e.target.value)}
+          onValueChange={setNewRule}
           placeholder="e.g., I will not chase pumps that already 5x'd"
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleAddRule()
           }}
         />
-        <Button size="sm" onClick={handleAddRule} disabled={!newRule.trim()}>
+        <Button size="sm" color="primary" onPress={handleAddRule} isDisabled={!newRule.trim()}>
           Add
         </Button>
       </div>
@@ -1018,18 +1019,20 @@ export default function StrategiesPage() {
               {editingRuleId === rule.id ? (
                 <div className="flex gap-2 flex-1">
                   <Input
+                    size="sm"
+                    aria-label="Edit rule text"
                     value={editingRuleText}
-                    onChange={(e) => setEditingRuleText(e.target.value)}
+                    onValueChange={setEditingRuleText}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') saveEditRule()
                       if (e.key === 'Escape') cancelEditRule()
                     }}
                     autoFocus
                   />
-                  <Button size="sm" onClick={saveEditRule} disabled={!editingRuleText.trim()}>
+                  <Button size="sm" color="primary" onPress={saveEditRule} isDisabled={!editingRuleText.trim()}>
                     Save
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={cancelEditRule}>
+                  <Button size="sm" variant="light" onPress={cancelEditRule}>
                     Cancel
                   </Button>
                 </div>
@@ -1038,17 +1041,17 @@ export default function StrategiesPage() {
                   <span className="text-sm flex-1">{rule.text}</span>
                   <Button
                     size="sm"
-                    variant="ghost"
+                    variant="light"
                     className="h-7 px-2 text-xs text-muted-foreground"
-                    onClick={() => startEditRule(rule)}
+                    onPress={() => startEditRule(rule)}
                   >
                     Edit
                   </Button>
                   <Button
                     size="sm"
-                    variant="ghost"
+                    variant="light"
                     className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                    onClick={() => setDeleteRuleId(rule.id)}
+                    onPress={() => setDeleteRuleId(rule.id)}
                   >
                     Delete
                   </Button>
@@ -1060,32 +1063,40 @@ export default function StrategiesPage() {
       )}
 
       {/* ── Delete Strategy Confirmation ── */}
-      <AlertDialog open={!!deleteStrategyId} onOpenChange={(open) => !open && setDeleteStrategyId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this strategy?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone. The strategy and all its rules will be permanently deleted.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleteStrategyId) handleDelete(deleteStrategyId) }}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Modal isOpen={!!deleteStrategyId} onOpenChange={(open) => !open && setDeleteStrategyId(null)} size="sm">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>Delete this strategy?</ModalHeader>
+              <ModalBody>
+                <p className="text-sm text-muted-foreground">This action cannot be undone. The strategy and all its rules will be permanently deleted.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" size="sm" onPress={onClose}>Cancel</Button>
+                <Button color="danger" size="sm" onPress={() => { if (deleteStrategyId) handleDelete(deleteStrategyId) }}>Delete</Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
 
       {/* ── Delete Rule Confirmation ── */}
-      <AlertDialog open={!!deleteRuleId} onOpenChange={(open) => !open && setDeleteRuleId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this rule?</AlertDialogTitle>
-            <AlertDialogDescription>This rule will be permanently removed from your global rules list.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleteRuleId) handleDeleteRule(deleteRuleId) }}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Modal isOpen={!!deleteRuleId} onOpenChange={(open) => !open && setDeleteRuleId(null)} size="sm">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>Delete this rule?</ModalHeader>
+              <ModalBody>
+                <p className="text-sm text-muted-foreground">This rule will be permanently removed from your global rules list.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" size="sm" onPress={onClose}>Cancel</Button>
+                <Button color="danger" size="sm" onPress={() => { if (deleteRuleId) handleDeleteRule(deleteRuleId) }}>Delete</Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

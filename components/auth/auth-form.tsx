@@ -3,9 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { auth } from '@/lib/supabase-auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Button, Input } from '@heroui/react'
 import { SocialButton } from './social-button'
 import { toast } from 'sonner'
 
@@ -106,8 +104,8 @@ export function AuthForm() {
             : "We've sent you a magic link to sign in to your account."}
         </p>
         <Button
-          variant="ghost"
-          onClick={() => {
+          variant="light"
+          onPress={() => {
             setEmailSent(false)
             setShowEmailForm(false)
             setEmailMode('signin')
@@ -151,15 +149,15 @@ export function AuthForm() {
       {!showEmailForm ? (
         <div className="space-y-2">
           <Button
-            variant="outline"
-            onClick={() => { setShowEmailForm(true); setEmailMode('signin') }}
+            variant="bordered"
+            onPress={() => { setShowEmailForm(true); setEmailMode('signin') }}
             className="w-full"
           >
             Sign in with email
           </Button>
           <Button
-            variant="ghost"
-            onClick={() => { setShowEmailForm(true); setEmailMode('signup') }}
+            variant="light"
+            onPress={() => { setShowEmailForm(true); setEmailMode('signup') }}
             className="w-full text-muted-foreground"
           >
             Create an account
@@ -169,42 +167,45 @@ export function AuthForm() {
         <form onSubmit={handleEmailSubmit} className="space-y-3">
           {emailMode === 'signup' && (
             <div>
-              <Label htmlFor="name">Name (optional)</Label>
               <Input
-                id="name"
+                label="Name (optional)"
+                labelPlacement="outside"
+                size="sm"
                 type="text"
                 placeholder="Your name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onValueChange={setName}
               />
             </div>
           )}
           <div>
-            <Label htmlFor="email">Email address</Label>
             <Input
-              id="email"
+              label="Email address"
+              labelPlacement="outside"
+              size="sm"
               type="email"
               placeholder="your@email.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              onValueChange={setEmail}
+              isRequired
             />
           </div>
           {emailMode !== 'magic-link' && (
             <div>
-              <Label htmlFor="password">Password</Label>
               <Input
-                id="password"
+                label="Password"
+                labelPlacement="outside"
+                size="sm"
                 type="password"
                 placeholder={emailMode === 'signup' ? 'Min 6 characters' : 'Your password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                onValueChange={setPassword}
+                isRequired
                 minLength={emailMode === 'signup' ? 6 : undefined}
               />
             </div>
           )}
-          <Button type="submit" disabled={isLoading} className="w-full">
+          <Button type="submit" color="primary" isDisabled={isLoading} className="w-full">
             {isLoading
               ? 'Loading...'
               : emailMode === 'signup'
@@ -253,8 +254,8 @@ export function AuthForm() {
 
           <Button
             type="button"
-            variant="ghost"
-            onClick={() => {
+            variant="light"
+            onPress={() => {
               setShowEmailForm(false)
               setEmailMode('signin')
               setPassword('')

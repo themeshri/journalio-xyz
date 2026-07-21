@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 import { formatValue } from '@/lib/formatters'
 import { computeCalendarData, getDayColorClass, type CalendarDay } from '@/lib/analytics'
 import { DayDetailModal } from '@/components/DayDetailModal'
@@ -79,11 +79,11 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
             </span>
           </div>
           <div className="flex items-center justify-between mt-1">
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground" onClick={prevMonth}>
+            <Button variant="light" isIconOnly size="sm" className="h-6 w-6 min-w-6 p-0 text-muted-foreground" onPress={prevMonth}>
               &larr;
             </Button>
             <span className="text-xs font-medium">{MONTH_NAMES[month]} {year}</span>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground" onClick={nextMonth}>
+            <Button variant="light" isIconOnly size="sm" className="h-6 w-6 min-w-6 p-0 text-muted-foreground" onPress={nextMonth}>
               &rarr;
             </Button>
           </div>

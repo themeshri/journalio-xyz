@@ -1,16 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { type NoteData, loadNotes, saveNote, deleteNote } from '@/lib/notes'
 
 export default function NotesPage() {
@@ -119,15 +114,17 @@ export default function NotesPage() {
       <div className={`w-full md:w-72 md:shrink-0 flex flex-col ${activeNote ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-semibold">Notes</h1>
-          <Button size="sm" variant="outline" onClick={handleNewNote}>
+          <Button size="sm" variant="bordered" onPress={handleNewNote} isIconOnly aria-label="New note">
             <Plus className="w-4 h-4" />
           </Button>
         </div>
 
         <Input
+          size="sm"
+          aria-label="Search notes"
           placeholder="Search notes..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onValueChange={setSearchQuery}
           className="mb-3"
         />
 
@@ -205,20 +202,22 @@ export default function NotesPage() {
             <div className="flex items-center gap-3 mb-3">
               <Button
                 size="sm"
-                variant="ghost"
+                variant="light"
                 className="md:hidden"
-                onClick={() => { setActiveNote(null); setIsDirty(false) }}
+                onPress={() => { setActiveNote(null); setIsDirty(false) }}
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back
               </Button>
               <Input
+                size="sm"
+                aria-label="Note title"
                 placeholder="Note title..."
                 value={activeNote.title}
-                onChange={(e) => { setActiveNote({ ...activeNote, title: e.target.value }); setIsDirty(true) }}
+                onValueChange={(value) => { setActiveNote({ ...activeNote, title: value }); setIsDirty(true) }}
                 className="text-lg font-medium"
               />
-              <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Button size="sm" color="primary" onPress={handleSave} isDisabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
               </Button>
             </div>
@@ -241,9 +240,11 @@ export default function NotesPage() {
                 className="inline-flex"
               >
                 <Input
+                  size="sm"
+                  aria-label="Add tag"
                   placeholder="Add tag (Enter to add)"
                   value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
+                  onValueChange={setTagInput}
                   className="h-6 w-24 text-xs"
                 />
               </form>
@@ -260,18 +261,33 @@ export default function NotesPage() {
       </div>
     </div>
 
-    <AlertDialog open={!!deleteNoteId} onOpenChange={(open) => !open && setDeleteNoteId(null)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete this note?</AlertDialogTitle>
-          <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => { if (deleteNoteId) handleDelete(deleteNoteId); setDeleteNoteId(null) }}>Delete</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    {/* Delete-note confirm — HeroUI Modal (replaces shadcn AlertDialog) */}
+    <Modal
+      isOpen={!!deleteNoteId}
+      onOpenChange={(open) => { if (!open) setDeleteNoteId(null) }}
+      size="sm"
+    >
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader>Delete this note?</ModalHeader>
+            <ModalBody>
+              <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="light" size="sm" onPress={onClose}>Cancel</Button>
+              <Button
+                color="danger"
+                size="sm"
+                onPress={() => { if (deleteNoteId) handleDelete(deleteNoteId); setDeleteNoteId(null) }}
+              >
+                Delete
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
     </>
   )
 }

@@ -2,10 +2,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { type FlattenedTrade, type TradeInput } from '@/lib/tradeCycles'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
+import { Button, Input, Divider } from '@heroui/react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -121,29 +118,33 @@ export function EditTradeTab({ trade }: EditTradeTabProps) {
         <h4 className="text-sm font-medium">Edit Whole Trade</h4>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-xs text-muted-foreground">Total Bought (USD)</Label>
             <Input
+              label="Total Bought (USD)"
+              labelPlacement="outside"
+              size="sm"
               type="number"
               step="any"
               placeholder={`$${trade.totalBuyValue.toFixed(2)}`}
-              value={wholeEdit.totalBuyValue ?? ''}
-              onChange={(e) => setWholeEdit((prev) => ({
+              value={wholeEdit.totalBuyValue?.toString() ?? ''}
+              onValueChange={(value) => setWholeEdit((prev) => ({
                 ...prev,
-                totalBuyValue: e.target.value === '' ? undefined : Number(e.target.value),
+                totalBuyValue: value === '' ? undefined : Number(value),
               }))}
               className="h-8 text-sm font-mono mt-1"
             />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Total Sold (USD)</Label>
             <Input
+              label="Total Sold (USD)"
+              labelPlacement="outside"
+              size="sm"
               type="number"
               step="any"
               placeholder={`$${trade.totalSellValue.toFixed(2)}`}
-              value={wholeEdit.totalSellValue ?? ''}
-              onChange={(e) => setWholeEdit((prev) => ({
+              value={wholeEdit.totalSellValue?.toString() ?? ''}
+              onValueChange={(value) => setWholeEdit((prev) => ({
                 ...prev,
-                totalSellValue: e.target.value === '' ? undefined : Number(e.target.value),
+                totalSellValue: value === '' ? undefined : Number(value),
               }))}
               className="h-8 text-sm font-mono mt-1"
             />
@@ -157,7 +158,7 @@ export function EditTradeTab({ trade }: EditTradeTabProps) {
         </div>
       </div>
 
-      <Separator />
+      <Divider />
 
       {/* Individual Transactions */}
       <div>
@@ -194,39 +195,41 @@ export function EditTradeTab({ trade }: EditTradeTabProps) {
 
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">
-                      Amount In ({tx.tokenIn?.symbol || '?'})
-                    </Label>
                     <Input
+                      label={`Amount In (${tx.tokenIn?.symbol || '?'})`}
+                      labelPlacement="outside"
+                      size="sm"
                       type="number"
                       step="any"
                       placeholder={tx.amountIn.toLocaleString('en-US', { maximumFractionDigits: 4 })}
-                      value={edit.editedAmountIn ?? ''}
-                      onChange={(e) => updateTxEdit(tx.signature, 'editedAmountIn', e.target.value)}
+                      value={edit.editedAmountIn?.toString() ?? ''}
+                      onValueChange={(value) => updateTxEdit(tx.signature, 'editedAmountIn', value)}
                       className="h-7 text-xs font-mono"
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">
-                      Amount Out ({tx.tokenOut?.symbol || '?'})
-                    </Label>
                     <Input
+                      label={`Amount Out (${tx.tokenOut?.symbol || '?'})`}
+                      labelPlacement="outside"
+                      size="sm"
                       type="number"
                       step="any"
                       placeholder={tx.amountOut.toLocaleString('en-US', { maximumFractionDigits: 4 })}
-                      value={edit.editedAmountOut ?? ''}
-                      onChange={(e) => updateTxEdit(tx.signature, 'editedAmountOut', e.target.value)}
+                      value={edit.editedAmountOut?.toString() ?? ''}
+                      onValueChange={(value) => updateTxEdit(tx.signature, 'editedAmountOut', value)}
                       className="h-7 text-xs font-mono"
                     />
                   </div>
                   <div>
-                    <Label className="text-[10px] text-muted-foreground">Value (USD)</Label>
                     <Input
+                      label="Value (USD)"
+                      labelPlacement="outside"
+                      size="sm"
                       type="number"
                       step="any"
                       placeholder={`$${tx.valueUSD.toFixed(2)}`}
-                      value={edit.editedValueUSD ?? ''}
-                      onChange={(e) => updateTxEdit(tx.signature, 'editedValueUSD', e.target.value)}
+                      value={edit.editedValueUSD?.toString() ?? ''}
+                      onValueChange={(value) => updateTxEdit(tx.signature, 'editedValueUSD', value)}
                       className="h-7 text-xs font-mono"
                     />
                   </div>
@@ -243,14 +246,15 @@ export function EditTradeTab({ trade }: EditTradeTabProps) {
         )}
       </div>
 
-      <Separator />
+      <Divider />
 
       {/* Save button */}
       <div className="flex justify-end">
         <Button
+          color="primary"
           size="sm"
-          disabled={!hasEdits || saving}
-          onClick={handleSave}
+          isDisabled={!hasEdits || saving}
+          onPress={handleSave}
         >
           {saving ? 'Saving...' : 'Save Edits'}
         </Button>

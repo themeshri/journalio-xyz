@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 
 interface TourHighlightProps {
   targetSelector?: string // data-tour selector, e.g. "[data-tour='sidebar']"
@@ -152,7 +152,7 @@ export function TourHighlight({
         </div>
         <h3 className="text-sm font-semibold mb-1">{title}</h3>
         <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{description}</p>
-        <Button size="sm" onClick={onNext}>
+        <Button size="sm" color="primary" onPress={onNext}>
           {isLast ? 'Finish' : 'Next'}
         </Button>
       </div>

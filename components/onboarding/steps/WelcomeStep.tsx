@@ -1,7 +1,7 @@
 'use client'
 
 import { ClipboardList, TrendingUp, BookOpen, ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 
 interface WelcomeStepProps {
   onNext: () => void
@@ -38,7 +38,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
         </div>
       </div>
 
-      <Button onClick={onNext} size="lg">
+      <Button onPress={onNext} size="lg" color="primary">
         Get Started
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>

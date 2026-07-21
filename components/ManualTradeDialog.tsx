@@ -2,16 +2,15 @@
 
 import React, { useState, useCallback } from 'react'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+  Button,
+  Input,
+  Textarea,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@heroui/react'
 import { toast } from 'sonner'
 
 interface ManualTradeDialogProps {
@@ -108,131 +107,147 @@ export function ManualTradeDialog({ walletAddress, chain, onClose, onSaved }: Ma
   }, [canSave, walletAddress, chain, tokenName, tokenMint, buyPrice, buyAmount, sellPrice, sellAmount, date, notes, buyValue, sellValue, onSaved, onClose])
 
   return (
-    <Dialog open onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-base">Add Manual Trade</DialogTitle>
-        </DialogHeader>
+    <Modal isOpen onOpenChange={(o) => { if (!o) onClose() }} size="md">
+      <ModalContent className="max-w-md">
+        <ModalHeader className="text-base">Add Manual Trade</ModalHeader>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+        <ModalBody>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  label="Token Name *"
+                  labelPlacement="outside"
+                  size="sm"
+                  placeholder="e.g. BONK"
+                  value={tokenName}
+                  onValueChange={setTokenName}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Input
+                  label="Token Mint"
+                  labelPlacement="outside"
+                  size="sm"
+                  placeholder="Optional address"
+                  value={tokenMint}
+                  onValueChange={setTokenMint}
+                  className="mt-1 font-mono text-xs"
+                />
+              </div>
+            </div>
+
             <div>
-              <Label className="text-xs">Token Name *</Label>
               <Input
-                placeholder="e.g. BONK"
-                value={tokenName}
-                onChange={(e) => setTokenName(e.target.value)}
+                label="Date"
+                labelPlacement="outside"
+                size="sm"
+                type="date"
+                value={date}
+                onValueChange={setDate}
                 className="mt-1"
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  label="Buy Price (USD) *"
+                  labelPlacement="outside"
+                  size="sm"
+                  type="number"
+                  step="any"
+                  placeholder="0.00"
+                  value={buyPrice}
+                  onValueChange={setBuyPrice}
+                  className="mt-1 font-mono"
+                />
+              </div>
+              <div>
+                <Input
+                  label="Buy Amount *"
+                  labelPlacement="outside"
+                  size="sm"
+                  type="number"
+                  step="any"
+                  placeholder="0"
+                  value={buyAmount}
+                  onValueChange={setBuyAmount}
+                  className="mt-1 font-mono"
+                />
+              </div>
+            </div>
+
+            {buyValue > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Buy total: <span className="font-mono text-foreground">${buyValue.toFixed(2)}</span>
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Input
+                  label="Sell Price (USD)"
+                  labelPlacement="outside"
+                  size="sm"
+                  type="number"
+                  step="any"
+                  placeholder="0.00"
+                  value={sellPrice}
+                  onValueChange={setSellPrice}
+                  className="mt-1 font-mono"
+                />
+              </div>
+              <div>
+                <Input
+                  label="Sell Amount"
+                  labelPlacement="outside"
+                  size="sm"
+                  type="number"
+                  step="any"
+                  placeholder="0"
+                  value={sellAmount}
+                  onValueChange={setSellAmount}
+                  className="mt-1 font-mono"
+                />
+              </div>
+            </div>
+
+            {sellValue > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Sell total: <span className="font-mono text-foreground">${sellValue.toFixed(2)}</span>
+                {' | '}P/L:{' '}
+                <span className={`font-mono font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
+                </span>
+              </p>
+            )}
+
             <div>
-              <Label className="text-xs">Token Mint</Label>
-              <Input
-                placeholder="Optional address"
-                value={tokenMint}
-                onChange={(e) => setTokenMint(e.target.value)}
-                className="mt-1 font-mono text-xs"
+              <Textarea
+                label="Notes"
+                labelPlacement="outside"
+                size="sm"
+                placeholder="Optional notes about this trade..."
+                value={notes}
+                onValueChange={setNotes}
+                rows={2}
+                className="mt-1"
               />
             </div>
           </div>
+        </ModalBody>
 
-          <div>
-            <Label className="text-xs">Date</Label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Buy Price (USD) *</Label>
-              <Input
-                type="number"
-                step="any"
-                placeholder="0.00"
-                value={buyPrice}
-                onChange={(e) => setBuyPrice(e.target.value)}
-                className="mt-1 font-mono"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Buy Amount *</Label>
-              <Input
-                type="number"
-                step="any"
-                placeholder="0"
-                value={buyAmount}
-                onChange={(e) => setBuyAmount(e.target.value)}
-                className="mt-1 font-mono"
-              />
-            </div>
-          </div>
-
-          {buyValue > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Buy total: <span className="font-mono text-foreground">${buyValue.toFixed(2)}</span>
-            </p>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Sell Price (USD)</Label>
-              <Input
-                type="number"
-                step="any"
-                placeholder="0.00"
-                value={sellPrice}
-                onChange={(e) => setSellPrice(e.target.value)}
-                className="mt-1 font-mono"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Sell Amount</Label>
-              <Input
-                type="number"
-                step="any"
-                placeholder="0"
-                value={sellAmount}
-                onChange={(e) => setSellAmount(e.target.value)}
-                className="mt-1 font-mono"
-              />
-            </div>
-          </div>
-
-          {sellValue > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Sell total: <span className="font-mono text-foreground">${sellValue.toFixed(2)}</span>
-              {' | '}P/L:{' '}
-              <span className={`font-mono font-medium ${pl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {pl >= 0 ? '+' : ''}${pl.toFixed(2)}
-              </span>
-            </p>
-          )}
-
-          <div>
-            <Label className="text-xs">Notes</Label>
-            <Textarea
-              placeholder="Optional notes about this trade..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className="mt-1"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onClose}>
+        <ModalFooter>
+          <Button variant="bordered" size="sm" onPress={onClose}>
             Cancel
           </Button>
-          <Button size="sm" disabled={!canSave || saving} onClick={handleSave}>
+          <Button color="primary" size="sm" isDisabled={!canSave || saving} onPress={handleSave}>
             {saving ? 'Saving...' : 'Add Trade'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }

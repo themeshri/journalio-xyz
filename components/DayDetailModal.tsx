@@ -3,20 +3,18 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Divider,
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
+  TableColumn,
+  TableBody,
   TableRow,
-} from '@/components/ui/table'
-import { Separator } from '@/components/ui/separator'
+  TableCell,
+} from '@heroui/react'
 import { formatValue, formatDuration } from '@/lib/formatters'
 import { computeTradeDiscipline, disciplineColorClass } from '@/lib/discipline'
 import { TokenWithBadge } from '@/components/chain-badge'
@@ -174,16 +172,15 @@ export function DayDetailModal({
 
   return (
     <>
-      {/* Day Detail Dialog */}
-      <Dialog open={!!selectedDay} onOpenChange={(open) => { if (!open) onClose() }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      {/* Day Detail Modal */}
+      <Modal isOpen={!!selectedDay} onOpenChange={(open) => { if (!open) onClose() }} size="lg" scrollBehavior="inside">
+        <ModalContent>
           {selectedDay && dayDetail && (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-base">
-                  {new Date(selectedDay.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                </DialogTitle>
-              </DialogHeader>
+              <ModalHeader className="text-base">
+                {new Date(selectedDay.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              </ModalHeader>
+              <ModalBody className="pb-6">
 
               {/* Day Stats */}
               <div className="grid grid-cols-3 gap-3 mt-2">
@@ -218,7 +215,7 @@ export function DayDetailModal({
               {/* Discipline & Ratings */}
               {dayDetail.journaledCount > 0 && (
                 <>
-                  <Separator className="my-3" />
+                  <Divider className="my-3" />
                   <div>
                     <p className="text-xs font-medium mb-2">Discipline & Ratings</p>
                     <div className="grid grid-cols-4 gap-2">
@@ -270,7 +267,7 @@ export function DayDetailModal({
               )}
 
               {/* Pre-Session and Post-Session */}
-              <Separator className="my-3" />
+              <Divider className="my-3" />
               <div className="space-y-2">
                 {/* Pre-Session */}
                 <div 
@@ -326,18 +323,16 @@ export function DayDetailModal({
               </div>
 
               {/* Trades Table */}
-              <Separator className="my-3" />
+              <Divider className="my-3" />
               <div>
                 <p className="text-xs font-medium mb-2">Trades</p>
                 <div className="rounded-lg border">
-                  <Table>
+                  <Table aria-label="Trades for selected day" removeWrapper>
                     <TableHeader>
-                      <TableRow className="h-8">
-                        <TableHead className="text-[10px]">Token</TableHead>
-                        <TableHead className="text-[10px] text-right">P/L</TableHead>
-                        <TableHead className="text-[10px] text-right">Duration</TableHead>
-                        <TableHead className="text-[10px] text-center">Journal</TableHead>
-                      </TableRow>
+                      <TableColumn className="text-[10px]">Token</TableColumn>
+                      <TableColumn className="text-[10px] text-right">P/L</TableColumn>
+                      <TableColumn className="text-[10px] text-right">Duration</TableColumn>
+                      <TableColumn className="text-[10px] text-center">Journal</TableColumn>
                     </TableHeader>
                     <TableBody>
                       {dayDetail.trades.map((trade) => {
@@ -398,10 +393,11 @@ export function DayDetailModal({
                   </Table>
                 </div>
               </div>
+              </ModalBody>
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </ModalContent>
+      </Modal>
 
       {/* Journal Modal */}
       {journalTrade && (

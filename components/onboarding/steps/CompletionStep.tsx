@@ -1,7 +1,7 @@
 'use client'
 
 import { CheckCircle2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 
 interface CompletionStepProps {
   onFinish: () => void
@@ -17,7 +17,7 @@ export function CompletionStep({ onFinish }: CompletionStepProps) {
       <p className="text-muted-foreground mb-8">
         Your journal is set up. Start with a pre-session to begin the feedback loop.
       </p>
-      <Button onClick={onFinish} size="lg">
+      <Button onPress={onFinish} size="lg" color="primary">
         Go to Dashboard
       </Button>
     </div>

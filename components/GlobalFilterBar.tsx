@@ -1,15 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Input, Button, Select, SelectItem } from '@heroui/react'
 import { Search, Filter, X } from 'lucide-react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 
@@ -110,10 +102,10 @@ export function GlobalFilterBar() {
       {/* Advanced toggle button — sits inline in the header */}
       <Button
         ref={triggerRef}
-        variant="ghost"
+        variant="light"
         size="sm"
         className="h-8 text-xs gap-1.5 -ml-1"
-        onClick={() => setOpen(!open)}
+        onPress={() => setOpen(!open)}
       >
         <Filter className="h-3.5 w-3.5" />
         Advanced
@@ -130,47 +122,61 @@ export function GlobalFilterBar() {
           {/* Row 1: Search + Outcome */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground z-10" />
               <Input
+                aria-label="Search token"
+                size="sm"
                 placeholder="Search token..."
                 value={search}
-                onChange={(e) => setParam('search', e.target.value)}
+                onValueChange={(v) => setParam('search', v)}
                 className="h-8 pl-8 text-xs"
               />
             </div>
-            <Select value={outcome} onValueChange={(v) => setParam('outcome', v)}>
-              <SelectTrigger className="h-8 w-36 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {OUTCOME_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select
+              aria-label="Filter by outcome"
+              size="sm"
+              className="w-36 text-xs"
+              selectedKeys={[outcome]}
+              onSelectionChange={(keys) => {
+                const v = Array.from(keys)[0]
+                if (v) setParam('outcome', v as string)
+              }}
+            >
+              {OUTCOME_OPTIONS.map((o) => (
+                <SelectItem key={o.value}>{o.label}</SelectItem>
+              ))}
             </Select>
           </div>
 
           {/* Row 2: Month + Day */}
           <div className="flex items-center gap-2">
-            <Select value={month} onValueChange={(v) => setParam('month', v)}>
-              <SelectTrigger className="h-8 flex-1 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MONTH_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select
+              aria-label="Filter by month"
+              size="sm"
+              className="flex-1 text-xs"
+              selectedKeys={[month]}
+              onSelectionChange={(keys) => {
+                const v = Array.from(keys)[0]
+                if (v) setParam('month', v as string)
+              }}
+            >
+              {MONTH_OPTIONS.map((o) => (
+                <SelectItem key={o.value}>{o.label}</SelectItem>
+              ))}
             </Select>
-            <Select value={day} onValueChange={(v) => setParam('day', v)}>
-              <SelectTrigger className="h-8 flex-1 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DAY_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
+            <Select
+              aria-label="Filter by day"
+              size="sm"
+              className="flex-1 text-xs"
+              selectedKeys={[day]}
+              onSelectionChange={(keys) => {
+                const v = Array.from(keys)[0]
+                if (v) setParam('day', v as string)
+              }}
+            >
+              {DAY_OPTIONS.map((o) => (
+                <SelectItem key={o.value}>{o.label}</SelectItem>
+              ))}
             </Select>
           </div>
 
@@ -179,28 +185,34 @@ export function GlobalFilterBar() {
             <div className="flex items-center gap-1.5 flex-1">
               <span className="text-xs text-muted-foreground whitespace-nowrap">P/L:</span>
               <Input
+                aria-label="Minimum P/L"
+                size="sm"
                 type="number"
                 placeholder="Min"
                 value={minPl}
-                onChange={(e) => setParam('minPl', e.target.value)}
+                onValueChange={(v) => setParam('minPl', v)}
                 className="h-8 text-xs"
               />
               <span className="text-xs text-muted-foreground">–</span>
               <Input
+                aria-label="Maximum P/L"
+                size="sm"
                 type="number"
                 placeholder="Max"
                 value={maxPl}
-                onChange={(e) => setParam('maxPl', e.target.value)}
+                onValueChange={(v) => setParam('maxPl', v)}
                 className="h-8 text-xs"
               />
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground whitespace-nowrap">Last N:</span>
               <Input
+                aria-label="Last N trades"
+                size="sm"
                 type="number"
                 placeholder="50"
                 value={lastN}
-                onChange={(e) => setParam('lastN', e.target.value)}
+                onValueChange={(v) => setParam('lastN', v)}
                 className="h-8 w-16 text-xs"
               />
             </div>
@@ -210,10 +222,10 @@ export function GlobalFilterBar() {
           {activeCount > 0 && (
             <div className="flex justify-end pt-1">
               <Button
-                variant="ghost"
+                variant="light"
                 size="sm"
                 className="h-7 text-xs gap-1 text-muted-foreground"
-                onClick={clearAll}
+                onPress={clearAll}
               >
                 <X className="h-3 w-3" />
                 Clear all filters

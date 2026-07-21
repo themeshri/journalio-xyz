@@ -1,22 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Separator } from '@/components/ui/separator'
+  Button, Input, Textarea, Select, SelectItem, RadioGroup, Radio, Divider,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
+} from '@heroui/react'
 import { toast } from 'sonner'
 import { TableRowsSkeleton } from '@/components/skeletons'
 import { loadStrategies, type Strategy } from '@/lib/strategies'
@@ -56,14 +45,14 @@ interface PaperedPlay {
 type MissReason = 'hesitation' | 'distracted' | 'no_capital' | 'risk_limit' | 'late_spotted' | 'low_conviction' | 'sleeping' | 'other'
 
 const MISS_REASONS: { id: MissReason; emoji: string; label: string }[] = [
-  { id: 'hesitation', emoji: '\ud83d\ude30', label: 'Hesitated' },
-  { id: 'distracted', emoji: '\ud83d\udcf1', label: 'Distracted' },
-  { id: 'no_capital', emoji: '\ud83d\udcb0', label: 'No Capital' },
-  { id: 'risk_limit', emoji: '\u23f0', label: 'Risk Limit' },
-  { id: 'late_spotted', emoji: '\u23f3', label: 'Spotted Late' },
-  { id: 'low_conviction', emoji: '\ud83e\udd14', label: 'Low Conviction' },
-  { id: 'sleeping', emoji: '\ud83d\ude34', label: 'Sleeping' },
-  { id: 'other', emoji: '\ud83d\udcdd', label: 'Other' },
+  { id: 'hesitation', emoji: '😰', label: 'Hesitated' },
+  { id: 'distracted', emoji: '📱', label: 'Distracted' },
+  { id: 'no_capital', emoji: '💰', label: 'No Capital' },
+  { id: 'risk_limit', emoji: '⏰', label: 'Risk Limit' },
+  { id: 'late_spotted', emoji: '⏳', label: 'Spotted Late' },
+  { id: 'low_conviction', emoji: '🤔', label: 'Low Conviction' },
+  { id: 'sleeping', emoji: '😴', label: 'Sleeping' },
+  { id: 'other', emoji: '📝', label: 'Other' },
 ]
 
 function getMissReasonLabel(reason: string | null): string {
@@ -303,7 +292,7 @@ export default function MissedTradesPage() {
         <h1 className="text-xl font-semibold mb-6">Missed Trades</h1>
         <div className="border border-dashed rounded-lg p-6 text-center space-y-3">
           <p className="text-sm text-muted-foreground">Failed to load missed trades.</p>
-          <Button size="sm" variant="outline" onClick={() => { setFetchError(false); setIsLoading(true); fetchPlays() }}>
+          <Button size="sm" variant="bordered" onPress={() => { setFetchError(false); setIsLoading(true); fetchPlays() }}>
             Retry
           </Button>
         </div>
@@ -319,9 +308,10 @@ export default function MissedTradesPage() {
           <p className="text-sm text-muted-foreground mt-0.5">Track trades you saw but didn't take</p>
         </div>
         <Button
-          variant={showForm ? 'outline' : 'default'}
+          variant={showForm ? 'bordered' : undefined}
+          color={showForm ? undefined : 'primary'}
           size="sm"
-          onClick={() => { setShowForm(!showForm); if (showForm) { resetForm(); setEditingId(null) } }}
+          onPress={() => { setShowForm(!showForm); if (showForm) { resetForm(); setEditingId(null) } }}
         >
           {showForm ? 'Cancel' : '+ Log Missed Trade'}
         </Button>
@@ -335,33 +325,37 @@ export default function MissedTradesPage() {
             <h3 className="text-sm font-medium mb-3">Token</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-2">
-                <Label className="text-xs mb-1.5">Token Address</Label>
+                <p className="text-xs mb-1.5">Token Address</p>
                 <div className="flex gap-2">
                   <Input
+                    size="sm"
                     value={formTokenMint}
-                    onChange={(e) => setFormTokenMint(e.target.value)}
+                    onValueChange={setFormTokenMint}
                     onBlur={() => fetchTokenData(formTokenMint)}
                     placeholder="Paste mint address..."
                     className="font-mono text-xs"
+                    aria-label="Token Address"
                   />
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="bordered"
                     size="sm"
-                    disabled={isFetching || formTokenMint.length < 30}
-                    onClick={() => fetchTokenData(formTokenMint)}
+                    isDisabled={isFetching || formTokenMint.length < 30}
+                    onPress={() => fetchTokenData(formTokenMint)}
                   >
                     {isFetching ? '...' : 'Fetch'}
                   </Button>
                 </div>
               </div>
               <div>
-                <Label className="text-xs mb-1.5">Token Name *</Label>
                 <Input
+                  size="sm"
+                  label="Token Name *"
+                  labelPlacement="outside"
                   value={formCoinName}
-                  onChange={(e) => setFormCoinName(e.target.value)}
+                  onValueChange={setFormCoinName}
                   placeholder="e.g., BONK"
-                  required
+                  isRequired
                 />
               </div>
             </div>
@@ -377,90 +371,95 @@ export default function MissedTradesPage() {
             )}
           </div>
 
-          <Separator />
+          <Divider />
 
           {/* Miss Reason */}
           <div>
             <h3 className="text-sm font-medium mb-3">Why did you miss it? *</h3>
             <div className="grid grid-cols-4 gap-1.5">
               {MISS_REASONS.map((r) => (
-                <button
+                <Button
                   key={r.id}
                   type="button"
-                  onClick={() => setFormMissReason(r.id)}
-                  className={`flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-md border transition-colors ${
-                    formMissReason === r.id
-                      ? 'border-primary bg-primary/5 text-foreground'
-                      : 'border-border text-muted-foreground hover:bg-muted/50'
-                  }`}
+                  size="sm"
+                  variant={formMissReason === r.id ? 'solid' : 'bordered'}
+                  color={formMissReason === r.id ? 'primary' : 'default'}
+                  onPress={() => setFormMissReason(r.id)}
                 >
                   <span>{r.emoji}</span>
                   <span>{r.label}</span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
-          <Separator />
+          <Divider />
 
           {/* Hypothetical Trade */}
           <div>
             <h3 className="text-sm font-medium mb-3">Hypothetical Trade</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <Label className="text-xs mb-1.5">Entry Price ($)</Label>
                 <Input
+                  size="sm"
+                  label="Entry Price ($)"
+                  labelPlacement="outside"
                   type="number"
                   step="any"
                   min="0"
                   value={formEntryPrice}
-                  onChange={(e) => setFormEntryPrice(e.target.value)}
+                  onValueChange={setFormEntryPrice}
                   placeholder="0.000034"
                 />
               </div>
               <div>
-                <Label className="text-xs mb-1.5">Position Size ($)</Label>
                 <Input
+                  size="sm"
+                  label="Position Size ($)"
+                  labelPlacement="outside"
                   type="number"
                   step="any"
                   min="0"
                   value={formPositionSize}
-                  onChange={(e) => setFormPositionSize(e.target.value)}
+                  onValueChange={setFormPositionSize}
                   placeholder="100"
                 />
               </div>
               <div>
-                <Label className="text-xs mb-1.5">Exit/Current Price ($)</Label>
                 <Input
+                  size="sm"
+                  label="Exit/Current Price ($)"
+                  labelPlacement="outside"
                   type="number"
                   step="any"
                   min="0"
                   value={formExitPrice}
-                  onChange={(e) => setFormExitPrice(e.target.value)}
+                  onValueChange={setFormExitPrice}
                   placeholder="0.000102"
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
               <div>
-                <Label className="text-xs mb-1.5">Peak Price ($)</Label>
                 <Input
+                  size="sm"
+                  label="Peak Price ($)"
+                  labelPlacement="outside"
                   type="number"
                   step="any"
                   min="0"
                   value={formPeakPrice}
-                  onChange={(e) => setFormPeakPrice(e.target.value)}
+                  onValueChange={setFormPeakPrice}
                   placeholder="0.000145"
                 />
               </div>
               <div>
-                <Label className="text-xs mb-1.5">Outcome</Label>
-                <RadioGroup value={formOutcome} onValueChange={setFormOutcome} className="flex gap-3 mt-1">
+                <p className="text-xs mb-1.5">Outcome</p>
+                <RadioGroup value={formOutcome} onValueChange={setFormOutcome} orientation="horizontal" className="flex gap-3 mt-1">
                   {['win', 'loss', 'breakeven', 'pending'].map((o) => (
-                    <label key={o} className="flex items-center gap-1.5 text-xs cursor-pointer">
-                      <RadioGroupItem value={o} />
-                      <span className="capitalize">{o}</span>
-                    </label>
+                    <Radio key={o} value={o} classNames={{ label: 'text-xs capitalize' }}>
+                      {o}
+                    </Radio>
                   ))}
                 </RadioGroup>
               </div>
@@ -488,47 +487,51 @@ export default function MissedTradesPage() {
             )}
           </div>
 
-          <Separator />
+          <Divider />
 
           {/* Strategy Fit */}
           {activeStrategies.length > 0 && (
             <div>
               <h3 className="text-sm font-medium mb-3">Strategy Fit</h3>
-              <Select value={formStrategyId} onValueChange={setFormStrategyId}>
-                <SelectTrigger className="w-full md:w-64">
-                  <SelectValue placeholder="Which strategy did this fit?" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No strategy</SelectItem>
+              <Select
+                aria-label="Strategy Fit"
+                placeholder="Which strategy did this fit?"
+                className="w-full md:w-64"
+                selectedKeys={formStrategyId ? [formStrategyId] : []}
+                onSelectionChange={(keys) => { const v = Array.from(keys)[0]; setFormStrategyId(v ? String(v) : '') }}
+              >
+                <>
+                  <SelectItem key="none">No strategy</SelectItem>
                   {activeStrategies.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
+                    <SelectItem key={s.id} textValue={s.name}>
                       <span className="flex items-center gap-1.5">
                         <span>{s.icon}</span>
                         <span>{s.name}</span>
                       </span>
                     </SelectItem>
                   ))}
-                </SelectContent>
+                </>
               </Select>
             </div>
           )}
 
           {/* Notes */}
           <div>
-            <Label className="text-xs mb-1.5">Notes</Label>
             <Textarea
+              label="Notes"
+              labelPlacement="outside"
               value={formNotes}
-              onChange={(e) => setFormNotes(e.target.value)}
+              onValueChange={setFormNotes}
               placeholder="What happened? What did you learn?"
-              rows={3}
+              minRows={3}
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); resetForm() }}>
+            <Button type="button" variant="bordered" size="sm" onPress={() => { setShowForm(false); resetForm() }}>
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={isSaving}>
+            <Button type="submit" color="primary" size="sm" isDisabled={isSaving}>
               {isSaving ? 'Saving...' : editingId ? 'Update' : 'Save'}
             </Button>
           </div>
@@ -540,31 +543,37 @@ export default function MissedTradesPage() {
         <div className="flex flex-wrap gap-3 mb-4 text-xs">
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">Reason:</span>
-            <Select value={filterReason} onValueChange={setFilterReason}>
-              <SelectTrigger className="h-7 text-xs w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Reasons</SelectItem>
+            <Select
+              aria-label="Filter by reason"
+              size="sm"
+              className="w-[130px]"
+              selectedKeys={[filterReason]}
+              onSelectionChange={(keys) => { const v = Array.from(keys)[0]; if (v) setFilterReason(String(v)) }}
+            >
+              <>
+                <SelectItem key="all">All Reasons</SelectItem>
                 {MISS_REASONS.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>{r.emoji} {r.label}</SelectItem>
+                  <SelectItem key={r.id} textValue={`${r.emoji} ${r.label}`}>{r.emoji} {r.label}</SelectItem>
                 ))}
-              </SelectContent>
+              </>
             </Select>
           </div>
           {activeStrategies.length > 0 && (
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground">Strategy:</span>
-              <Select value={filterStrategy} onValueChange={setFilterStrategy}>
-                <SelectTrigger className="h-7 text-xs w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Strategies</SelectItem>
+              <Select
+                aria-label="Filter by strategy"
+                size="sm"
+                className="w-[150px]"
+                selectedKeys={[filterStrategy]}
+                onSelectionChange={(keys) => { const v = Array.from(keys)[0]; if (v) setFilterStrategy(String(v)) }}
+              >
+                <>
+                  <SelectItem key="all">All Strategies</SelectItem>
                   {activeStrategies.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.icon} {s.name}</SelectItem>
+                    <SelectItem key={s.id} textValue={`${s.icon} ${s.name}`}>{s.icon} {s.name}</SelectItem>
                   ))}
-                </SelectContent>
+                </>
               </Select>
             </div>
           )}
@@ -597,18 +606,16 @@ export default function MissedTradesPage() {
           </p>
         </div>
       ) : (
-        <Table>
+        <Table aria-label="Missed trades">
           <TableHeader>
-            <TableRow>
-              <TableHead>Token</TableHead>
-              <TableHead>Reason</TableHead>
-              <TableHead>Strategy</TableHead>
-              <TableHead className="text-right">Multi</TableHead>
-              <TableHead className="text-right">Pot. P/L</TableHead>
-              <TableHead>Outcome</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
-            </TableRow>
+            <TableColumn>Token</TableColumn>
+            <TableColumn>Reason</TableColumn>
+            <TableColumn>Strategy</TableColumn>
+            <TableColumn align="end">Multi</TableColumn>
+            <TableColumn align="end">Pot. P/L</TableColumn>
+            <TableColumn>Outcome</TableColumn>
+            <TableColumn>Date</TableColumn>
+            <TableColumn> </TableColumn>
           </TableHeader>
           <TableBody>
             {filteredPlays.map((play) => {
@@ -676,18 +683,19 @@ export default function MissedTradesPage() {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button
-                        variant="ghost"
+                        variant="light"
                         size="sm"
                         className="text-xs h-7"
-                        onClick={() => startEditing(play)}
+                        onPress={() => startEditing(play)}
                       >
                         Edit
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="light"
+                        color="danger"
                         size="sm"
-                        className="text-xs text-destructive hover:text-destructive h-7"
-                        onClick={() => setDeleteId(play.id)}
+                        className="text-xs h-7"
+                        onPress={() => setDeleteId(play.id)}
                       >
                         Delete
                       </Button>
@@ -700,18 +708,22 @@ export default function MissedTradesPage() {
         </Table>
       )}
 
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteId && executeDelete(deleteId)}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Modal isOpen={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)} size="sm">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>Delete this entry?</ModalHeader>
+              <ModalBody>
+                <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" size="sm" onPress={onClose}>Cancel</Button>
+                <Button color="danger" size="sm" onPress={() => deleteId && executeDelete(deleteId)}>Delete</Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

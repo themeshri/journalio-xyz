@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 import { StepIndicator } from './StepIndicator'
 import { WelcomeStep } from './steps/WelcomeStep'
 import { AddWalletStep } from './steps/AddWalletStep'
@@ -40,10 +40,11 @@ export function OnboardingWizard({ initialStep, onStepChange, onComplete, onSkip
           <StepIndicator totalSteps={TOTAL_STEPS} currentStep={step} />
           <div className="flex-1 flex justify-end">
             <Button
-              variant="ghost"
-              size="icon"
-              onClick={onSkip}
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              variant="light"
+              isIconOnly
+              size="sm"
+              onPress={onSkip}
+              className="h-7 w-7 min-w-7 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </Button>

@@ -8,27 +8,21 @@ import { computeTradeDiscipline } from '@/lib/discipline';
 import { DisciplineMeter } from '@/components/overview/DisciplineMeter';
 import { type Strategy, type StrategyRule } from '@/lib/strategies';
 import { useWallet } from '@/lib/wallet-context';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
+  Button,
+  Input,
+  Textarea,
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+  Divider,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Tabs,
+  Tab,
+} from '@heroui/react';
 import { EditTradeTab } from '@/components/EditTradeTab';
 import { toast } from 'sonner';
 import { RatingScale } from '@/components/ui/rating-scale';
@@ -326,37 +320,44 @@ const JournalModal = memo(function JournalModal({
   ) {
     return (
       <div>
-        <Label className="text-xs mb-1.5">{label}</Label>
+        <p className="text-xs mb-1.5">{label}</p>
         <Select
-          value={value || ''}
-          onValueChange={(v) => onChange(v === '__clear' ? null : v)}
+          aria-label={label}
+          placeholder="Select..."
+          selectedKeys={value ? [value] : []}
+          onSelectionChange={(keys) => {
+            const v = Array.from(keys)[0];
+            onChange(v && v !== '__clear' ? String(v) : null);
+          }}
         >
-          <SelectTrigger>
-            <SelectValue placeholder="Select..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__clear" className="text-muted-foreground">
+          <>
+            <SelectItem key="__clear" className="text-muted-foreground">
               None
             </SelectItem>
             {comments.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
+              <SelectItem key={c.id} textValue={c.label}>
                 <span className="flex items-center gap-2">
                   <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${ratingDot(c.rating)}`} />
                   {c.label}
                 </span>
               </SelectItem>
             ))}
-          </SelectContent>
+          </>
         </Select>
       </div>
     );
   }
 
   return (
-    <Dialog open onOpenChange={() => handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-base flex items-center gap-2">
+    <Modal
+      isOpen
+      onOpenChange={(open) => { if (!open) handleClose() }}
+      size="2xl"
+      scrollBehavior="inside"
+    >
+      <ModalContent>
+        <ModalHeader className="flex flex-col gap-1">
+          <div className="text-base flex items-center gap-2">
             {tokenLogo ? (
               <img
                 src={tokenLogo}
@@ -375,8 +376,8 @@ const JournalModal = memo(function JournalModal({
                 {currentIndex} of {totalCount}
               </span>
             )}
-          </DialogTitle>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground font-normal pt-1">
             <span>Start: {formatTime(trade.startDate)}</span>
             {trade.endDate && <span>End: {formatTime(trade.endDate)}</span>}
             {trade.duration && <span>Duration: {formatDuration(trade.duration)}</span>}
@@ -395,15 +396,16 @@ const JournalModal = memo(function JournalModal({
               {formatValue(trade.profitLoss)}
             </span>
           </div>
-        </DialogHeader>
+        </ModalHeader>
 
-        <Tabs defaultValue="journal" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="w-full shrink-0">
-            <TabsTrigger value="journal" className="flex-1">Journal</TabsTrigger>
-            <TabsTrigger value="edit" className="flex-1">Edit Trade</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="journal" className="overflow-y-auto flex-1 -mx-6 px-6 mt-0">
+        <ModalBody className="px-0">
+        <Tabs
+          aria-label="Trade journal tabs"
+          defaultSelectedKey="journal"
+          fullWidth
+          classNames={{ panel: 'px-6' }}
+        >
+          <Tab key="journal" title="Journal">
           <div className="space-y-6 pt-4">
           {/* Live discipline meter (Tiltmeter) — only when comments are configured */}
           {tradeComments.length > 0 && (
@@ -418,34 +420,31 @@ const JournalModal = memo(function JournalModal({
             <div className="space-y-4">
               {showAdvanced && (
               <div>
-                <Label className="text-xs mb-1.5">
+                <p className="text-xs mb-1.5">
                   Strategy
-                </Label>
-                <Select value={strategyId || ''} onValueChange={handleStrategyChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a strategy...">
-                      {selectedStrategy && (
-                        <span className="flex items-center gap-1.5">
-                          <span>{selectedStrategy.icon}</span>
-                          <span>{selectedStrategy.name}</span>
-                        </span>
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
+                </p>
+                <Select
+                  aria-label="Strategy"
+                  placeholder="Select a strategy..."
+                  selectedKeys={strategyId ? [strategyId] : []}
+                  onSelectionChange={(keys) => {
+                    const v = Array.from(keys)[0];
+                    if (v) handleStrategyChange(String(v));
+                  }}
+                >
+                  <>
                     {activeStrategies.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
+                      <SelectItem key={s.id} textValue={s.name}>
                         <span className="flex items-center gap-1.5">
                           <span>{s.icon}</span>
                           <span>{s.name}</span>
                         </span>
                       </SelectItem>
                     ))}
-                    {activeStrategies.length > 0 && <Separator className="my-1" />}
-                    <SelectItem value="__add_new" className="text-muted-foreground">
+                    <SelectItem key="__add_new" className="text-muted-foreground">
                       + Manage strategies &#x2197;
                     </SelectItem>
-                  </SelectContent>
+                  </>
                 </Select>
               </div>
               )}
@@ -454,22 +453,20 @@ const JournalModal = memo(function JournalModal({
 
               {/* Emotion Tag Grid */}
               <div>
-                <Label className="text-xs mb-1.5">Emotion Tag</Label>
+                <p className="text-xs mb-1.5">Emotion Tag</p>
                 <div className="grid grid-cols-4 gap-1.5 mt-1">
                   {emotionTags.map((tag) => (
-                    <button
+                    <Button
                       key={tag.id}
-                      type="button"
-                      onClick={() => setEmotionTag(emotionTag === tag.id ? null : tag.id)}
-                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border cursor-pointer transition-colors ${
-                        emotionTag === tag.id
-                          ? 'border-primary bg-primary/5 text-foreground'
-                          : 'border-border text-muted-foreground hover:bg-muted/50'
-                      }`}
+                      size="sm"
+                      variant={emotionTag === tag.id ? 'solid' : 'bordered'}
+                      color={emotionTag === tag.id ? 'primary' : 'default'}
+                      onPress={() => setEmotionTag(emotionTag === tag.id ? null : tag.id)}
+                      className="justify-start gap-1.5 text-xs"
                     >
                       <span>{tag.emoji}</span>
                       <span>{tag.label}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -492,39 +489,37 @@ const JournalModal = memo(function JournalModal({
 
               {showAdvanced && (<>
               <div>
-                <Label htmlFor="exit-plan" className="text-xs mb-1.5">
-                  Your exit plan
-                </Label>
                 <Textarea
-                  id="exit-plan"
+                  label="Your exit plan"
+                  labelPlacement="outside"
                   value={exitPlan}
-                  onChange={(e) => setExitPlan(e.target.value)}
+                  onValueChange={setExitPlan}
                   placeholder="What's your target? When will you sell?"
-                  rows={3}
+                  minRows={3}
                 />
               </div>
 
               {/* Stop Loss and Take Profit */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="stop-loss" className="text-xs mb-1.5">Stop Loss (MC)</Label>
                   <Input
-                    id="stop-loss"
+                    label="Stop Loss (MC)"
+                    labelPlacement="outside"
                     type="number"
                     step="any"
                     placeholder="0.00"
-                    value={stopLoss ?? ''}
+                    value={stopLoss != null ? String(stopLoss) : ''}
                     onChange={(e) => setStopLoss(e.target.value === '' ? null : parseFloat(e.target.value))}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="take-profit" className="text-xs mb-1.5">Take Profit (MC)</Label>
                   <Input
-                    id="take-profit"
+                    label="Take Profit (MC)"
+                    labelPlacement="outside"
                     type="number"
                     step="any"
                     placeholder="0.00"
-                    value={takeProfit ?? ''}
+                    value={takeProfit != null ? String(takeProfit) : ''}
                     onChange={(e) => setTakeProfit(e.target.value === '' ? null : parseFloat(e.target.value))}
                   />
                 </div>
@@ -533,7 +528,7 @@ const JournalModal = memo(function JournalModal({
             </div>
           </section>
 
-          <Separator />
+          <Divider />
 
           {/* Sell Section */}
           <section>
@@ -558,7 +553,7 @@ const JournalModal = memo(function JournalModal({
 
               {/* Followed Exit Rule */}
               <div>
-                <Label className="text-xs mb-1.5">Did you follow your exit rule?</Label>
+                <p className="text-xs mb-1.5">Did you follow your exit rule?</p>
                 <div className="mt-1">
                   <YesNoToggle
                     value={followedExitRule}
@@ -569,25 +564,19 @@ const JournalModal = memo(function JournalModal({
 
               {/* Mistakes */}
               <div>
-                <Label className="text-xs mb-1.5">Mistakes</Label>
+                <p className="text-xs mb-1.5">Mistakes</p>
                 <div className="grid grid-cols-2 gap-1.5 mt-1">
                   {mistakeOptions.map((mistake) => (
-                    <label
+                    <Button
                       key={mistake}
-                      className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-md border cursor-pointer transition-colors ${
-                        sellMistakes.includes(mistake)
-                          ? 'border-primary bg-primary/5 text-foreground'
-                          : 'border-border text-muted-foreground hover:bg-muted/50'
-                      }`}
+                      size="sm"
+                      variant={sellMistakes.includes(mistake) ? 'solid' : 'bordered'}
+                      color={sellMistakes.includes(mistake) ? 'primary' : 'default'}
+                      onPress={() => toggleMistake(mistake)}
+                      className="justify-start text-xs"
                     >
-                      <input
-                        type="checkbox"
-                        checked={sellMistakes.includes(mistake)}
-                        onChange={() => toggleMistake(mistake)}
-                        className="sr-only"
-                      />
                       {mistake}
-                    </label>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -606,7 +595,7 @@ const JournalModal = memo(function JournalModal({
 
 
           {showAdvanced && (<>
-          <Separator />
+          <Divider />
 
           {/* Attachments */}
           <section>
@@ -623,10 +612,11 @@ const JournalModal = memo(function JournalModal({
                       className="w-full h-24 object-cover rounded-md border border-border"
                     />
                     <Button
-                      variant="destructive"
+                      isIconOnly
+                      color="danger"
                       size="sm"
-                      className="absolute top-1 right-1 h-5 w-5 p-0 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-1 right-1 h-5 w-5 min-w-5 p-0 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                      onPress={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
                     >
                       &times;
                     </Button>
@@ -636,7 +626,7 @@ const JournalModal = memo(function JournalModal({
             )}
 
             <div>
-              <Input
+              <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
@@ -664,19 +654,22 @@ const JournalModal = memo(function JournalModal({
             {showAdvanced ? 'Hide advanced options' : 'Show advanced options (strategy, rules, comments, exit plan, SL/TP, attachments)'}
           </button>
           </div>
-          </TabsContent>
+          </Tab>
 
-          <TabsContent value="edit" className="overflow-y-auto flex-1 -mx-6 px-6 mt-0 pt-4">
-            <EditTradeTab trade={trade} />
-          </TabsContent>
+          <Tab key="edit" title="Edit Trade">
+            <div className="pt-4">
+              <EditTradeTab trade={trade} />
+            </div>
+          </Tab>
         </Tabs>
+        </ModalBody>
 
-        <DialogFooter className="pt-4">
-          <Button variant="outline" size="sm" onClick={handleClose}>
+        <ModalFooter className="pt-4">
+          <Button variant="bordered" size="sm" onPress={handleClose}>
             Cancel
           </Button>
           {onSaveAndNext && (
-            <Button variant="outline" size="sm" disabled={saving} onClick={async () => {
+            <Button variant="bordered" size="sm" isDisabled={saving} onPress={async () => {
               setSaving(true);
               try {
                 await onSaveAndNext(buildData());
@@ -687,12 +680,12 @@ const JournalModal = memo(function JournalModal({
               {saving ? 'Saving...' : 'Save & Next'}
             </Button>
           )}
-          <Button size="sm" disabled={saving} onClick={handleSave}>
+          <Button color="primary" size="sm" isDisabled={saving} onPress={handleSave}>
             {saving ? 'Saving...' : 'Save Journal'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
 });
 

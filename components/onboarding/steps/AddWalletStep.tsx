@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { CheckCircle2, ArrowRight } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Input, Button } from '@heroui/react'
 import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
 import { useWallet } from '@/lib/wallet-context'
 import { toast } from 'sonner'
@@ -107,7 +106,7 @@ export function AddWalletStep({ onNext }: AddWalletStepProps) {
         <p className="text-sm text-muted-foreground mb-8">
           Your trades will start importing in the background.
         </p>
-        <Button onClick={onNext}>
+        <Button onPress={onNext} color="primary">
           Continue
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
@@ -127,59 +126,59 @@ export function AddWalletStep({ onNext }: AddWalletStepProps) {
       <form onSubmit={handleAdd} className="space-y-4">
         <div>
           <Input
+            size="sm"
+            aria-label="Wallet address"
             value={address}
-            onChange={(e) => handleAddressChange(e.target.value)}
+            onValueChange={handleAddressChange}
             placeholder="Wallet address (Solana or 0x)..."
             className="text-sm font-mono"
           />
         </div>
         <div>
           <Input
+            size="sm"
+            aria-label="Wallet nickname"
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
+            onValueChange={setNickname}
             placeholder="Nickname (optional)"
             className="text-sm"
           />
         </div>
         <div className="flex gap-1.5">
           {(['solana', 'base', 'bnb'] as Chain[]).map((chain) => (
-            <button
+            <Button
               key={chain}
               type="button"
-              onClick={() => setSelectedChain(chain)}
-              className={`text-xs px-2.5 py-1.5 rounded border transition-colors ${
-                selectedChain === chain
-                  ? 'font-medium bg-muted border-border'
-                  : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
-              }`}
+              size="sm"
+              variant={selectedChain === chain ? 'solid' : 'bordered'}
+              color={selectedChain === chain ? 'primary' : 'default'}
+              onPress={() => setSelectedChain(chain)}
             >
               {CHAIN_CONFIG[chain].label}
-            </button>
+            </Button>
           ))}
         </div>
         <div className="flex gap-1.5 items-center">
           <span className="text-xs text-muted-foreground mr-1">App:</span>
           {DEX_OPTIONS.map((opt) => (
-            <button
+            <Button
               key={opt.value}
               type="button"
-              onClick={() => setSelectedDex(opt.value)}
-              className={`text-xs px-2 py-1.5 rounded border transition-colors ${
-                selectedDex === opt.value
-                  ? 'font-medium bg-muted border-border'
-                  : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
-              }`}
+              size="sm"
+              variant={selectedDex === opt.value ? 'solid' : 'bordered'}
+              color={selectedDex === opt.value ? 'primary' : 'default'}
+              onPress={() => setSelectedDex(opt.value)}
             >
               {opt.label}
-            </button>
+            </Button>
           ))}
         </div>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex gap-3 pt-2">
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" color="primary" isDisabled={saving}>
             {saving ? 'Adding...' : 'Add Wallet'}
           </Button>
-          <Button type="button" variant="ghost" onClick={onNext}>
+          <Button type="button" variant="light" onPress={onNext}>
             Skip for now
           </Button>
         </div>

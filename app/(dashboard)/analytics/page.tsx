@@ -42,7 +42,6 @@ import {
   PieChart,
   Pie,
 } from 'recharts'
-import { Separator } from '@/components/ui/separator'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'

@@ -2,53 +2,66 @@
 
 import { useSupabase } from '@/components/providers/supabase-provider'
 import { User, Settings, LogOut, Trophy } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
+  Button,
+  Dropdown,
+  DropdownTrigger,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  DropdownItem,
+} from '@heroui/react'
 import Link from 'next/link'
 
 export function AccountDropdown() {
   const { user, signOut } = useSupabase()
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
+    <Dropdown placement="bottom-end">
+      <DropdownTrigger>
+        <Button variant="light" isIconOnly size="sm" className="h-8 w-8">
           <User className="h-4 w-4" />
           <span className="sr-only">Account menu</span>
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        {user && (
-          <>
-            <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">{user.user_metadata?.name || user.email?.split('@')[0]}</p>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
-            </div>
-            <DropdownMenuSeparator />
-          </>
-        )}
-        <DropdownMenuItem asChild>
-          <Link href="/settings" className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled>
-          <Trophy className="mr-2 h-4 w-4" />
+      </DropdownTrigger>
+      <DropdownMenu aria-label="Account menu" className="w-48">
+        {user ? (
+          <DropdownItem
+            key="user-info"
+            isReadOnly
+            className="opacity-100 cursor-default"
+            textValue={user.email ?? 'Account'}
+          >
+            <p className="text-sm font-medium">{user.user_metadata?.name || user.email?.split('@')[0]}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          </DropdownItem>
+        ) : null}
+        <DropdownItem
+          key="settings"
+          startContent={<Settings className="h-4 w-4" />}
+          textValue="Settings"
+          showDivider={!user}
+          as={Link}
+          href="/settings"
+        >
+          Settings
+        </DropdownItem>
+        <DropdownItem
+          key="milestones"
+          isDisabled
+          startContent={<Trophy className="h-4 w-4" />}
+          textValue="Milestones"
+          showDivider
+        >
           Milestones
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer">
-          <LogOut className="mr-2 h-4 w-4" />
+        </DropdownItem>
+        <DropdownItem
+          key="sign-out"
+          startContent={<LogOut className="h-4 w-4" />}
+          textValue="Sign Out"
+          onPress={() => signOut()}
+        >
           Sign Out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownItem>
+      </DropdownMenu>
+    </Dropdown>
   )
 }
