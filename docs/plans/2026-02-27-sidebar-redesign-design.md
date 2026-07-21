@@ -1,3 +1,5 @@
+> **Historical design record (note added 2026-07-21).** This is the sidebar-redesign design doc (ROADMAP Phase 1 — shipped). Retrospective; matches the current `app-sidebar.tsx` nav.
+
 # Sidebar Redesign — Phase 1 Design
 
 ## Problem

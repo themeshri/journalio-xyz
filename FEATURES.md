@@ -1,9 +1,10 @@
 # Journalio — Features & Functionality
 
-<!-- This file is auto-timestamped on every commit via .git/hooks/post-commit. -->
-<!-- When adding or changing features, update the relevant section below. -->
+<!-- Update the "Last updated" date manually when changing features below.
+     (A prior note here claimed a post-commit git hook auto-timestamped this
+     file; no such hook exists, so the date must be maintained by hand.) -->
 
-Last updated: 2026-03-09
+Last updated: 2026-07-21
 
 ---
 
@@ -363,7 +364,7 @@ All `[id]` routes verify ownership and return 404 (not 403) to prevent resource 
 | `lib/contexts/` | `DashboardProviders`, `MetadataContext`, `TradeContext`, `WalletIdentityContext`, `BalanceContext` | Split contexts for identity, trades, metadata (incl. post-session status), balances |
 | `lib/chains.ts` | `CHAIN_CONFIG`, `detectChainFromAddress` | Multi-chain support (Solana, Base, BNB) |
 | `lib/auth-helper.ts` | `requireAuth`, `getAuthUser`, `ensureUserExists` | Supabase server-side auth (session check, returns userId or 401) |
-| `lib/supabase-auth.ts` | `supabaseAuth` | Client-side Supabase auth (signIn, signOut with localStorage cleanup, redirect) |
+| `lib/supabase-auth.ts` | `auth` | Client-side Supabase auth (signIn, signOut with localStorage cleanup, redirect) |
 | `lib/rate-limit.ts` | `rateLimit`, `rateLimitByUser` | In-memory rate limiter (per IP or per user) with auto-cleanup |
 | `lib/env.ts` | `validateEnv` | Startup validation of required env vars; imported in `instrumentation.ts` |
 | `lib/prisma.ts` | `prisma` | Prisma client singleton |
@@ -385,8 +386,8 @@ All `[id]` routes verify ownership and return 404 (not 403) to prevent resource 
 
 | Model | Purpose |
 |-------|---------|
-| `User` | User accounts (NextAuth) |
-| `Account` / `Session` / `VerificationToken` | NextAuth internals |
+| `User` | User accounts (keyed to Supabase auth user id) |
+| `Account` / `Session` / `VerificationToken` | Legacy NextAuth-schema tables; retained in the schema but not used by the Supabase auth path |
 | `Wallet` | Multi-chain wallet storage (address, chain, nickname, dex) |
 | `Trade` | Cached transactions with 5-min TTL on `indexedAt`; unique per wallet (`@@unique([walletId, signature])`) |
 | `TradeEdit` | Manual overrides for trade data |

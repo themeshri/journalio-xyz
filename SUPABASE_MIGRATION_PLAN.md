@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is the plan for migrating to Supabase (Auth + Postgres). **That migration is complete** — the app now runs on Supabase Auth + PostgreSQL. This doc is retained as a record of the plan; its "we will migrate / current state = NextAuth+SQLite" framing is obsolete.
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 # 🚀 Supabase Migration Plan - Journalio
 
 ## Overview

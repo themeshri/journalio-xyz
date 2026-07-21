@@ -1,5 +1,23 @@
 # Solana Wallet Tracker - User Flow Documentation
 
+> ⚠️ **Historical — superseded (note added 2026-07-21).** These flows describe
+> the original single-wallet / NextAuth product and no longer match the app.
+> Key corrections:
+> - **Auth**: Supabase Auth via `/auth/callback` + `middleware.ts` — there is no
+>   `POST /api/auth/callback/credentials` and no manual "Create JWT Session" step.
+>   Sign-in offers Google/Twitter OAuth, magic link, and email+password.
+> - **Wallets**: explicit multi-wallet management at `/wallet-management`
+>   (localStorage-backed) + an onboarding wizard — there is no "search bar →
+>   auto-add wallet" flow, and wallet CRUD is not in Settings.
+> - **Settings**: display name, timezone, trading start time, journal view mode,
+>   and a trade-comment library — not "TX limit / Show USD toggle".
+> - **Nav**: sidebar with Overview, Diary, Trade Journal, History, Analytics,
+>   Chart Lab, Missed Trades, Strategies, Wallet Management, Settings.
+> - **Missed trades**: the `PaperedPlay` model is price-based (entry/exit,
+>   position size, multipliers, outcome), not the old parse-market-cap form.
+>
+> See `FEATURES.md` and `docs/ARCHITECTURE.md` for current flows.
+
 ## Primary User Flows
 
 ### 1. New User Onboarding Flow

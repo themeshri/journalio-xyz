@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is a **misnamed stray planning doc** — despite the "FEATURES" prefix it is NOT a copy of `FEATURES.md`; it is the original "Journalio v2 — Major Redesign Plan" (the same plan tracked in `ROADMAP.md`, now mostly shipped). References NextAuth. Kept for history; see `ROADMAP.md` / `FEATURES.md` for current state.
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 new features to work on:
 
 change the tab overview to Home and do a layout like this: https://edgewonk.zendesk.com/hc/en-us/articles/360010061500-Home

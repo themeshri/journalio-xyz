@@ -2,7 +2,7 @@
 
 ## Current State
 
-Journalio stores all user data in a server-side database (SQLite in dev, PostgreSQL in prod) via Prisma ORM. Only wallet management and view preferences remain in localStorage.
+Journalio stores all user data in a server-side database (PostgreSQL via Supabase, in both dev and prod) via Prisma ORM. Only wallet management and view preferences remain in localStorage.
 
 ### Storage Map
 

@@ -25,7 +25,7 @@
 ```
 journalio-xyz/
 ├── app/                      # Next.js 15 App Router
-│   ├── layout.tsx            # Root layout (fonts, ErrorBoundary, SessionProvider)
+│   ├── layout.tsx            # Root layout (fonts, ErrorBoundary, Providers: SupabaseProvider + ThemeProvider)
 │   ├── icon.tsx              # Dynamic favicon (gold "J" on dark slate)
 │   ├── (dashboard)/          # Main app routes (sidebar layout)
 │   │   ├── layout.tsx        # Dashboard wrapper (WalletProvider, SidebarProvider)
@@ -62,7 +62,7 @@ journalio-xyz/
 ## Layout Hierarchy
 
 ```
-RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
+RootLayout (fonts, ErrorBoundary, Providers = SupabaseProvider + ThemeProvider)
   └── DashboardLayout (Suspense → DashboardProviders → SidebarProvider)
         ├── AppSidebar (nav links, wallet display, pre-session dot, dark mode, collapse)
         └── SidebarInset
@@ -185,9 +185,9 @@ Row 5: ActivityCalendar (full width, GitHub-style yearly heatmap)
 | Model | Purpose | Key Unique Constraints |
 |-------|---------|----------------------|
 | `User` | User accounts | `email` |
-| `Account` | OAuth accounts (NextAuth) | `[provider, providerAccountId]` |
-| `Session` | Auth sessions | `sessionToken` |
-| `VerificationToken` | Email verification | `token`, `[identifier, token]` |
+| `Account` | OAuth accounts (legacy NextAuth-schema tables; not used by the Supabase auth path) | `[provider, providerAccountId]` |
+| `Session` | Auth sessions (legacy; Supabase manages sessions) | `sessionToken` |
+| `VerificationToken` | Email verification (legacy) | `token`, `[identifier, token]` |
 | `Wallet` | Multi-chain wallets | `[userId, address, chain]` |
 | `Trade` | Cached blockchain transactions | `[walletId, signature]` |
 | `TradeEdit` | Manual trade overrides | `[tradeId, userId]` |
@@ -363,7 +363,7 @@ Analytics: computed from flattenedTrades + journals + comments + strategies + mi
 | `StaleDataBanner` | `components/StaleDataBanner.tsx` | Amber banner when trade data is stale |
 | `LocalStorageMigration` | `components/LocalStorageMigration.tsx` | One-time migration of localStorage to DB |
 | `ErrorBoundary` | `components/ErrorBoundary.tsx` | React error boundary with dev stack trace |
-| `Providers` | `components/Providers.tsx` | Supabase SessionProvider wrapper |
+| `Providers` | `components/Providers.tsx` | Wraps `SupabaseProvider` (auth context) + `next-themes` `ThemeProvider` |
 
 ---
 
@@ -376,10 +376,11 @@ Analytics: computed from flattenedTrades + journals + comments + strategies + mi
 | `tradeCycles.ts` | `TradeInput`, `calculateTradeCycles`, `flattenTradeCycles`, `FlattenedTrade` | Groups txs by token → buy/sell cycles by balance |
 | `trading-day.ts` | `getTradingDay`, `getCalendarDate`, `getTradingDayForDate` | Timezone-aware trading day (respects user's timezone + start time) |
 | `time-filters.ts` | `TimePreset`, `TimeRange`, `presetToRange`, `filterTradesByRange` | Shared time filter types + utilities |
-| `chains.ts` | `Chain`, `ChainConfig`, `CHAIN_CONFIG` | Multi-chain config (Solana, Base, BNB) |
+| `chains.ts` | `Chain`, `ChainConfig`, `CHAIN_CONFIG`, `isValidAddress`, `detectChainFromAddress`, `isEvmChain`, `explorerTxUrl` | Multi-chain config (Solana, Base, BNB); **single source of address validation** |
 | `formatters.ts` | `formatDuration`, `formatValue`, `formatPrice`, `formatPercentage` | Display formatting |
 | `discipline.ts` | `computeTradeDiscipline`, `disciplineColor`, `disciplineBgClass` | Discipline scoring from trade comments |
-| `streaks.ts` | `StreakResult` | Journaling streak calculation (current + longest) |
+| `streaks.ts` | `StreakResult`, `computeStreakFromDates` | Shared journaling-streak calc (current + longest); UTC-anchored. Consumed by dashboard route + contexts |
+| `types/journal.ts` | `JournalData`, `TradeRuleResult` | Journal entry types (moved out of `components/JournalModal` so lib can depend on them without importing the UI layer) |
 | `constants.ts` | `APP_FEE_RATES` | DEX/app fee rates |
 
 ### Data Management (API Clients)
@@ -407,9 +408,10 @@ Analytics: computed from flattenedTrades + journals + comments + strategies + mi
 
 | Module | Key Exports | Description |
 |--------|-------------|-------------|
-| `server/resolve-trades.ts` | `resolveFlattenedTrades`, `applyDateFilter`, `parseWalletParams` | Server-side trade resolution with TTL cache |
+| `server/resolve-trades.ts` | `resolveFlattenedTrades`, `applyDateFilter`, `parseWalletParams`, `parseWalletParamsFromBody`, `mapDbRowsToTradeInput`, `sanitizeForJSON` | Server-side trade resolution with TTL cache; `mapDbRowsToTradeInput` is the shared DB-row→TradeInput projection |
 | `server/analytics-cache.ts` | `getCachedAnalytics`, `setCachedAnalytics` | 60s analytics cache |
 | `server/request-dedup.ts` | Request dedup | In-flight request deduplication |
+| `api-error.ts` | `handleApiError` | Shared route error handler (logs server-side, returns generic client message + status) |
 | `auth-helper.ts` | `requireAuth`, `getAuthUser`, `ensureUserExists` | Server-side auth |
 | `rate-limit.ts` | `rateLimit`, `rateLimitByUser` | In-memory rate limiter |
 | `validations.ts` | Zod schemas, `validateBody` | Input validation for POST/PATCH endpoints |

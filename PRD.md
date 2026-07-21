@@ -1,5 +1,20 @@
 # Solana Wallet Tracker - Product Requirements Document
 
+> ⚠️ **Historical spec — superseded (note added 2026-07-21).** This is the
+> original v1.2 product vision (dated 2026-02-13) and does **not** describe the
+> shipped app. Corrections to its core assumptions:
+> - **Product**: now "Journalio", a multi-wallet dashboard with sidebar nav,
+>   pre/post-session diaries, trade journaling, strategies, analytics, and an
+>   onboarding wizard — not a single-wallet "search bar" tool.
+> - **Auth**: **Supabase Auth** (Google/Twitter OAuth, email magic link + password),
+>   not NextAuth/JWT. OAuth is shipped, not "future".
+> - **Data providers**: **Solana Tracker + Zerion** only. Jupiter, Solana RPC,
+>   CoinGecko, and Redis (mentioned below) are **not** used; caching is in-memory
+>   + DB TTL.
+> - **Database**: **PostgreSQL (Supabase)** in all environments — not "SQLite in dev".
+>
+> See `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md` for current state.
+
 ## Executive Summary
 
 The Solana Wallet Tracker is a comprehensive web application designed to help cryptocurrency traders analyze their Solana wallet transactions, track trade cycles, and journal missed opportunities. The product addresses the critical need for traders to understand their trading patterns, calculate profit/loss accurately, and learn from missed opportunities in the fast-paced Solana ecosystem.

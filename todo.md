@@ -1,3 +1,8 @@
+<!-- Status note (2026-07-21): personal scratch list. Most ideas here have
+     shipped (analytics metrics, missed trades, Base support, journaling +
+     sentiment). Note: "test vybe.fyi" (line ~18) never happened — the app
+     integrates Solana Tracker + Zerion only, not Vybe. Kept as-is below. -->
+
 ignore this it's a note from the dev to himself:
 
 * replace analytics with trades

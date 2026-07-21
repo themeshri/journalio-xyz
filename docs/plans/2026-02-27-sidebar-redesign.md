@@ -1,3 +1,5 @@
+> **Historical design record (note added 2026-07-21).** This is the sidebar-redesign implementation plan (Phase 1 — shipped). NOTE: the inline `app-sidebar.tsx` code snapshot here has since drifted from the live component (e.g. version label) — read the actual file for current code.
+
 # Sidebar Redesign Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

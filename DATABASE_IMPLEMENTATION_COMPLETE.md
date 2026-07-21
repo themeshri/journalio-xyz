@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is an Oct-2025 DB-backend completion log. Now stale: DB is **PostgreSQL/Supabase** (not SQLite `dev.db`); auth is **Supabase** (the `/api/auth/[...nextauth]` route it cites does not exist); the schema now has ~16 models (not 9) and is multi-chain.
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 # 🎉 Complete Database Implementation - FINISHED!
 
 ## ✅ **ALL FEATURES NOW USING DATABASE**

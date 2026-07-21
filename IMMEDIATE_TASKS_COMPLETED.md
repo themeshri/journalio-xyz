@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is an Oct-2025 task report (detail behind `COMPLETION_SUMMARY.md`). Describes the pre-DB-migration, Solana-only app with deleted components (`PaperedPlays`, `TradeEditForm`, `app/debug`).
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 # Immediate Tasks - Completion Report
 
 **Date**: October 3, 2025

@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is an Oct-2025 task report (detail behind `COMPLETION_SUMMARY.md`). Its "39 tests / 2 suites" count and component references predate later growth of the suite and app.
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 # Short Term Tasks - Completion Report
 
 **Date**: October 3, 2025

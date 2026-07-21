@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is an earlier Oct-2025 DB-setup log (largely superseded by `DATABASE_IMPLEMENTATION_COMPLETE.md`). Now stale: **PostgreSQL/Supabase**, not SQLite + NextAuth.
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 # PostgreSQL + Prisma Implementation - COMPLETE ✅
 
 ## 🎉 Successfully Implemented!

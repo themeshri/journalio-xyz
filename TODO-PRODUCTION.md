@@ -1,5 +1,19 @@
 # Journalio — Production Readiness TODO (1000 DAU SaaS)
 
+> **Status note (2026-07-21):** several items below are already DONE and their
+> wording is stale:
+> - **Auth is Supabase**, not NextAuth — there is no `getServerSession()`.
+>   `requireAuth()` (`lib/auth-helper.ts`) is applied across routes and all DB
+>   queries are scoped by `userId` (no more `"default-user"`). Ownership checks
+>   returning 404 are in place on `[id]` routes.
+> - **Prisma provider is already `postgresql`** (Supabase) — the "change from
+>   sqlite" task is complete.
+> - Rate limiting (`lib/rate-limit.ts`) and request dedup (`lib/server/request-dedup.ts`)
+>   are shipped; treat the corresponding Phase 5/6 items as done.
+>
+> The genuinely-open work is the non-auth/DB scaling and ops items. Update the
+> checkboxes below when revisiting.
+
 ## Phase 1: Auth & Multi-Tenancy (2-3 days)
 - [ ] Add `getServerSession()` to `/api/trades/route.ts` — replace `"default-user"` with session user ID
 - [ ] Add `getServerSession()` to `/api/papered-plays/route.ts` — replace `"default-user"` with session user ID

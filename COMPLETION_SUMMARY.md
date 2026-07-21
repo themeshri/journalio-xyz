@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is the Oct-2025 "production-ready" rollup for the pre-Journalio app. Now stale: app is **Journalio** (not "Solana Wallet Transaction Tracker"); auth is **Supabase** (not NextAuth/`NEXTAUTH_*`); DB is **PostgreSQL/Supabase** (not SQLite); many later features (Diary, Chart Lab, Analytics, Strategies, onboarding) postdate it.
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 # 🎉 Complete Implementation Summary
 
 **Project**: Solana Wallet Transaction Tracker

@@ -107,7 +107,7 @@
 - [x] Account Dropdown (top-right)
   - [x] User icon button
   - [x] Dropdown: session user info, Settings link, Milestones (disabled/future), Sign Out
-  - [x] Uses NextAuth session
+  - [x] Uses the Supabase auth session
 - [x] Build passes
 
 **Files:** `app/(dashboard)/layout.tsx`, `app/layout.tsx`, new `components/GlobalFilterBar.tsx`, new `components/ThemeToggle.tsx`, new `components/AccountDropdown.tsx`, `globals.css`

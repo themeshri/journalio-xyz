@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is an Oct-2025 React/Next fixes report for the pre-Journalio single-page app. References components that no longer exist (`TradeCycleCard`, `SummaryView`, `TransactionList`, `PaperedPlays`) and an absolute path from an old machine.
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 # Critical React and Next.js Issues - Fixes Report
 
 ## Executive Summary

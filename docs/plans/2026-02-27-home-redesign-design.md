@@ -1,3 +1,5 @@
+> **Historical design record (note added 2026-07-21).** This is the Home-page redesign design doc (ROADMAP Phase 2 — shipped). Retrospective; the described KPI/hero layout is implemented.
+
 # Home Page Redesign — Phase 2 Design
 
 ## Problem

@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is an Oct-2025 report on an earlier `lib/tradeCycles.ts` refactor (unrelated to the 2026-07 streaks/resolve-trades refactor). Cites deleted importers (`TradeCycleCard`, `SummaryView`) and obsolete line numbers.
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 # Trade Cycles Refactoring Report
 
 **File:** `/lib/tradeCycles.ts`

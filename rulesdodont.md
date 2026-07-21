@@ -1,3 +1,7 @@
+> ⚠️ **Historical — superseded (note added 2026-07-21).** This is a one-off best-practices assessment. Its core verdicts are now inverted: auth is **Supabase** (not "NextAuth v4"), DB is **PostgreSQL** both envs (not SQLite/Postgres split), and the branch is **main** (not `solanatracker`).
+>
+> For current state see `README.md`, `docs/ARCHITECTURE.md`, and `FEATURES.md`.
+
 Looking at this guide against our Journalio codebase, here's the breakdown:
 
   Already Applying (Well-Aligned)                                              
