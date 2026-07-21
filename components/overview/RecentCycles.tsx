@@ -6,10 +6,10 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
+  TableColumn,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@heroui/react'
 import { formatValue } from '@/lib/formatters'
 import { format } from 'date-fns'
 import Link from 'next/link'
@@ -97,14 +97,12 @@ export const RecentCycles = forwardRef<RecentCyclesHandle, RecentCyclesProps>(
             {recentCompleted.length === 0 ? (
               <p className="text-xs text-muted-foreground">No completed trades yet.</p>
             ) : (
-              <Table>
+              <Table aria-label="Recent trades" removeWrapper>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-[10px] h-7">Token</TableHead>
-                    <TableHead className="text-[10px] h-7">Date</TableHead>
-                    <TableHead className="text-[10px] h-7 text-right">P/L</TableHead>
-                    <TableHead className="text-[10px] h-7 text-center">Status</TableHead>
-                  </TableRow>
+                  <TableColumn className="text-[10px] h-7">Token</TableColumn>
+                  <TableColumn className="text-[10px] h-7">Date</TableColumn>
+                  <TableColumn className="text-[10px] h-7 text-right">P/L</TableColumn>
+                  <TableColumn className="text-[10px] h-7 text-center">Status</TableColumn>
                 </TableHeader>
                 <TableBody>
                   {recentCompleted.map((t) => {

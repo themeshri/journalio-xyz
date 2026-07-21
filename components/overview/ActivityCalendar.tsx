@@ -8,10 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Info } from 'lucide-react'
 import {
   Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+} from '@heroui/react'
 import { DayDetailModal } from '@/components/DayDetailModal'
 import { useWallet } from '@/lib/wallet-context'
 
@@ -263,12 +260,12 @@ export function ActivityCalendar({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <div className="flex items-center gap-1.5">
           <h3 className="text-sm font-semibold">Activity</h3>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" align="start" className="max-w-[220px] text-xs space-y-1.5 p-3 bg-popover text-popover-foreground border border-border shadow-md">
+          <Tooltip
+            placement="bottom-start"
+            delay={200}
+            classNames={{ content: 'max-w-[220px] text-xs space-y-1.5 p-3 bg-popover text-popover-foreground border border-border shadow-md' }}
+            content={
+              <div>
                 <p className="font-medium">How scoring works</p>
                 <p className="text-muted-foreground">Each day earns up to 5 points. The greener the cell, the more you completed:</p>
                 <ul className="space-y-0.5 text-muted-foreground">
@@ -278,9 +275,11 @@ export function ActivityCalendar({
                   <li className="flex items-center gap-1.5"><span className="font-mono">+1</span> All trades journaled</li>
                   <li className="flex items-center gap-1.5"><span className="font-mono">+1</span> Rule adherence {'\u2265'} 70%</li>
                 </ul>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+              </div>
+            }
+          >
+            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+          </Tooltip>
         </div>
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-xs text-muted-foreground hidden sm:inline">
@@ -311,7 +310,6 @@ export function ActivityCalendar({
       </div>
 
       <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
-        <TooltipProvider delayDuration={100}>
           <div className="inline-block min-w-full sm:min-w-0">
             {/* Month labels */}
             <div className="flex ml-5 sm:ml-7 mb-1 gap-[1px]">
@@ -363,49 +361,54 @@ export function ActivityCalendar({
                       const isToday = date === today
 
                       return (
-                        <Tooltip key={date}>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              tabIndex={0}
-                              onClick={() => handleDayClick(date)}
-                              aria-label={`${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: ${score} ${score === 1 ? 'activity' : 'activities'}`}
-                              className={`w-[12px] h-[12px] sm:w-[14px] sm:h-[14px] flex items-center justify-center p-0 touch-manipulation ${
-                                (activity?.tradeCount ?? 0) > 0 ? 'cursor-pointer hover:ring-2 hover:ring-zinc-400 hover:ring-offset-1' : ''
-                              }`}
-                            >
-                              <span className={`block w-[11px] h-[11px] sm:w-[13px] sm:h-[13px] rounded-[1px] sm:rounded-[2px] ${getScoreColor(score)} ${
-                                isToday ? 'ring-1 ring-zinc-400' : ''
-                              }`} />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="text-xs space-y-1">
-                            <p className="font-medium">{date}</p>
-                            {activity ? (
-                              <>
-                                {activity.traded && (
-                                  <p>{activity.tradeCount} trade{activity.tradeCount !== 1 ? 's' : ''} · ${activity.pnl >= 0 ? '+' : ''}${activity.pnl.toFixed(2)}</p>
-                                )}
-                                <p className="flex items-center gap-1.5">
-                                  <span className={activity.preSession ? 'text-emerald-400' : 'text-zinc-500'}>
-                                    {activity.preSession ? '✓' : '○'} Pre
-                                  </span>
-                                  <span className={activity.postSession ? 'text-emerald-400' : 'text-zinc-500'}>
-                                    {activity.postSession ? '✓' : '○'} Post
-                                  </span>
-                                </p>
-                                {activity.traded && (
-                                  <p>Journal: {Math.round(activity.journalCoverage * 100)}%</p>
-                                )}
-                                {activity.ruleAdherence >= 0 && (
-                                  <p>Rules: {Math.round(activity.ruleAdherence * 100)}%</p>
-                                )}
-                                <p className="text-muted-foreground">Score: {activity.score}/5</p>
-                              </>
-                            ) : (
-                              <p className="text-muted-foreground">No activity</p>
-                            )}
-                          </TooltipContent>
+                        <Tooltip
+                          key={date}
+                          placement="top"
+                          delay={100}
+                          classNames={{ content: 'text-xs space-y-1' }}
+                          content={
+                            <div>
+                              <p className="font-medium">{date}</p>
+                              {activity ? (
+                                <>
+                                  {activity.traded && (
+                                    <p>{activity.tradeCount} trade{activity.tradeCount !== 1 ? 's' : ''} · ${activity.pnl >= 0 ? '+' : ''}${activity.pnl.toFixed(2)}</p>
+                                  )}
+                                  <p className="flex items-center gap-1.5">
+                                    <span className={activity.preSession ? 'text-emerald-400' : 'text-zinc-500'}>
+                                      {activity.preSession ? '✓' : '○'} Pre
+                                    </span>
+                                    <span className={activity.postSession ? 'text-emerald-400' : 'text-zinc-500'}>
+                                      {activity.postSession ? '✓' : '○'} Post
+                                    </span>
+                                  </p>
+                                  {activity.traded && (
+                                    <p>Journal: {Math.round(activity.journalCoverage * 100)}%</p>
+                                  )}
+                                  {activity.ruleAdherence >= 0 && (
+                                    <p>Rules: {Math.round(activity.ruleAdherence * 100)}%</p>
+                                  )}
+                                  <p className="text-muted-foreground">Score: {activity.score}/5</p>
+                                </>
+                              ) : (
+                                <p className="text-muted-foreground">No activity</p>
+                              )}
+                            </div>
+                          }
+                        >
+                          <button
+                            type="button"
+                            tabIndex={0}
+                            onClick={() => handleDayClick(date)}
+                            aria-label={`${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}: ${score} ${score === 1 ? 'activity' : 'activities'}`}
+                            className={`w-[12px] h-[12px] sm:w-[14px] sm:h-[14px] flex items-center justify-center p-0 touch-manipulation ${
+                              (activity?.tradeCount ?? 0) > 0 ? 'cursor-pointer hover:ring-2 hover:ring-zinc-400 hover:ring-offset-1' : ''
+                            }`}
+                          >
+                            <span className={`block w-[11px] h-[11px] sm:w-[13px] sm:h-[13px] rounded-[1px] sm:rounded-[2px] ${getScoreColor(score)} ${
+                              isToday ? 'ring-1 ring-zinc-400' : ''
+                            }`} />
+                          </button>
                         </Tooltip>
                       )
                     })}
@@ -423,7 +426,6 @@ export function ActivityCalendar({
               <span className="text-[9px] sm:text-[10px] text-muted-foreground ml-0.5 sm:ml-1">More</span>
             </div>
           </div>
-        </TooltipProvider>
       </div>
       </CardContent>
     </Card>

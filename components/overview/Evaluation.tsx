@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip } from '@heroui/react'
 import { formatValue } from '@/lib/formatters'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 
@@ -159,23 +159,16 @@ export function Evaluation({ trades }: EvaluationProps) {
         <CardTitle className="text-sm">Evaluation</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <TooltipProvider delayDuration={200}>
-          <div className="divide-y divide-border">
-            {rows.map((row) => (
-              <div key={row.label} className="flex items-center justify-between px-6 py-2.5">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-xs text-muted-foreground cursor-help border-b border-dotted border-muted-foreground/30">{row.label}</span>
-                  </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-[200px] text-xs">
-                    {row.tip}
-                  </TooltipContent>
-                </Tooltip>
-                <span className="text-xs font-mono tabular-nums font-medium">{row.value}</span>
-              </div>
-            ))}
-          </div>
-        </TooltipProvider>
+        <div className="divide-y divide-border">
+          {rows.map((row) => (
+            <div key={row.label} className="flex items-center justify-between px-6 py-2.5">
+              <Tooltip content={row.tip} placement="left" delay={200} classNames={{ content: 'max-w-[200px] text-xs' }}>
+                <span className="text-xs text-muted-foreground cursor-help border-b border-dotted border-muted-foreground/30">{row.label}</span>
+              </Tooltip>
+              <span className="text-xs font-mono tabular-nums font-medium">{row.value}</span>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )
