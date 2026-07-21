@@ -21,27 +21,7 @@ Solana trading journal with pre-session checklists, post-session reviews, trade 
 
 ## App Structure
 
-```
-app/
-├── layout.tsx                 # Root layout (fonts, ErrorBoundary, SessionProvider)
-├── (dashboard)/
-│   ├── layout.tsx             # Dashboard layout (WalletProvider, SidebarProvider, AppSidebar)
-│   ├── page.tsx               # Overview — session hero, KPIs, activity calendar, recent trades
-│   ├── diary/
-│   │   ├── pre-session/       # Daily pre-trading checklist
-│   │   ├── post-session/      # End-of-day review
-│   │   └── notes/             # General notes with tagging
-│   ├── trade-journal/         # Trade cycle table with journal modals
-│   ├── history/               # Tabbed: Sessions | Journal | Transactions | Missed Trades | Attachments
-│   ├── chart-lab/             # Analytics charts (calendar, distribution, equity, holding-time)
-│   ├── analytics/             # Analytics overview (Cumulative P/L, Duration, Trading Hours)
-│   ├── missed-trades/         # Papered plays tracker (API-backed)
-│   ├── strategies/            # Strategy CRUD + global rules (DB-backed)
-│   ├── wallet-management/     # Wallets CRUD (localStorage)
-│   └── settings/              # User preferences incl. timezone + trading start time (API-backed)
-├── api/                       # API routes (see below)
-└── auth/signin/               # NextAuth sign-in page
-```
+App Router under `app/`, with a `(dashboard)` route group holding the authenticated pages and `app/api/` for routes. Run `bash scripts/update-claude-md.sh` to print the current structure.
 
 ### Layout Hierarchy
 
@@ -54,79 +34,21 @@ RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
 
 ## Pages
 
-| Route | Page | Storage | Description |
-|-------|------|---------|-------------|
-| `/` | Overview | API | Session hero card, KPI cards, activity calendar, recent trades — time-range filtered |
-| `/diary/pre-session` | Pre-Session | API (DB) | Daily checklist: energy, mindset, limits, market context, rules |
-| `/diary/post-session` | Post-Session | API (DB) | End-of-day review: rating, emotions, lessons, rules adherence, plan for tomorrow |
-| `/diary/notes` | Notes | API (DB) | General notes with title, content, and tags |
-| `/trade-journal` | Trade Journal | API (DB) | Trade cycles table with JournalModal for per-cycle notes |
-| `/history` | History | API (DB) | 5 tabs: Sessions, Journal, Transactions, Missed Trades, Attachments |
-| `/chart-lab` | Analytics | API | Advanced charts: calendar P/L, distribution, equity curve, holding time — sub-routed |
-| `/analytics` | Analytics Overview | API | Recharts: cumulative P/L, duration, hours, discipline — time-range filtered |
-| `/missed-trades` | Missed Trades | API (DB) | Track tokens you saw but didn't trade, with potential multiplier |
-| `/strategies` | Strategies | API (DB) | Named strategies (entry/exit/stop-loss conditions) + global rules |
-| `/wallet-management` | Wallets | localStorage | Add/remove/switch saved wallets |
-| `/settings` | Settings | API (DB) | Display name, timezone, trading start time, journal view mode, trade comments |
+Routes map to directories under `app/(dashboard)/`. Most pages are DB-backed via `/api/*`; **exceptions**: `/wallet-management` and the journal view-mode preference use localStorage (see Data Storage). `/chart-lab` and `/analytics` are read-only analytics; `/settings` covers display name, timezone, trading start time, journal view mode, and trade comments.
 
 ## Key Components
 
-| Component | File | Description |
-|-----------|------|-------------|
-| `SyncButton` | `components/SyncButton.tsx` | Sync all active wallets + shows "last synced X ago" relative time |
-| `AppSidebar` | `components/app-sidebar.tsx` | Sidebar nav with wallet display, pre-session status dot, dark mode toggle, collapse button |
-| `SessionHero` | `components/overview/SessionHero.tsx` | Tabbed hero card (Pre-Session/Active/Post-Session) with session-scoped stats, rules, timer |
-| `SessionPills` | `components/overview/SessionHero.tsx` | Segmented pill tabs for SessionHero, rendered in header row |
-| `ActivityCalendar` | `components/overview/ActivityCalendar.tsx` | GitHub-style yearly heatmap with 0-5 activity score per day |
-| `KPICards` | `components/overview/KPICards.tsx` | 7-card horizontal strip (P/L, win rate, profit factor, avg P/L, trades, Sharpe, streak) |
-| `RecentCycles` | `components/overview/RecentCycles.tsx` | Last 8 completed trades with journal status |
-| `StrategySummary` | `components/overview/StrategySummary.tsx` | Best strategy performance + rule compliance |
-| `MistakesSummary` | `components/overview/MistakesSummary.tsx` | Discipline score + top mistakes + emotion tags |
-| `QuickStatsBar` | `components/overview/QuickStatsBar.tsx` | Horizontal stats bar (avg win/loss, best hour, top token, streaks) |
-| `TimeRangeFilter` | `components/TimeRangeFilter.tsx` | Shared time filter: 1D/7D/30D/90D/All presets + custom date range picker |
-| `TradesTable` | `components/TradesTable.tsx` | Paginated raw transaction table (50/page) |
-| `JournalModal` | `components/JournalModal.tsx` | Dialog for journaling buy/sell analysis per trade cycle |
-| `TransactionModal` | `components/TransactionModal.tsx` | Dialog showing individual txs in a trade cycle |
-| `ErrorBoundary` | `components/ErrorBoundary.tsx` | React error boundary with dev stack trace |
-| `Providers` | `components/Providers.tsx` | Supabase SessionProvider wrapper |
-| `StaleDataBanner` | `components/StaleDataBanner.tsx` | Amber banner shown when trade data is served from stale cache |
-| `LocalStorageMigration` | `components/LocalStorageMigration.tsx` | One-time migration of localStorage data to database |
-
-Legacy (not used in dashboard): `SummaryView.tsx`
+Components live in `components/` (shared) and `components/overview/` (home-page cards). Non-obvious ones worth knowing: `SessionHero`/`SessionPills` (tabbed Pre/Active/Post session card), `ActivityCalendar` (GitHub-style 0–5 daily heatmap — see scoring below), `StaleDataBanner` (renders when trade data is served from stale cache), `LocalStorageMigration` (one-time localStorage→DB migration). Legacy, not used in dashboard: `SummaryView.tsx`.
 
 ## Lib Modules
 
-| Module | Exports | Description |
-|--------|---------|-------------|
-| `wallet-context.tsx` | `WalletProvider`, `useWallet`, `useMetadata` | Barrel re-export of split contexts; `useWallet()` for compat, `useMetadata()` for metadata-only |
-| `trading-day.ts` | `getTradingDay`, `getCalendarDate`, `getTradingDayForDate` | Timezone-aware trading day calculation; respects user's timezone + trading start time |
-| `time-filters.ts` | `TimePreset`, `TimeRange`, `presetToRange`, `filterTradesByRange` | Shared time filter types + utilities (client and server) |
-| `solana-tracker.ts` | `isValidSolanaAddress`, `getWalletTrades`, `getWalletTokens`, `getTokenData` | Solana Tracker API client; browser requests proxy through `/api/solana/*` |
-| `tradeCycles.ts` | `TradeInput`, `calculateTradeCycles`, `flattenTradeCycles` | Groups txs by token → splits into buy/sell cycles by balance; `TradeInput` is the typed trade shape used across API routes |
-| `contexts/` | `DashboardProviders`, `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext` | Split context: identity, trades, metadata (strategies/journals/streak/time-filter/pre-session/post-session/missed-trades/timezone/tradingStartTime), balances |
-| `analytics.ts` → `analytics/` | Re-export barrel; modules: `core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`, `types`, `helpers` | Analytics computation split by domain |
-| `server/resolve-trades.ts` | `resolveFlattenedTrades`, `applyDateFilter`, `parseWalletParams`, `sanitizeForJSON` | Server-side trade resolution with TTL cache, dedup, date filtering |
-| `local-storage.ts` | `safeLocalStorage` | Safe localStorage wrapper with quota error handling and toast notifications |
-| `strategies.ts` | `loadStrategies`, `createStrategy`, `updateStrategy`, `deleteStrategy` | Async strategy CRUD via API |
-| `trade-comments.ts` | `loadTradeComments`, `getCommentsByCategory`, `getCommentById` | Async trade comment loading + pure helpers |
-| `rules.ts` | `loadRules`, `createRule`, `updateRule`, `deleteRule` | Async global rule CRUD via API |
-| `pre-sessions.ts` | `loadPreSessions`, `loadPreSession`, `savePreSession` | Async pre-session CRUD via API |
-| `post-sessions.ts` | `loadPostSessions`, `loadPostSession`, `savePostSession` | Async post-session CRUD via API |
-| `journals.ts` | `loadJournals`, `saveJournal` | Async journal entry CRUD via API |
-| `notes.ts` | `NoteData`, `loadNotes`, `createNote`, `updateNote`, `deleteNote` | Notes types and async API helpers |
-| `chains.ts` | `Chain`, `ChainConfig`, chain configs | Multi-chain config (solana, base, bnb) with address patterns and token lists |
-| `constants.ts` | `APP_FEE_RATES` | Shared constants (DEX/app fee rates) used by client and server |
-| `discipline.ts` | `ratingToScore`, `DisciplineResult` | Discipline scoring from trade comments and journal ratings |
-| `streaks.ts` | `StreakResult`, streak computation | Journaling streak calculation (current + longest) |
-| `formatters.ts` | `formatDuration`, `formatTime`, `formatValue`, `formatTokenAmount`, `formatMarketCap`, `formatPrice`, `formatPercentage` | Display formatting |
-| `utils.ts` | `cn` | Tailwind class merge (clsx + tailwind-merge) |
-| `auth-helper.ts` | `requireAuth`, `getAuthUser`, `ensureUserExists` | Server-side auth helper (Supabase session check, returns userId or 401) |
-| `supabase-auth.ts` | `supabaseAuth` | Client-side Supabase auth (signIn, signOut with localStorage cleanup, getSession) |
-| `validations.ts` | Zod schemas + `validateBody` | Input validation for all POST/PATCH API endpoints |
-| `prisma.ts` | `prisma` | Prisma client singleton |
-| `zerion.ts` | `getWalletTrades` | Zerion API client for EVM chains (Base, BNB) |
-| `rate-limit.ts` | `rateLimit`, `rateLimitByUser` | In-memory rate limiter (per IP or per user); auto-cleanup of expired entries |
-| `env.ts` | `validateEnv` | Startup validation of required environment variables; imported in `instrumentation.ts` |
+`lib/` holds the API clients, contexts, and helpers. Non-obvious structure and gotchas:
+- `wallet-context.tsx` is a **barrel re-export** of split contexts in `lib/contexts/`; `useWallet()` is the compat accessor, `useMetadata()` is metadata-only. The split contexts are `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext`.
+- `trading-day.ts` — timezone-aware trading-day calc (see Trading Day section for the rationale).
+- `solana-tracker.ts` — browser requests **must** proxy through `/api/solana/*` (the API key is server-only); `zerion.ts` is the EVM (Base/BNB) equivalent.
+- `analytics.ts` is a re-export barrel over `lib/analytics/` (`core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`).
+- `local-storage.ts` exports `safeLocalStorage` — **all** localStorage writes must go through it (see Error Handling).
+- `validations.ts` (Zod + `validateBody`) validates every POST/PATCH body; `rate-limit.ts` provides `rateLimit`/`rateLimitByUser`; `env.ts` `validateEnv()` runs from `instrumentation.ts`.
 
 ## Security
 
@@ -151,45 +73,15 @@ Legacy (not used in dashboard): `SummaryView.tsx`
 
 ## API Routes
 
-### Active
+Routes live under `app/api/`; methods and paths are self-describing there. What's **not** obvious from the file tree:
 
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| GET | `/api/dashboard?addresses=&chains=&dexes=` | Session | Combined endpoint: trades, strategies, journals, comments, streak, pre-session + post-session status, missed trades |
-| GET | `/api/trades?address=&refresh=` | Session | Fetch trades with 5-min DB cache, fallback to stale |
-| GET | `/api/analytics/overview?...&startDate=&endDate=` | Session | Cumulative P/L, duration buckets, trading hours |
-| GET | `/api/analytics/calendar?...&year=&month=` | Session | Monthly P/L calendar data |
-| GET | `/api/analytics/time?...&startDate=&endDate=` | Session | Hourly, day-of-week, session performance |
-| GET | `/api/analytics/missed?...` | Session | Missed trade stats + hesitation cost |
-| POST | `/api/analytics/discipline?...` | Session | Comment performance, efficiency, what-if analysis |
-| POST | `/api/analytics/strategy?...` | Session | Strategy performance, rule impact |
-| GET | `/api/papered-plays` | Session | List missed trades |
-| POST | `/api/papered-plays` | Session | Create missed trade entry |
-| DELETE/PATCH | `/api/papered-plays/[id]` | Session | Delete/update missed trade |
-| GET/POST | `/api/rules` | Session | List/create global rules |
-| PATCH/DELETE | `/api/rules/[id]` | Session | Update/delete global rule |
-| GET/POST | `/api/trade-comments` | Session | List (auto-seeds defaults)/create trade comments |
-| PATCH/DELETE | `/api/trade-comments/[id]` | Session | Update/delete trade comment |
-| GET/POST | `/api/strategies` | Session | List/create strategies |
-| GET/PATCH/DELETE | `/api/strategies/[id]` | Session | Get/update/delete strategy |
-| GET/POST | `/api/pre-sessions` | Session | List/upsert pre-sessions (supports `from`/`to` date range) |
-| GET/DELETE | `/api/pre-sessions/[date]` | Session | Get/delete pre-session by date |
-| GET/POST | `/api/post-sessions` | Session | List/upsert post-sessions (supports `from`/`to` date range) |
-| GET/DELETE | `/api/post-sessions/[date]` | Session | Get/delete post-session by date |
-| GET/POST | `/api/journals` | Session | List/upsert journal entries |
-| GET/DELETE | `/api/journals/[id]` | Session | Get/delete journal entry |
-| GET/POST | `/api/notes` | Session | List/create notes |
-| GET/PATCH/DELETE | `/api/notes/[id]` | Session | Get/update/delete note |
-| GET/PATCH | `/api/settings` | Session | User preferences (incl. timezone, tradingStartTime) |
-| GET/POST | `/api/wallets` | Session | List/create wallets |
-| DELETE/PATCH | `/api/wallets/[id]` | Session | Delete/update wallet |
-| GET/POST/DELETE | `/api/trade-edits` | Session | Trade edit overrides |
-| POST | `/api/manual-trades` | Session | Create manual trade entries |
-| GET | `/api/evm/wallet/[address]/*` | No | EVM wallet data proxy |
-| GET | `/api/solana/wallet/[address]/trades` | No | Proxy to Solana Tracker trades API |
-| GET | `/api/solana/wallet/[address]/balances` | No | Proxy to Solana Tracker balances API |
-| GET | `/api/solana/token/[mint]` | No | Proxy to Solana Tracker token data |
-| POST | `/api/auth/sync-user` | Session | Sync authenticated Supabase user to DB |
+- **Auth**: every route requires a Supabase session **except** the proxies — `/api/solana/*`, `/api/evm/*` (unauthenticated on purpose; they hide the server-side API keys). `/api/auth/sync-user` syncs the authenticated user to the DB.
+- **`/api/dashboard`** is a **combined** endpoint returning trades + strategies + journals + comments + streak + pre/post-session status + missed trades in one call (see Dashboard data flow).
+- **`/api/trades`** has 5-min DB cache with stale fallback; `refresh=true` bypasses it.
+- **`/api/analytics/*`** (6 endpoints) accept optional `startDate`/`endDate` (UNIX seconds).
+- **`/api/trade-comments`** auto-seeds defaults on first GET.
+- `pre-sessions`/`post-sessions` support `from`/`to` ranges and have `[date]`-keyed sub-routes.
+- `[id]` sub-routes verify ownership and return **404** (not 403) — see Security.
 
 ## Data Storage
 
@@ -277,34 +169,7 @@ In Tailwind v4 this must be `w-(--sidebar-width)` (parentheses, not brackets).
 
 ## Development
 
-```bash
-npm run dev          # Start dev server
-npm run build        # Production build
-npm run lint         # Next.js linting
-npm run test         # Run Jest tests
-npm run test:watch   # Jest watch mode
-npm run test:coverage # Jest with coverage report
-npx prisma studio    # Database GUI
-npx prisma migrate dev --name <name>  # Create migration
-npx prisma generate  # Regenerate client after schema change
-```
-
-### Environment Variables
-
-```env
-# Supabase Auth
-NEXT_PUBLIC_SUPABASE_URL=     # Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY= # Supabase anon key
-SUPABASE_SERVICE_ROLE_KEY=    # Supabase service role key
-
-# Database (Supabase PostgreSQL)
-DATABASE_URL=                 # Pooled connection (port 6543, ?pgbouncer=true) for runtime
-DIRECT_URL=                   # Direct connection (port 5432) for migrations
-
-# APIs
-SOLANA_TRACKER_API_KEY=       # Server-side Solana Tracker API key
-ZERION_API_KEY=               # Zerion API key (EVM chains)
-```
+Standard scripts (`dev`, `build`, `lint`, `test`, `test:watch`, `test:coverage`) — see `package.json`. Prisma: `npx prisma studio`, `npx prisma migrate dev --name <name>`, `npx prisma generate`. Required env vars are in `.env.example`; note `DATABASE_URL` is the pooled connection (port 6543, `?pgbouncer=true`) and `DIRECT_URL` is direct (port 5432, migrations only).
 
 ### Deployment (Vercel)
 
