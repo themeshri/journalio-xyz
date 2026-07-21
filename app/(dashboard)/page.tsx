@@ -23,6 +23,8 @@ import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { journalKey } from '@/lib/journal-utils'
+import { motion } from 'motion/react'
+import { fadeUp, staggerContainer } from '@/lib/motion'
 
 const sectionErrorFallback = (
   <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
@@ -208,24 +210,35 @@ export default function OverviewPage() {
       </div>
 
       {/* Row 2.5: Performance score + discipline meter + journaling streak */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ErrorBoundary fallback={sectionErrorFallback}>
-          <PerformanceScoreCard trades={filteredTrades} />
-        </ErrorBoundary>
-        <ErrorBoundary fallback={sectionErrorFallback}>
-          <Card>
-            <CardContent className="p-4">
-              <DisciplineMeter
-                percentage={rollingDiscipline?.percentage ?? null}
-                label="Discipline (last 5)"
-              />
-            </CardContent>
-          </Card>
-        </ErrorBoundary>
-        <ErrorBoundary fallback={sectionErrorFallback}>
-          <StreakCard streak={streak} journaledToday={journaledToday} />
-        </ErrorBoundary>
-      </div>
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={fadeUp}>
+          <ErrorBoundary fallback={sectionErrorFallback}>
+            <PerformanceScoreCard trades={filteredTrades} />
+          </ErrorBoundary>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <ErrorBoundary fallback={sectionErrorFallback}>
+            <Card>
+              <CardContent className="p-4">
+                <DisciplineMeter
+                  percentage={rollingDiscipline?.percentage ?? null}
+                  label="Discipline (last 5)"
+                />
+              </CardContent>
+            </Card>
+          </ErrorBoundary>
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <ErrorBoundary fallback={sectionErrorFallback}>
+            <StreakCard streak={streak} journaledToday={journaledToday} />
+          </ErrorBoundary>
+        </motion.div>
+      </motion.div>
 
       {/* Row 2.6: Auto-detected insights (self-hides when none) */}
       <ErrorBoundary fallback={sectionErrorFallback}>

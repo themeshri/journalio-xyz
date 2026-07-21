@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { computePerformanceScore } from '@/lib/performance-score'
+import { motion } from 'motion/react'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 
 interface PerformanceScoreCardProps {
@@ -53,7 +54,9 @@ export function PerformanceScoreCard({ trades }: PerformanceScoreCardProps) {
         <div className="relative h-14 w-14 shrink-0">
           <svg viewBox="0 0 56 56" className="h-14 w-14 -rotate-90">
             <circle cx="28" cy="28" r="24" fill="none" className="stroke-muted" strokeWidth="4" />
-            <circle
+            {/* Sweeps from 0 → score on mount; MotionConfig reducedMotion="user"
+                collapses this to an instant set when the user prefers reduced motion. */}
+            <motion.circle
               cx="28"
               cy="28"
               r="24"
@@ -61,7 +64,9 @@ export function PerformanceScoreCard({ trades }: PerformanceScoreCardProps) {
               className={scoreRing(score)}
               strokeWidth="4"
               strokeLinecap="round"
-              strokeDasharray={`${dash} ${circumference}`}
+              initial={{ strokeDasharray: `0 ${circumference}` }}
+              animate={{ strokeDasharray: `${dash} ${circumference}` }}
+              transition={{ type: 'spring', stiffness: 90, damping: 20 }}
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
