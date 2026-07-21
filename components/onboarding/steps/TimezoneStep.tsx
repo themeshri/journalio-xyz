@@ -2,20 +2,7 @@
 
 import { useState } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
+import { Button, Input, Autocomplete, AutocompleteItem } from '@heroui/react'
 import { toast } from 'sonner'
 
 interface TimezoneStepProps {
@@ -26,9 +13,17 @@ export function TimezoneStep({ onNext }: TimezoneStepProps) {
   const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
   const [timezone, setTimezone] = useState(browserTz)
   const [tradingStartTime, setTradingStartTime] = useState('09:00')
-  const [tzOpen, setTzOpen] = useState(false)
-  const [tzSearch, setTzSearch] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Timezone options for the HeroUI Autocomplete (replaces the shadcn
+  // Popover+Command combobox). Autocomplete does its own filtering.
+  const timezones: string[] = (() => {
+    try {
+      return Intl.supportedValuesOf('timeZone')
+    } catch {
+      return []
+    }
+  })()
 
   async function handleSave() {
     setSaving(true)
@@ -60,76 +55,36 @@ export function TimezoneStep({ onNext }: TimezoneStepProps) {
       </div>
 
       <div className="space-y-5">
-        <div>
-          <label className="text-xs font-medium mb-1.5 block">Timezone</label>
-          <Popover open={tzOpen} onOpenChange={setTzOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={tzOpen}
-                className="w-full justify-between text-xs font-normal"
-              >
-                {timezone.replace(/_/g, ' ')}
-                <svg className="ml-2 h-3 w-3 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                </svg>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
-              <Command>
-                <CommandInput
-                  placeholder="Search timezone..."
-                  value={tzSearch}
-                  onValueChange={setTzSearch}
-                />
-                <CommandList>
-                  <CommandEmpty>No timezone found.</CommandEmpty>
-                  <CommandGroup>
-                    {(() => {
-                      try {
-                        return Intl.supportedValuesOf('timeZone')
-                          .filter((tz: string) => tz.toLowerCase().includes(tzSearch.toLowerCase()))
-                          .slice(0, 50)
-                          .map((tz: string) => (
-                            <CommandItem
-                              key={tz}
-                              value={tz}
-                              onSelect={() => {
-                                setTimezone(tz)
-                                setTzOpen(false)
-                                setTzSearch('')
-                              }}
-                            >
-                              <span className={timezone === tz ? 'font-medium' : ''}>{tz.replace(/_/g, ' ')}</span>
-                            </CommandItem>
-                          ))
-                      } catch {
-                        return <CommandItem disabled>Timezone list unavailable</CommandItem>
-                      }
-                    })()}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
+        <Autocomplete
+          label="Timezone"
+          labelPlacement="outside"
+          placeholder="Search timezone..."
+          defaultItems={timezones.map((tz) => ({ key: tz, label: tz.replace(/_/g, ' ') }))}
+          selectedKey={timezone || null}
+          onSelectionChange={(key) => {
+            if (key) setTimezone(String(key))
+          }}
+        >
+          {(item: { key: string; label: string }) => (
+            <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>
+          )}
+        </Autocomplete>
 
         <div>
-          <label className="text-xs font-medium mb-1.5 block">Trading Start Time</label>
+          <p className="text-xs font-medium mb-1.5">Trading Start Time</p>
           <p className="text-xs text-muted-foreground mb-2">
             When your trading day begins (pre-session resets at this time)
           </p>
-          <input
+          <Input
             type="time"
             value={tradingStartTime}
-            onChange={(e) => setTradingStartTime(e.target.value)}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            onValueChange={setTradingStartTime}
+            aria-label="Trading start time"
           />
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onPress={handleSave} color="primary" isDisabled={saving}>
             {saving ? 'Saving...' : 'Continue'}
             {!saving && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>

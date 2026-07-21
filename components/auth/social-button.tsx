@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 import { cn } from '@/lib/utils'
 
 // Google icon component
@@ -47,9 +47,10 @@ export function SocialButton({ provider, onClick, isLoading, className }: Social
   return (
     <Button
       type="button"
-      variant={provider === 'google' ? 'outline' : 'default'}
-      onClick={onClick}
-      disabled={isLoading}
+      variant={provider === 'google' ? 'bordered' : 'solid'}
+      color={provider === 'google' ? 'default' : 'primary'}
+      onPress={onClick}
+      isDisabled={isLoading}
       className={cn(
         'w-full',
         config.bgColor,

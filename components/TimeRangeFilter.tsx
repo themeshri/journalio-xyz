@@ -1,9 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+// NOTE: Calendar + Popover intentionally kept on shadcn/ui — the custom date-range
+// picker relies on react-day-picker's DateRange (mode="range") and shadcn Popover's
+// asChild trigger semantics. Swapping these to HeroUI risks breaking the range logic
+// (see heroui-mapping.md "Final mappings": Calendar is a KNOWN-HARD swap).
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 import { type TimePreset, type TimeRange, presetToRange } from '@/lib/time-filters'
 import type { DateRange } from 'react-day-picker'
 
@@ -59,17 +63,19 @@ export function TimeRangeFilter({ value, preset, onChange }: TimeRangeFilterProp
   return (
     <div className="flex items-center gap-1">
       {PRESETS.map((p) => (
-        <button
+        <Button
           key={p.value}
-          onClick={() => handlePreset(p.value)}
-          className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${
+          size="sm"
+          variant="light"
+          onPress={() => handlePreset(p.value)}
+          className={`h-auto min-w-0 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors ${
             preset === p.value
               ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600'
               : 'border-border text-muted-foreground hover:bg-muted/50'
           }`}
         >
           {p.label}
-        </button>
+        </Button>
       ))}
 
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>

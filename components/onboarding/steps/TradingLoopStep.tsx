@@ -1,7 +1,7 @@
 'use client'
 
 import { ClipboardList, BookOpen, BookHeart, BarChart3, SlidersHorizontal, ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@heroui/react'
 
 interface TradingLoopStepProps {
   onNext: () => void
@@ -72,7 +72,7 @@ export function TradingLoopStep({ onNext }: TradingLoopStepProps) {
         ))}
       </div>
 
-      <Button onClick={onNext}>
+      <Button onPress={onNext} color="primary">
         Continue
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>

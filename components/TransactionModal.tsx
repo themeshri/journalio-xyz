@@ -6,12 +6,12 @@ import { formatPrice, formatMarketCap } from '@/lib/formatters';
 import { explorerTxUrl, type Chain } from '@/lib/chains';
 import { format } from 'date-fns';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Divider,
+} from '@heroui/react';
 
 interface TransactionModalProps {
   trades: TradeInput[];
@@ -44,13 +44,11 @@ const TransactionModal = memo(function TransactionModal({
   chain = 'solana',
 }: TransactionModalProps) {
   return (
-    <Dialog open onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-base">{title}</DialogTitle>
-        </DialogHeader>
+    <Modal isOpen onOpenChange={(open) => { if (!open) onClose() }} size="3xl" scrollBehavior="inside">
+      <ModalContent>
+        <ModalHeader className="text-base">{title}</ModalHeader>
 
-        <div className="overflow-y-auto flex-1 -mx-6 px-6">
+        <ModalBody className="pb-6">
           {trades.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8">
               No transactions to display
@@ -61,7 +59,7 @@ const TransactionModal = memo(function TransactionModal({
                 const marketCap = trade.priceUSD * 1_000_000_000;
                 return (
                   <div key={`${trade.signature}-${index}`}>
-                    {index > 0 && <Separator className="my-4" />}
+                    {index > 0 && <Divider className="my-4" />}
                     <div className="py-1">
                       {/* Timestamp */}
                       <time
@@ -141,9 +139,9 @@ const TransactionModal = memo(function TransactionModal({
               })}
             </div>
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </ModalBody>
+      </ModalContent>
+    </Modal>
   );
 });
 

@@ -5,15 +5,16 @@ import { useWallet } from '@/lib/wallet-context'
 import { saveJournal } from '@/lib/journals'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
 import { formatValue, formatDuration, formatPrice, formatPercentage } from '@/lib/formatters'
-import { Button } from '@/components/ui/button'
 import {
+  Button,
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
+  TableColumn,
+  TableBody,
   TableRow,
-} from '@/components/ui/table'
+  TableCell,
+  Tooltip,
+} from '@heroui/react'
 import TransactionModal from '@/components/TransactionModal'
 import JournalModal, { JournalData } from '@/components/JournalModal'
 import { TableRowsSkeleton } from '@/components/skeletons'
@@ -23,12 +24,6 @@ import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from 
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ManualTradeDialog } from '@/components/ManualTradeDialog'
 import { Plus } from 'lucide-react'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { journalKey } from '@/lib/journal-utils'
 
 function relativeTime(timestamp: number): string {
@@ -337,40 +332,42 @@ export default function TradeJournalPage() {
             const discipline = computeTradeDiscipline(journal, tradeComments)
             if (!discipline) return <span className="text-xs text-muted-foreground">&mdash;</span>
             return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-flex flex-col items-center gap-0.5 cursor-default">
-                    <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${disciplineBgClass(discipline.percentage)}`}
-                        style={{ width: `${discipline.percentage}%` }}
-                      />
-                    </div>
-                    <span className={`text-[10px] font-mono tabular-nums ${disciplineColorClass(discipline.percentage)}`}>
-                      {Math.round(discipline.percentage)}%
-                    </span>
+              <Tooltip
+                placement="top"
+                content={
+                  <div className="text-xs space-y-1">
+                    {discipline.entryComment && (
+                      <div className="flex items-center gap-1.5">
+                        <span>{discipline.entryComment.rating === 'positive' ? '\u2713' : discipline.entryComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
+                        <span>Entry: {discipline.entryComment.label}</span>
+                      </div>
+                    )}
+                    {discipline.exitComment && (
+                      <div className="flex items-center gap-1.5">
+                        <span>{discipline.exitComment.rating === 'positive' ? '\u2713' : discipline.exitComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
+                        <span>Exit: {discipline.exitComment.label}</span>
+                      </div>
+                    )}
+                    {discipline.managementComment && (
+                      <div className="flex items-center gap-1.5">
+                        <span>{discipline.managementComment.rating === 'positive' ? '\u2713' : discipline.managementComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
+                        <span>Mgmt: {discipline.managementComment.label}</span>
+                      </div>
+                    )}
                   </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs space-y-1">
-                  {discipline.entryComment && (
-                    <div className="flex items-center gap-1.5">
-                      <span>{discipline.entryComment.rating === 'positive' ? '\u2713' : discipline.entryComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
-                      <span>Entry: {discipline.entryComment.label}</span>
-                    </div>
-                  )}
-                  {discipline.exitComment && (
-                    <div className="flex items-center gap-1.5">
-                      <span>{discipline.exitComment.rating === 'positive' ? '\u2713' : discipline.exitComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
-                      <span>Exit: {discipline.exitComment.label}</span>
-                    </div>
-                  )}
-                  {discipline.managementComment && (
-                    <div className="flex items-center gap-1.5">
-                      <span>{discipline.managementComment.rating === 'positive' ? '\u2713' : discipline.managementComment.rating === 'negative' ? '\u2717' : '\u2014'}</span>
-                      <span>Mgmt: {discipline.managementComment.label}</span>
-                    </div>
-                  )}
-                </TooltipContent>
+                }
+              >
+                <div className="inline-flex flex-col items-center gap-0.5 cursor-default">
+                  <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${disciplineBgClass(discipline.percentage)}`}
+                      style={{ width: `${discipline.percentage}%` }}
+                    />
+                  </div>
+                  <span className={`text-[10px] font-mono tabular-nums ${disciplineColorClass(discipline.percentage)}`}>
+                    {Math.round(discipline.percentage)}%
+                  </span>
+                </div>
               </Tooltip>
             )
           })()}
@@ -390,30 +387,26 @@ export default function TradeJournalPage() {
 
   function renderTable(trades: FlattenedTrade[]) {
     return (
-      <TooltipProvider>
       <div className="overflow-x-auto">
-        <Table>
+        <Table aria-label="Trade cycles">
           <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[140px]">Token</TableHead>
-              <TableHead className="text-right min-w-[100px]">PnL</TableHead>
-              <TableHead className="text-right min-w-[80px]">Balance</TableHead>
-              <TableHead className="text-right min-w-[70px]">Duration</TableHead>
-              <TableHead className="text-center min-w-[90px]">Strategy</TableHead>
-              <TableHead className="text-center min-w-[80px]">Follow Rate</TableHead>
-              <TableHead className="text-right min-w-[100px]">Bought</TableHead>
-              <TableHead className="text-right min-w-[100px]">Sold</TableHead>
-              <TableHead className="text-center min-w-[80px]">Buys/Sells</TableHead>
-              <TableHead className="text-center min-w-[80px]">Discipline</TableHead>
-              <TableHead className="text-center min-w-[70px]">Status</TableHead>
-            </TableRow>
+            <TableColumn className="min-w-[140px]">Token</TableColumn>
+            <TableColumn className="text-right min-w-[100px]">PnL</TableColumn>
+            <TableColumn className="text-right min-w-[80px]">Balance</TableColumn>
+            <TableColumn className="text-right min-w-[70px]">Duration</TableColumn>
+            <TableColumn className="text-center min-w-[90px]">Strategy</TableColumn>
+            <TableColumn className="text-center min-w-[80px]">Follow Rate</TableColumn>
+            <TableColumn className="text-right min-w-[100px]">Bought</TableColumn>
+            <TableColumn className="text-right min-w-[100px]">Sold</TableColumn>
+            <TableColumn className="text-center min-w-[80px]">Buys/Sells</TableColumn>
+            <TableColumn className="text-center min-w-[80px]">Discipline</TableColumn>
+            <TableColumn className="text-center min-w-[70px]">Status</TableColumn>
           </TableHeader>
           <TableBody>
             {trades.map(renderTradeRow)}
           </TableBody>
         </Table>
       </div>
-      </TooltipProvider>
     )
   }
 
@@ -421,7 +414,7 @@ export default function TradeJournalPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Trade Journal</h1>
-        <Button size="sm" variant="outline" onClick={() => setShowManualTrade(true)}>
+        <Button size="sm" variant="bordered" onPress={() => setShowManualTrade(true)}>
           <Plus className="w-4 h-4 mr-1" />
           Add Manual Trade
         </Button>

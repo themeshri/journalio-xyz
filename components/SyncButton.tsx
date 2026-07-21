@@ -2,13 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Button, Tooltip } from '@heroui/react'
 import { useWallet } from '@/lib/wallet-context'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -80,37 +74,36 @@ export function SyncButton() {
           Synced {formatTimeAgo(lastSyncedAt)}
         </span>
       )}
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSync}
-              disabled={isSyncing || activeWallets.length === 0}
-              className="h-8 w-8"
-            >
-              <RefreshCw
-                className={cn(
-                  "h-4 w-4 transition-transform duration-500",
-                  isSyncing && "animate-spin"
-                )}
-              />
-              <span className="sr-only">Sync trades</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="text-xs">
-              {isSyncing
-                ? 'Syncing...'
-                : activeWallets.length === 0
-                ? 'No active wallets'
-                : `Sync ${activeWallets.length} wallet${activeWallets.length !== 1 ? 's' : ''}`
-              }
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip
+        delay={200}
+        content={
+          <p className="text-xs">
+            {isSyncing
+              ? 'Syncing...'
+              : activeWallets.length === 0
+              ? 'No active wallets'
+              : `Sync ${activeWallets.length} wallet${activeWallets.length !== 1 ? 's' : ''}`
+            }
+          </p>
+        }
+      >
+        <Button
+          variant="light"
+          isIconOnly
+          size="sm"
+          onPress={handleSync}
+          isDisabled={isSyncing || activeWallets.length === 0}
+          className="h-8 w-8"
+        >
+          <RefreshCw
+            className={cn(
+              "h-4 w-4 transition-transform duration-500",
+              isSyncing && "animate-spin"
+            )}
+          />
+          <span className="sr-only">Sync trades</span>
+        </Button>
+      </Tooltip>
     </div>
   )
 }
