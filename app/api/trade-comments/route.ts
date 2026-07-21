@@ -1,4 +1,5 @@
 import { validateBody, createTradeCommentSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
@@ -36,8 +37,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(comments)
   } catch (error) {
-    console.error('Error fetching trade comments:', error)
-    return NextResponse.json({ error: 'Failed to fetch trade comments' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch trade comments')
   }
 }
 
@@ -65,7 +65,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(comment, { status: 201 })
   } catch (error) {
-    console.error('Error creating trade comment:', error)
-    return NextResponse.json({ error: 'Failed to create trade comment' }, { status: 500 })
+    return handleApiError(error, 'Failed to create trade comment')
   }
 }

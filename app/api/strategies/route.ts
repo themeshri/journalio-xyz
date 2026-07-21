@@ -1,4 +1,5 @@
 import { validateBody, createStrategySchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
@@ -32,8 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(strategies.map(parseStrategy))
   } catch (error) {
-    console.error('Error fetching strategies:', error)
-    return NextResponse.json({ error: 'Failed to fetch strategies' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch strategies')
   }
 }
 
@@ -64,7 +64,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(parseStrategy(strategy), { status: 201 })
   } catch (error) {
-    console.error('Error creating strategy:', error)
-    return NextResponse.json({ error: 'Failed to create strategy' }, { status: 500 })
+    return handleApiError(error, 'Failed to create strategy')
   }
 }

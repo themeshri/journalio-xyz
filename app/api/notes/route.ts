@@ -1,4 +1,5 @@
 import { validateBody, createNoteSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
@@ -23,8 +24,7 @@ export async function GET(request: NextRequest) {
     })
     return NextResponse.json(notes.map(parseNote))
   } catch (error) {
-    console.error('Error fetching notes:', error)
-    return NextResponse.json({ error: 'Failed to fetch notes' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch notes')
   }
 }
 
@@ -70,7 +70,6 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(parseNote(note), { status: 201 })
   } catch (error) {
-    console.error('Error saving note:', error)
-    return NextResponse.json({ error: 'Failed to save note' }, { status: 500 })
+    return handleApiError(error, 'Failed to save note')
   }
 }

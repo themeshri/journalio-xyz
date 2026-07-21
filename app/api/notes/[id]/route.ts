@@ -1,4 +1,5 @@
 import { validateBody, updateNoteSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
@@ -41,8 +42,7 @@ export async function PATCH(
     })
     return NextResponse.json(parseNote(note))
   } catch (error) {
-    console.error('Error updating note:', error)
-    return NextResponse.json({ error: 'Failed to update note' }, { status: 500 })
+    return handleApiError(error, 'Failed to update note')
   }
 }
 
@@ -65,7 +65,6 @@ export async function DELETE(
     await prisma.note.delete({ where: { id } })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Error deleting note:', error)
-    return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 })
+    return handleApiError(error, 'Failed to delete note')
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleApiError } from '@/lib/api-error'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
 
@@ -30,8 +31,7 @@ export async function GET(
 
     return NextResponse.json(parseJournal(journal))
   } catch (error) {
-    console.error('Error fetching journal:', error)
-    return NextResponse.json({ error: 'Failed to fetch journal' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch journal')
   }
 }
 
@@ -54,7 +54,6 @@ export async function DELETE(
     await prisma.journalEntry.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting journal:', error)
-    return NextResponse.json({ error: 'Failed to delete journal' }, { status: 500 })
+    return handleApiError(error, 'Failed to delete journal')
   }
 }

@@ -1,4 +1,5 @@
 import { validateBody, createTradeEditSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
@@ -28,8 +29,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(edit || null)
   } catch (error) {
-    console.error('Error fetching trade edit:', error)
-    return NextResponse.json({ error: 'Failed to fetch trade edit' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch trade edit')
   }
 }
 
@@ -81,8 +81,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(edit, { status: 201 })
   } catch (error) {
-    console.error('Error saving trade edit:', error)
-    return NextResponse.json({ error: 'Failed to save trade edit' }, { status: 500 })
+    return handleApiError(error, 'Failed to save trade edit')
   }
 }
 
@@ -111,7 +110,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting trade edit:', error)
-    return NextResponse.json({ error: 'Failed to delete trade edit' }, { status: 500 })
+    return handleApiError(error, 'Failed to delete trade edit')
   }
 }

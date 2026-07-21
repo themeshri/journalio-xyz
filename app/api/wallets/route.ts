@@ -1,4 +1,5 @@
 import { validateBody, createWalletSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
@@ -19,8 +20,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(wallets)
   } catch (error) {
-    console.error('Error fetching wallets:', error)
-    return NextResponse.json({ error: 'Failed to fetch wallets' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch wallets')
   }
 }
 
@@ -103,7 +103,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(wallet, { status: 201 })
   } catch (error) {
-    console.error('Error creating wallet:', error)
-    return NextResponse.json({ error: 'Failed to create wallet' }, { status: 500 })
+    return handleApiError(error, 'Failed to create wallet')
   }
 }

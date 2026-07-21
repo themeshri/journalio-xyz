@@ -1,4 +1,5 @@
 import { validateBody, updateWalletSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
@@ -29,8 +30,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting wallet:', error)
-    return NextResponse.json({ error: 'Failed to delete wallet' }, { status: 500 })
+    return handleApiError(error, 'Failed to delete wallet')
   }
 }
 
@@ -83,7 +83,6 @@ export async function PATCH(
 
     return NextResponse.json(updatedWallet)
   } catch (error) {
-    console.error('Error updating wallet:', error)
-    return NextResponse.json({ error: 'Failed to update wallet' }, { status: 500 })
+    return handleApiError(error, 'Failed to update wallet')
   }
 }

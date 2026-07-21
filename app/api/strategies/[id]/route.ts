@@ -1,4 +1,5 @@
 import { validateBody, updateStrategySchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
@@ -29,8 +30,7 @@ export async function GET(
 
     return NextResponse.json(parseStrategy(strategy))
   } catch (error) {
-    console.error('Error fetching strategy:', error)
-    return NextResponse.json({ error: 'Failed to fetch strategy' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch strategy')
   }
 }
 
@@ -65,8 +65,7 @@ export async function PATCH(
     const strategy = await prisma.strategy.update({ where: { id }, data })
     return NextResponse.json(parseStrategy(strategy))
   } catch (error) {
-    console.error('Error updating strategy:', error)
-    return NextResponse.json({ error: 'Failed to update strategy' }, { status: 500 })
+    return handleApiError(error, 'Failed to update strategy')
   }
 }
 
@@ -89,7 +88,6 @@ export async function DELETE(
     await prisma.strategy.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting strategy:', error)
-    return NextResponse.json({ error: 'Failed to delete strategy' }, { status: 500 })
+    return handleApiError(error, 'Failed to delete strategy')
   }
 }

@@ -1,4 +1,5 @@
 import { validateBody, updateRuleSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
@@ -33,8 +34,7 @@ export async function PATCH(
 
     return NextResponse.json(rule)
   } catch (error) {
-    console.error('Error updating rule:', error)
-    return NextResponse.json({ error: 'Failed to update rule' }, { status: 500 })
+    return handleApiError(error, 'Failed to update rule')
   }
 }
 
@@ -57,7 +57,6 @@ export async function DELETE(
     await prisma.globalRule.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting rule:', error)
-    return NextResponse.json({ error: 'Failed to delete rule' }, { status: 500 })
+    return handleApiError(error, 'Failed to delete rule')
   }
 }

@@ -1,4 +1,5 @@
 import { validateBody, createPostSessionSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
@@ -28,8 +29,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(sessions)
   } catch (error) {
-    console.error('Error fetching post-sessions:', error)
-    return NextResponse.json({ error: 'Failed to fetch post-sessions' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch post-sessions')
   }
 }
 
@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(session, { status: 201 })
   } catch (error) {
-    console.error('Error saving post-session:', error)
-    return NextResponse.json({ error: 'Failed to save post-session' }, { status: 500 })
+    return handleApiError(error, 'Failed to save post-session')
   }
 }

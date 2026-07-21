@@ -1,4 +1,5 @@
 import { validateBody, createJournalSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
@@ -34,8 +35,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(journals.map(parseJournal))
   } catch (error) {
-    console.error('Error fetching journals:', error)
-    return NextResponse.json({ error: 'Failed to fetch journals' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch journals')
   }
 }
 
@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(parseJournal(journal), { status: 201 })
   } catch (error) {
-    console.error('Error saving journal:', error)
-    return NextResponse.json({ error: 'Failed to save journal' }, { status: 500 })
+    return handleApiError(error, 'Failed to save journal')
   }
 }

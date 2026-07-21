@@ -1,4 +1,5 @@
 import { validateBody, createRuleSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
@@ -15,8 +16,7 @@ export async function GET(request: NextRequest) {
     })
     return NextResponse.json(rules)
   } catch (error) {
-    console.error('Error fetching rules:', error)
-    return NextResponse.json({ error: 'Failed to fetch rules' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch rules')
   }
 }
 
@@ -50,7 +50,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(rule, { status: 201 })
   } catch (error) {
-    console.error('Error creating rule:', error)
-    return NextResponse.json({ error: 'Failed to create rule' }, { status: 500 })
+    return handleApiError(error, 'Failed to create rule')
   }
 }

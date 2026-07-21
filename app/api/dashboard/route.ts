@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleApiError } from '@/lib/api-error'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { rateLimitByUser } from '@/lib/rate-limit'
@@ -262,7 +263,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error('Error in dashboard endpoint:', error)
-    return NextResponse.json({ error: 'Failed to load dashboard data' }, { status: 500 })
+    return handleApiError(error, 'Failed to load dashboard data')
   }
 }

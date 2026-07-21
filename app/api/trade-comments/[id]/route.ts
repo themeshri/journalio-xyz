@@ -1,4 +1,5 @@
 import { validateBody, updateTradeCommentSchema } from '@/lib/validations'
+import { handleApiError } from '@/lib/api-error'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
@@ -33,8 +34,7 @@ export async function PATCH(
 
     return NextResponse.json(comment)
   } catch (error) {
-    console.error('Error updating trade comment:', error)
-    return NextResponse.json({ error: 'Failed to update trade comment' }, { status: 500 })
+    return handleApiError(error, 'Failed to update trade comment')
   }
 }
 
@@ -57,7 +57,6 @@ export async function DELETE(
     await prisma.tradeComment.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting trade comment:', error)
-    return NextResponse.json({ error: 'Failed to delete trade comment' }, { status: 500 })
+    return handleApiError(error, 'Failed to delete trade comment')
   }
 }

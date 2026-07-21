@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleApiError } from '@/lib/api-error'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
 
@@ -22,8 +23,7 @@ export async function GET(
 
     return NextResponse.json(session)
   } catch (error) {
-    console.error('Error fetching post-session:', error)
-    return NextResponse.json({ error: 'Failed to fetch post-session' }, { status: 500 })
+    return handleApiError(error, 'Failed to fetch post-session')
   }
 }
 
@@ -42,7 +42,6 @@ export async function DELETE(
     })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Error deleting post-session:', error)
-    return NextResponse.json({ error: 'Failed to delete post-session' }, { status: 500 })
+    return handleApiError(error, 'Failed to delete post-session')
   }
 }
