@@ -11,9 +11,12 @@ import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
 import { Evaluation } from '@/components/overview/Evaluation'
 import { StreakCard } from '@/components/overview/StreakCard'
 import { GettingStarted } from '@/components/overview/GettingStarted'
+import { DisciplineMeter } from '@/components/overview/DisciplineMeter'
+import { Card, CardContent } from '@/components/ui/card'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 import { filterTradesByRange } from '@/lib/time-filters'
 import { getTradingDay } from '@/lib/trading-day'
+import { computeRollingDiscipline } from '@/lib/discipline'
 import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -27,7 +30,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, streak, strategies } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, streak, strategies, tradeComments } = useMetadata()
 
   // Set page title
   useEffect(() => {
@@ -57,6 +60,14 @@ export default function OverviewPage() {
       (j) => typeof j?.journaledAt === 'string' && j.journaledAt.slice(0, 10) === today,
     )
   }, [journalMap, timezone, tradingStartTime])
+
+  // Rolling discipline (last 5 journaled trades in range) for the dashboard meter.
+  const rollingDiscipline = useMemo(() => {
+    const journals = filteredTrades
+      .filter((t) => t.isComplete)
+      .map((t) => journalMap[journalKey(t)] || null)
+    return computeRollingDiscipline(journals, tradeComments)
+  }, [filteredTrades, journalMap, tradeComments])
 
   // State for ActionBanner-triggered journal modal
   const [bannerJournalTrade, setBannerJournalTrade] = useState<FlattenedTrade | null>(null)
@@ -194,10 +205,22 @@ export default function OverviewPage() {
       </ErrorBoundary>
       </div>
 
-      {/* Row 2.5: Journaling streak */}
-      <ErrorBoundary fallback={sectionErrorFallback}>
-        <StreakCard streak={streak} journaledToday={journaledToday} />
-      </ErrorBoundary>
+      {/* Row 2.5: Discipline meter + journaling streak */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ErrorBoundary fallback={sectionErrorFallback}>
+          <Card>
+            <CardContent className="p-4">
+              <DisciplineMeter
+                percentage={rollingDiscipline?.percentage ?? null}
+                label="Discipline (last 5)"
+              />
+            </CardContent>
+          </Card>
+        </ErrorBoundary>
+        <ErrorBoundary fallback={sectionErrorFallback}>
+          <StreakCard streak={streak} journaledToday={journaledToday} />
+        </ErrorBoundary>
+      </div>
 
       {/* Row 3: Recent Trades + Evaluation */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

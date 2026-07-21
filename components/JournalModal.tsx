@@ -4,6 +4,8 @@ import React, { useState, useCallback, useEffect, useRef, memo } from 'react';
 import { FlattenedTrade } from '@/lib/tradeCycles';
 import { formatDuration, formatTime, formatValue, formatMarketCap } from '@/lib/formatters';
 import { getCommentsByCategory, type TradeComment } from '@/lib/trade-comments';
+import { computeTradeDiscipline } from '@/lib/discipline';
+import { DisciplineMeter } from '@/components/overview/DisciplineMeter';
 import { type Strategy, type StrategyRule } from '@/lib/strategies';
 import { useWallet } from '@/lib/wallet-context';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -229,6 +231,13 @@ const JournalModal = memo(function JournalModal({
   // Get the selected strategy object for rule display
   const selectedStrategy = strategyId ? strategies.find((s) => s.id === strategyId) : null;
 
+  // Live discipline (Tiltmeter-style): reacts to entry/exit/management comment
+  // ratings as the user selects them. Null until at least one rated comment is set.
+  const liveDiscipline = React.useMemo(
+    () => computeTradeDiscipline({ entryCommentId, exitCommentId, managementCommentId } as JournalData, tradeComments),
+    [entryCommentId, exitCommentId, managementCommentId, tradeComments],
+  );
+
   // Determine trade outcome for showWhen filtering
   const tradeOutcome: 'winner' | 'loser' | 'breakeven' =
     trade.profitLoss > 0.01 ? 'winner' : trade.profitLoss < -0.01 ? 'loser' : 'breakeven';
@@ -386,6 +395,12 @@ const JournalModal = memo(function JournalModal({
 
           <TabsContent value="journal" className="overflow-y-auto flex-1 -mx-6 px-6 mt-0">
           <div className="space-y-6 pt-4">
+          {/* Live discipline meter (Tiltmeter) — only when comments are configured */}
+          {tradeComments.length > 0 && (
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <DisciplineMeter percentage={liveDiscipline?.percentage ?? null} compact />
+            </div>
+          )}
           {/* Buy Section */}
           <section>
             <h4 className="text-sm font-medium mb-3">Journal the Buy</h4>
