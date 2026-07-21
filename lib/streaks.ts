@@ -57,7 +57,10 @@ export function computeStreakFromDates(
 
   if (checkDate) {
     const dateSet = new Set(sortedDates)
-    let day = new Date(checkDate + 'T00:00:00')
+    // Anchor at UTC midnight: the loop compares via toISOString() (UTC), so
+    // constructing local midnight would land on the wrong UTC day for clients
+    // east of UTC and undercount the streak. See plan "B1".
+    let day = new Date(checkDate + 'T00:00:00Z')
     while (dateSet.has(day.toISOString().slice(0, 10))) {
       current++
       day = new Date(day.getTime() - 86400000)
@@ -68,8 +71,9 @@ export function computeStreakFromDates(
   let longest = 0
   let streak = 1
   for (let i = 1; i < allDatesAsc.length; i++) {
-    const prev = new Date(allDatesAsc[i - 1] + 'T00:00:00')
-    const curr = new Date(allDatesAsc[i] + 'T00:00:00')
+    // UTC anchors so every day is exactly 86400000ms (no DST 23/25h days).
+    const prev = new Date(allDatesAsc[i - 1] + 'T00:00:00Z')
+    const curr = new Date(allDatesAsc[i] + 'T00:00:00Z')
     if ((curr.getTime() - prev.getTime()) / 86400000 === 1) {
       streak++
     } else {

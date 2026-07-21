@@ -10,7 +10,9 @@
     "lint": "next lint",
     "test": "TZ=UTC jest",
     "test:watch": "TZ=UTC jest --watch",
-    "test:coverage": "TZ=UTC jest --coverage"
+    "test:coverage": "TZ=UTC jest --coverage",
+    "test:tz": "TZ=Asia/Makassar jest streak trading-day time-filters",
+    "test:all": "npm run test && npm run test:tz"
   },
   "keywords": [],
   "author": "",
