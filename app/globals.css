@@ -3,6 +3,11 @@
 @plugin "tailwindcss-animate";
 @import "tw-animate-css";
 
+/* HeroUI (pilot: /settings only) — plugin + class source. Coexists with the
+   shadcn @theme tokens below; HeroUI ships stock theme via hero.ts. */
+@plugin '../hero.ts';
+@source '../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
