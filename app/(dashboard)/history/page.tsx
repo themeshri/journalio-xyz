@@ -4,25 +4,24 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useWallet } from '@/lib/wallet-context'
 import { TradesTable } from '@/components/TradesTable'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card } from '@/components/ui/card'
 import {
+  Button,
+  Chip,
+  Tabs,
+  Tab,
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
+  TableColumn,
+  TableBody,
   TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Separator } from '@/components/ui/separator'
+  TableCell,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Divider,
+} from '@heroui/react'
+import { Card } from '@/components/ui/card'
 import { TableRowsSkeleton } from '@/components/skeletons'
 
 import { loadPreSessions, type PreSessionData } from '@/lib/pre-sessions'
@@ -185,17 +184,16 @@ function PreSessionDetailDialog({
   if (!session) return null
 
   return (
-    <Dialog open={!!session} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Pre-Session — {formatDate(session.date)}</DialogTitle>
-        </DialogHeader>
+    <Modal isOpen={!!session} onOpenChange={(open) => !open && onClose()} size="lg" scrollBehavior="inside">
+      <ModalContent className="max-h-[85vh]">
+        <ModalHeader>Pre-Session — {formatDate(session.date)}</ModalHeader>
+        <ModalBody className="pb-6">
 
         <div className="space-y-4 pt-2">
           {/* Date & Time */}
           <DetailRow label="Time">{formatTime(session.time)}</DetailRow>
 
-          <Separator />
+          <Divider />
 
           {/* Energy & Mindset */}
           <div>
@@ -212,7 +210,7 @@ function PreSessionDetailDialog({
             <DetailRow label="Emotional State">{session.emotionalState || '-'}</DetailRow>
           </div>
 
-          <Separator />
+          <Divider />
 
           {/* Session Intent */}
           <div>
@@ -222,7 +220,7 @@ function PreSessionDetailDialog({
             </p>
           </div>
 
-          <Separator />
+          <Divider />
 
           {/* Limits */}
           <div>
@@ -234,7 +232,7 @@ function PreSessionDetailDialog({
             <DetailRow label="Open Positions">{boolLabel(session.hasOpenPositions)}</DetailRow>
           </div>
 
-          <Separator />
+          <Divider />
 
           {/* Market Context */}
           <div>
@@ -275,7 +273,7 @@ function PreSessionDetailDialog({
           {/* Rules Checked */}
           {session.rulesChecked && session.rulesChecked.length > 0 && (
             <>
-              <Separator />
+              <Divider />
               <div>
                 <h4 className="text-sm font-medium mb-2">Rules Checked</h4>
                 <p className="text-sm text-muted-foreground">
@@ -285,8 +283,9 @@ function PreSessionDetailDialog({
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+        </ModalBody>
+      </ModalContent>
+    </Modal>
   )
 }
 
@@ -302,13 +301,12 @@ function JournalDetailDialog({
   if (!entry) return null
 
   return (
-    <Dialog open={!!entry} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            Journal — {truncateAddress(entry.tokenMint)} #{entry.tradeNumber}
-          </DialogTitle>
-        </DialogHeader>
+    <Modal isOpen={!!entry} onOpenChange={(open) => !open && onClose()} size="lg" scrollBehavior="inside">
+      <ModalContent className="max-h-[85vh]">
+        <ModalHeader>
+          Journal — {truncateAddress(entry.tokenMint)} #{entry.tradeNumber}
+        </ModalHeader>
+        <ModalBody className="pb-6">
 
         <div className="space-y-4 pt-2">
           {/* Buy Analysis */}
@@ -349,7 +347,7 @@ function JournalDetailDialog({
             )}
           </div>
 
-          <Separator />
+          <Divider />
 
           {/* Sell Analysis */}
           <div>
@@ -363,13 +361,13 @@ function JournalDetailDialog({
             </DetailRow>
             <DetailRow label="Followed Exit Rule">
               {entry.followedExitRule === true ? (
-                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                <Chip size="sm" variant="flat" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
                   Yes
-                </Badge>
+                </Chip>
               ) : entry.followedExitRule === false ? (
-                <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">
+                <Chip size="sm" variant="flat" className="bg-red-500/10 text-red-600 border-red-500/30">
                   No
-                </Badge>
+                </Chip>
               ) : (
                 '-'
               )}
@@ -395,7 +393,7 @@ function JournalDetailDialog({
           {/* Attachment */}
           {entry.attachment && (
             <>
-              <Separator />
+              <Divider />
               <div>
                 <h4 className="text-sm font-medium mb-2">Attachment</h4>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -408,8 +406,9 @@ function JournalDetailDialog({
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+        </ModalBody>
+      </ModalContent>
+    </Modal>
   )
 }
 
@@ -425,11 +424,10 @@ function PostSessionDetailDialog({
   if (!session) return null
 
   return (
-    <Dialog open={!!session} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Post-Session — {formatDate(session.date)}</DialogTitle>
-        </DialogHeader>
+    <Modal isOpen={!!session} onOpenChange={(open) => !open && onClose()} size="lg" scrollBehavior="inside">
+      <ModalContent className="max-h-[85vh]">
+        <ModalHeader>Post-Session — {formatDate(session.date)}</ModalHeader>
+        <ModalBody className="pb-6">
 
         <div className="space-y-4 pt-2">
           <DetailRow label="Rating">
@@ -440,11 +438,11 @@ function PostSessionDetailDialog({
             )}
           </DetailRow>
 
-          <Separator />
+          <Divider />
 
           <DetailRow label="Emotional State">{session.emotionalState || '-'}</DetailRow>
 
-          <Separator />
+          <Divider />
 
           {session.whatWentWell && (
             <div>
@@ -467,13 +465,13 @@ function PostSessionDetailDialog({
             </div>
           )}
 
-          <Separator />
+          <Divider />
 
           <DetailRow label="Rules Followed">
             {session.rulesFollowed === true ? (
-              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Yes</Badge>
+              <Chip size="sm" variant="flat" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Yes</Chip>
             ) : session.rulesFollowed === false ? (
-              <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">No</Badge>
+              <Chip size="sm" variant="flat" className="bg-red-500/10 text-red-600 border-red-500/30">No</Chip>
             ) : (
               '-'
             )}
@@ -487,7 +485,7 @@ function PostSessionDetailDialog({
 
           {session.planForTomorrow && (
             <>
-              <Separator />
+              <Divider />
               <div>
                 <h4 className="text-sm font-medium mb-2">Plan for Tomorrow</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{session.planForTomorrow}</p>
@@ -495,8 +493,9 @@ function PostSessionDetailDialog({
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+        </ModalBody>
+      </ModalContent>
+    </Modal>
   )
 }
 
@@ -562,16 +561,14 @@ function SessionsTab() {
       </div>
 
       <div className="overflow-x-auto">
-        <Table>
+        <Table aria-label="Session history">
           <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[100px]">Date</TableHead>
-              <TableHead className="min-w-[80px]">Type</TableHead>
-              <TableHead className="min-w-[100px]">Emotional State</TableHead>
-              <TableHead className="text-center min-w-[60px]">Energy / Rating</TableHead>
-              <TableHead className="text-center min-w-[80px]">Sentiment / Rules</TableHead>
-              <TableHead className="min-w-[200px]">Summary</TableHead>
-            </TableRow>
+            <TableColumn className="min-w-[100px]">Date</TableColumn>
+            <TableColumn className="min-w-[80px]">Type</TableColumn>
+            <TableColumn className="min-w-[100px]">Emotional State</TableColumn>
+            <TableColumn className="text-center min-w-[60px]">Energy / Rating</TableColumn>
+            <TableColumn className="text-center min-w-[80px]">Sentiment / Rules</TableColumn>
+            <TableColumn className="min-w-[200px]">Summary</TableColumn>
           </TableHeader>
           <TableBody>
             {rows.map((row, i) => {
@@ -587,9 +584,9 @@ function SessionsTab() {
                       {formatDate(s.date)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-xs">
+                      <Chip size="sm" variant="flat" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-xs">
                         Pre
-                      </Badge>
+                      </Chip>
                     </TableCell>
                     <TableCell className="text-sm">
                       {s.emotionalState || '-'}
@@ -638,9 +635,9 @@ function SessionsTab() {
                       {formatDate(s.date)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-xs">
+                      <Chip size="sm" variant="flat" className="bg-purple-500/10 text-purple-600 border-purple-500/30 text-xs">
                         Post
-                      </Badge>
+                      </Chip>
                     </TableCell>
                     <TableCell className="text-sm">
                       {s.emotionalState || '-'}
@@ -654,13 +651,13 @@ function SessionsTab() {
                     </TableCell>
                     <TableCell className="text-center">
                       {s.rulesFollowed === true ? (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs">
+                        <Chip size="sm" variant="flat" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs">
                           Rules ✓
-                        </Badge>
+                        </Chip>
                       ) : s.rulesFollowed === false ? (
-                        <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30 text-xs">
+                        <Chip size="sm" variant="flat" className="bg-red-500/10 text-red-600 border-red-500/30 text-xs">
                           Rules ✗
-                        </Badge>
+                        </Chip>
                       ) : (
                         <span className="text-muted-foreground text-xs">-</span>
                       )}
@@ -676,7 +673,7 @@ function SessionsTab() {
               }
 
               return null
-            })}
+            }).filter(Boolean) as any}
           </TableBody>
         </Table>
       </div>
@@ -720,19 +717,17 @@ function JournalHistoryTab() {
   return (
     <>
       <div className="overflow-x-auto">
-        <Table>
+        <Table aria-label="Journal history">
           <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[100px]">Token</TableHead>
-              <TableHead className="text-center min-w-[60px]">Trade #</TableHead>
-              <TableHead className="min-w-[110px]">Strategy</TableHead>
-              <TableHead className="min-w-[100px]">Emotional State</TableHead>
-              <TableHead className="text-center min-w-[70px]">Buy Rating</TableHead>
-              <TableHead className="min-w-[140px]">Exit Plan</TableHead>
-              <TableHead className="text-center min-w-[70px]">Sell Rating</TableHead>
-              <TableHead className="text-center min-w-[90px]">Followed Exit</TableHead>
-              <TableHead className="min-w-[120px]">Sell Mistakes</TableHead>
-            </TableRow>
+            <TableColumn className="min-w-[100px]">Token</TableColumn>
+            <TableColumn className="text-center min-w-[60px]">Trade #</TableColumn>
+            <TableColumn className="min-w-[110px]">Strategy</TableColumn>
+            <TableColumn className="min-w-[100px]">Emotional State</TableColumn>
+            <TableColumn className="text-center min-w-[70px]">Buy Rating</TableColumn>
+            <TableColumn className="min-w-[140px]">Exit Plan</TableColumn>
+            <TableColumn className="text-center min-w-[70px]">Sell Rating</TableColumn>
+            <TableColumn className="text-center min-w-[90px]">Followed Exit</TableColumn>
+            <TableColumn className="min-w-[120px]">Sell Mistakes</TableColumn>
           </TableHeader>
           <TableBody>
             {entries.map((e, i) => (
@@ -789,13 +784,13 @@ function JournalHistoryTab() {
                 </TableCell>
                 <TableCell className="text-center">
                   {e.followedExitRule === true ? (
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                    <Chip size="sm" variant="flat" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
                       Yes
-                    </Badge>
+                    </Chip>
                   ) : e.followedExitRule === false ? (
-                    <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">
+                    <Chip size="sm" variant="flat" className="bg-red-500/10 text-red-600 border-red-500/30">
                       No
-                    </Badge>
+                    </Chip>
                   ) : (
                     <span className="text-muted-foreground text-xs">-</span>
                   )}
@@ -887,19 +882,18 @@ function MissedTradeDetailDialog({
   if (!play) return null
 
   return (
-    <Dialog open={!!play} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {play.tokenImage && (
-              <img src={play.tokenImage} alt={play.coinName} className="w-5 h-5 rounded-full" />
-            )}
-            {play.coinName}
-            {play.tokenSymbol && (
-              <span className="text-sm text-muted-foreground font-normal">{play.tokenSymbol}</span>
-            )}
-          </DialogTitle>
-        </DialogHeader>
+    <Modal isOpen={!!play} onOpenChange={(open) => !open && onClose()} size="lg" scrollBehavior="inside">
+      <ModalContent className="max-h-[85vh]">
+        <ModalHeader className="flex items-center gap-2">
+          {play.tokenImage && (
+            <img src={play.tokenImage} alt={play.coinName} className="w-5 h-5 rounded-full" />
+          )}
+          {play.coinName}
+          {play.tokenSymbol && (
+            <span className="text-sm text-muted-foreground font-normal">{play.tokenSymbol}</span>
+          )}
+        </ModalHeader>
+        <ModalBody className="pb-6">
 
         <div className="space-y-4 pt-2">
           <DetailRow label="Date">{formatTimestamp(play.createdAt)}</DetailRow>
@@ -914,7 +908,7 @@ function MissedTradeDetailDialog({
             )}
           </DetailRow>
 
-          <Separator />
+          <Divider />
 
           {(play.entryPrice != null || play.exitPrice != null) && (
             <>
@@ -923,7 +917,7 @@ function MissedTradeDetailDialog({
                 {play.entryPrice != null && <DetailRow label="Entry Price">${play.entryPrice.toFixed(6)}</DetailRow>}
                 {play.exitPrice != null && <DetailRow label="Exit Price">${play.exitPrice.toFixed(6)}</DetailRow>}
               </div>
-              <Separator />
+              <Divider />
             </>
           )}
 
@@ -957,7 +951,7 @@ function MissedTradeDetailDialog({
 
           {play.notes && (
             <>
-              <Separator />
+              <Divider />
               <div>
                 <h4 className="text-sm font-medium mb-2">Notes</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{play.notes}</p>
@@ -967,7 +961,7 @@ function MissedTradeDetailDialog({
 
           {play.attachment && (
             <>
-              <Separator />
+              <Divider />
               <div>
                 <h4 className="text-sm font-medium mb-2">Attachment</h4>
                 <img
@@ -979,8 +973,9 @@ function MissedTradeDetailDialog({
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+        </ModalBody>
+      </ModalContent>
+    </Modal>
   )
 }
 
@@ -1033,16 +1028,14 @@ function MissedTradesTab() {
       </div>
 
       <div className="overflow-x-auto">
-        <Table>
+        <Table aria-label="Missed trades history">
           <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[120px]">Token</TableHead>
-              <TableHead className="min-w-[100px]">Reason</TableHead>
-              <TableHead className="text-center min-w-[80px]">Outcome</TableHead>
-              <TableHead className="text-right min-w-[80px]">Multiplier</TableHead>
-              <TableHead className="text-right min-w-[100px]">Potential P/L</TableHead>
-              <TableHead className="min-w-[100px]">Date</TableHead>
-            </TableRow>
+            <TableColumn className="min-w-[120px]">Token</TableColumn>
+            <TableColumn className="min-w-[100px]">Reason</TableColumn>
+            <TableColumn className="text-center min-w-[80px]">Outcome</TableColumn>
+            <TableColumn className="text-right min-w-[80px]">Multiplier</TableColumn>
+            <TableColumn className="text-right min-w-[100px]">Potential P/L</TableColumn>
+            <TableColumn className="min-w-[100px]">Date</TableColumn>
           </TableHeader>
           <TableBody>
             {plays.map((p) => (
@@ -1236,21 +1229,20 @@ function ChartbookTab() {
 
       {/* Full-size image dialog */}
       {selectedImage && (
-        <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {selectedImage.token}
-                <span className="text-sm text-muted-foreground font-normal">
-                  #{selectedImage.tradeNumber}
+        <Modal isOpen={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)} size="3xl" scrollBehavior="inside">
+          <ModalContent className="max-h-[90vh]">
+            <ModalHeader className="flex items-center gap-2">
+              {selectedImage.token}
+              <span className="text-sm text-muted-foreground font-normal">
+                #{selectedImage.tradeNumber}
+              </span>
+              {selectedImage.pnl !== null && (
+                <span className={`text-sm font-mono font-medium ${selectedImage.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {selectedImage.pnl >= 0 ? '+' : ''}{formatValue(selectedImage.pnl)}
                 </span>
-                {selectedImage.pnl !== null && (
-                  <span className={`text-sm font-mono font-medium ${selectedImage.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {selectedImage.pnl >= 0 ? '+' : ''}{formatValue(selectedImage.pnl)}
-                  </span>
-                )}
-              </DialogTitle>
-            </DialogHeader>
+              )}
+            </ModalHeader>
+            <ModalBody className="pb-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={selectedImage.src}
@@ -1260,8 +1252,9 @@ function ChartbookTab() {
             <p className="text-xs text-muted-foreground font-mono">
               {formatTimestamp(selectedImage.date)}
             </p>
-          </DialogContent>
-        </Dialog>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       )}
     </>
   )
@@ -1285,24 +1278,22 @@ export default function HistoryPage() {
         <h1 className="text-xl font-semibold">History</h1>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="bg-transparent p-0 h-auto gap-2 border-b border-border rounded-none w-full justify-start">
-          <TabsTrigger value="sessions" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Sessions</TabsTrigger>
-          <TabsTrigger value="journal" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Journal</TabsTrigger>
-          <TabsTrigger value="transactions" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Transactions</TabsTrigger>
-          <TabsTrigger value="missed-trades" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Missed Trades</TabsTrigger>
-          <TabsTrigger value="chartbook" className="rounded-none shadow-none bg-transparent px-3 py-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:text-foreground text-muted-foreground">Attachments</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="sessions">
+      <Tabs
+        aria-label="History sections"
+        variant="underlined"
+        selectedKey={activeTab}
+        onSelectionChange={(k) => handleTabChange(String(k))}
+        classNames={{ tabList: 'w-full justify-start gap-2 border-b border-border' }}
+      >
+        <Tab key="sessions" title="Sessions">
           <SessionsTab />
-        </TabsContent>
+        </Tab>
 
-        <TabsContent value="journal">
+        <Tab key="journal" title="Journal">
           <JournalHistoryTab />
-        </TabsContent>
+        </Tab>
 
-        <TabsContent value="transactions">
+        <Tab key="transactions" title="Transactions">
           {!initialized || (isAnyLoading && allTrades.length === 0) ? (
             <div className="py-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
@@ -1322,10 +1313,10 @@ export default function HistoryPage() {
                   {allTrades.length} transactions
                 </span>
                 <Button
-                  variant="outline"
+                  variant="bordered"
                   size="sm"
-                  onClick={() => refreshAll()}
-                  disabled={isAnyLoading}
+                  onPress={() => refreshAll()}
+                  isDisabled={isAnyLoading}
                 >
                   {isAnyLoading ? 'Refreshing...' : 'Refresh'}
                 </Button>
@@ -1340,13 +1331,13 @@ export default function HistoryPage() {
               )}
             </div>
           )}
-        </TabsContent>
-        <TabsContent value="missed-trades">
+        </Tab>
+        <Tab key="missed-trades" title="Missed Trades">
           <MissedTradesTab />
-        </TabsContent>
-        <TabsContent value="chartbook">
+        </Tab>
+        <Tab key="chartbook" title="Attachments">
           <ChartbookTab />
-        </TabsContent>
+        </Tab>
       </Tabs>
     </div>
   )
