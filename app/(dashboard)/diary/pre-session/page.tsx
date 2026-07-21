@@ -2,11 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
+import { Button, Input, Textarea, Divider } from '@heroui/react'
 import { FormSkeleton } from '@/components/skeletons'
 import { Check } from 'lucide-react'
 import { useMetadata } from '@/lib/wallet-context'
@@ -185,7 +181,7 @@ export default function PreSessionPage() {
       <div className="space-y-6">
         {/* Section 1: Energy Meter */}
         <section>
-          <Label className="text-sm font-medium mb-2 block">Energy Meter</Label>
+          <p className="text-sm font-medium mb-2">Energy Meter</p>
           <p className="text-xs text-muted-foreground mb-2">
             Rate your "starting battery" before the session begins (1 = empty, 10 = fully charged)
           </p>
@@ -208,44 +204,40 @@ export default function PreSessionPage() {
           )}
         </section>
 
-        <Separator />
+        <Divider />
 
         {/* Section 3: Mindset & State */}
         <section>
-          <Label className="text-sm font-medium mb-1 block">Mindset & State</Label>
+          <p className="text-sm font-medium mb-1">Mindset & State</p>
           <p className="text-xs text-muted-foreground mb-3">
             How are you feeling right now?
           </p>
 
           <div className="space-y-4">
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">Emotional State</Label>
+              <p className="text-xs text-muted-foreground mb-2">Emotional State</p>
               <div className="flex flex-wrap gap-1.5">
                 {emotionalOptions.map((option) => (
-                  <button
+                  <Button
                     key={option}
-                    type="button"
-                    onClick={() => update('emotionalState', data.emotionalState === option ? '' : option)}
-                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                      data.emotionalState === option
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 font-medium'
-                        : 'border-border text-muted-foreground hover:bg-muted/50'
-                    }`}
+                    size="sm"
+                    variant={data.emotionalState === option ? 'solid' : 'bordered'}
+                    color={data.emotionalState === option ? 'primary' : 'default'}
+                    onPress={() => update('emotionalState', data.emotionalState === option ? '' : option)}
                   >
                     {option}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
 
             <div>
-              <Label htmlFor="session-intent" className="text-xs text-muted-foreground mb-2 block">
-                Session Intent
-              </Label>
               <Textarea
                 id="session-intent"
+                label="Session Intent"
+                labelPlacement="outside"
                 value={data.sessionIntent}
-                onChange={(e) => update('sessionIntent', e.target.value)}
+                onValueChange={(v) => update('sessionIntent', v)}
                 placeholder="e.g. Focus on SOL pairs only. Max 2 scalps. Stick to 5-minute chart setups. No trading in first 30 minutes."
                 rows={2}
                 className="resize-none"
@@ -254,11 +246,11 @@ export default function PreSessionPage() {
           </div>
         </section>
 
-        <Separator />
+        <Divider />
 
         {/* Section 4: Session Limits */}
         <section>
-          <Label className="text-sm font-medium mb-1 block">Session Limits</Label>
+          <p className="text-sm font-medium mb-1">Session Limits</p>
           <p className="text-xs text-muted-foreground mb-3">
             Set boundaries before you start
           </p>
@@ -266,58 +258,58 @@ export default function PreSessionPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="max-trades" className="text-xs text-muted-foreground mb-1.5 block">
-                  Max Trades
-                </Label>
                 <Input
                   id="max-trades"
+                  size="sm"
+                  label="Max Trades"
+                  labelPlacement="outside"
                   type="number"
                   min="0"
                   value={data.maxTrades}
-                  onChange={(e) => update('maxTrades', e.target.value)}
+                  onValueChange={(v) => update('maxTrades', v)}
                   placeholder="e.g., 3 trades"
                 />
               </div>
               <div>
-                <Label htmlFor="max-loss" className="text-xs text-muted-foreground mb-1.5 block">
-                  Max Loss
-                </Label>
                 <Input
                   id="max-loss"
+                  size="sm"
+                  label="Max Loss"
+                  labelPlacement="outside"
                   value={data.maxLoss}
-                  onChange={(e) => update('maxLoss', e.target.value)}
+                  onValueChange={(v) => update('maxLoss', v)}
                   placeholder="e.g., $50"
                 />
               </div>
               <div>
-                <Label htmlFor="time-limit" className="text-xs text-muted-foreground mb-1.5 block">
-                  Time Limit
-                </Label>
                 <Input
                   id="time-limit"
+                  size="sm"
+                  label="Time Limit"
+                  labelPlacement="outside"
                   value={data.timeLimit}
-                  onChange={(e) => update('timeLimit', e.target.value)}
+                  onValueChange={(v) => update('timeLimit', v)}
                   placeholder="e.g., 2 hours"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="position-size" className="text-xs text-muted-foreground mb-1.5 block">
-                Default Position Size
-              </Label>
               <Input
                 id="position-size"
+                size="sm"
+                label="Default Position Size"
+                labelPlacement="outside"
                 value={data.defaultPositionSize}
-                onChange={(e) => update('defaultPositionSize', e.target.value)}
+                onValueChange={(v) => update('defaultPositionSize', v)}
                 placeholder="e.g., 0.5 SOL"
               />
             </div>
 
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">
+              <p className="text-xs text-muted-foreground mb-2">
                 Do you have open positions to manage first?
-              </Label>
+              </p>
               <YesNoToggle
                 value={data.hasOpenPositions}
                 onChange={(val) => update('hasOpenPositions', val)}
@@ -326,76 +318,60 @@ export default function PreSessionPage() {
           </div>
         </section>
 
-        <Separator />
+        <Divider />
 
         {/* Section 5: Market Context */}
         <section>
-          <Label className="text-sm font-medium mb-1 block">Market Context</Label>
+          <p className="text-sm font-medium mb-1">Market Context</p>
           <p className="text-xs text-muted-foreground mb-3">
             What does the market look like right now?
           </p>
 
           <div className="space-y-4">
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">Market Sentiment</Label>
+              <p className="text-xs text-muted-foreground mb-2">Market Sentiment</p>
               <div className="flex gap-2">
                 {(['Bullish', 'Neutral', 'Bearish'] as const).map((option) => {
-                  const colorMap = {
-                    Bullish: 'border-emerald-500 bg-emerald-500/10 text-emerald-600',
-                    Neutral: 'border-zinc-500 bg-zinc-500/10 text-zinc-600',
-                    Bearish: 'border-red-500 bg-red-500/10 text-red-600',
-                  }
                   const val = option.toLowerCase()
                   return (
-                    <button
+                    <Button
                       key={option}
-                      type="button"
-                      onClick={() => update('marketSentiment', data.marketSentiment === val ? '' : val)}
-                      className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
-                        data.marketSentiment === val
-                          ? `${colorMap[option]} font-medium`
-                          : 'border-border text-muted-foreground hover:bg-muted/50'
-                      }`}
+                      size="sm"
+                      variant={data.marketSentiment === val ? 'solid' : 'bordered'}
+                      color={data.marketSentiment === val ? 'primary' : 'default'}
+                      onPress={() => update('marketSentiment', data.marketSentiment === val ? '' : val)}
                     >
                       {option}
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
             </div>
 
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">SOL Trend</Label>
+              <p className="text-xs text-muted-foreground mb-2">SOL Trend</p>
               <div className="flex gap-2">
                 {(['Up', 'Sideways', 'Down'] as const).map((option) => {
-                  const colorMap = {
-                    Up: 'border-emerald-500 bg-emerald-500/10 text-emerald-600',
-                    Sideways: 'border-zinc-500 bg-zinc-500/10 text-zinc-600',
-                    Down: 'border-red-500 bg-red-500/10 text-red-600',
-                  }
                   const val = option.toLowerCase()
                   return (
-                    <button
+                    <Button
                       key={option}
-                      type="button"
-                      onClick={() => update('solTrend', data.solTrend === val ? '' : val)}
-                      className={`px-4 py-1.5 text-sm rounded-md border transition-colors ${
-                        data.solTrend === val
-                          ? `${colorMap[option]} font-medium`
-                          : 'border-border text-muted-foreground hover:bg-muted/50'
-                      }`}
+                      size="sm"
+                      variant={data.solTrend === val ? 'solid' : 'bordered'}
+                      color={data.solTrend === val ? 'primary' : 'default'}
+                      onPress={() => update('solTrend', data.solTrend === val ? '' : val)}
                     >
                       {option}
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
             </div>
 
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">
+              <p className="text-xs text-muted-foreground mb-2">
                 Any major news or events today?
-              </Label>
+              </p>
               <YesNoToggle
                 value={data.majorNews}
                 onChange={(val) => {
@@ -408,8 +384,10 @@ export default function PreSessionPage() {
               />
               {data.majorNews === true && (
                 <Input
+                  size="sm"
+                  aria-label="Major news note"
                   value={data.majorNewsNote}
-                  onChange={(e) => update('majorNewsNote', e.target.value)}
+                  onValueChange={(v) => update('majorNewsNote', v)}
                   placeholder="What's happening?"
                   className="mt-2"
                 />
@@ -417,9 +395,9 @@ export default function PreSessionPage() {
             </div>
 
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">
+              <p className="text-xs text-muted-foreground mb-2">
                 Normal volume today?
-              </Label>
+              </p>
               <YesNoToggle
                 value={data.normalVolume}
                 onChange={(val) => update('normalVolume', val)}
@@ -428,11 +406,11 @@ export default function PreSessionPage() {
           </div>
         </section>
 
-        <Separator />
+        <Divider />
 
         {/* Section 6: Rules Reminder */}
         <section>
-          <Label className="text-sm font-medium mb-1 block">Rules Reminder</Label>
+          <p className="text-sm font-medium mb-1">Rules Reminder</p>
           <p className="text-xs text-muted-foreground mb-3">
             Acknowledge your rules before you start
           </p>
@@ -480,13 +458,13 @@ export default function PreSessionPage() {
           )}
         </section>
 
-        <Separator />
+        <Divider />
 
         {/* Market Snapshot (coming soon) */}
         <section>
           <details className="group">
             <summary className="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-              <Label className="text-sm font-medium cursor-pointer">Market Snapshot</Label>
+              <span className="text-sm font-medium cursor-pointer">Market Snapshot</span>
               <span className="text-xs text-muted-foreground">(coming soon)</span>
               <svg className="w-3.5 h-3.5 text-muted-foreground transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -521,10 +499,10 @@ export default function PreSessionPage() {
           </details>
         </section>
 
-        <Separator />
+        <Divider />
 
         <div className="flex items-center gap-3">
-          <Button size="sm" onClick={handleSave} disabled={saving}>
+          <Button size="sm" color="primary" onPress={handleSave} isDisabled={saving}>
             {saving ? 'Saving...' : isCompletedToday ? 'Update Pre-Session' : 'Save Pre-Session'}
           </Button>
           {saved && (

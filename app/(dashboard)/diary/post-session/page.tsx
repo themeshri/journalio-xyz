@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { Button, Textarea } from '@heroui/react'
 import { FormSkeleton } from '@/components/skeletons'
 import { toast } from 'sonner'
 import { useMetadata } from '@/lib/wallet-context'
@@ -101,14 +99,14 @@ export default function PostSessionPage() {
             {data.date} {existingId && '(saved)'}
           </p>
         </div>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
+        <Button size="sm" color="primary" onPress={handleSave} isDisabled={saving}>
           {saving ? 'Saving...' : existingId ? 'Update' : 'Save'}
         </Button>
       </div>
 
       {/* Rating */}
       <div>
-        <Label className="text-sm mb-2">Overall Session Rating</Label>
+        <p className="text-sm mb-2">Overall Session Rating</p>
         <div className="mt-1.5">
           <RatingScale
             value={data.rating}
@@ -121,68 +119,62 @@ export default function PostSessionPage() {
 
       {/* Emotional State */}
       <div>
-        <Label className="text-sm">Emotional State at End</Label>
+        <p className="text-sm">Emotional State at End</p>
         <p className="text-xs text-muted-foreground mt-0.5 mb-2">How are you feeling after this session?</p>
         <div className="flex flex-wrap gap-1.5">
           {emotionalOptions.map((option) => (
-            <button
+            <Button
               key={option}
-              type="button"
-              onClick={() => update('emotionalState', data.emotionalState === option ? '' : option)}
-              className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                data.emotionalState === option
-                  ? 'border-primary bg-primary/10 text-primary font-medium'
-                  : 'border-border text-muted-foreground hover:bg-muted/50'
-              }`}
+              size="sm"
+              variant={data.emotionalState === option ? 'solid' : 'bordered'}
+              color={data.emotionalState === option ? 'primary' : 'default'}
+              onPress={() => update('emotionalState', data.emotionalState === option ? '' : option)}
             >
               {option}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       {/* What Went Well */}
       <div>
-        <Label htmlFor="well" className="text-sm">What Went Well</Label>
+        <p className="text-sm mb-1.5">What Went Well</p>
         <Textarea
-          id="well"
+          aria-label="What Went Well"
           value={data.whatWentWell}
-          onChange={(e) => update('whatWentWell', e.target.value)}
+          onValueChange={(val) => update('whatWentWell', val)}
           placeholder='e.g. "Stuck to stop losses on all 3 trades. Waited for confirmation before entering."'
-          rows={3}
-          className="mt-1.5"
+          minRows={3}
         />
       </div>
 
       {/* What Went Wrong */}
       <div>
-        <Label htmlFor="wrong" className="text-sm">What Went Wrong</Label>
+        <p className="text-sm mb-1.5">What Went Wrong</p>
         <Textarea
-          id="wrong"
+          aria-label="What Went Wrong"
           value={data.whatWentWrong}
-          onChange={(e) => update('whatWentWrong', e.target.value)}
+          onValueChange={(val) => update('whatWentWrong', val)}
           placeholder='e.g. "Chased the second trade after missing the entry. Got in late."'
-          rows={3}
-          className="mt-1.5"
+          minRows={3}
         />
       </div>
 
       {/* Key Lessons */}
       <div>
-        <Label htmlFor="lessons" className="text-sm">Key Lessons</Label>
+        <p className="text-sm mb-1.5">Key Lessons</p>
         <Textarea
-          id="lessons"
+          aria-label="Key Lessons"
           value={data.keyLessons}
-          onChange={(e) => update('keyLessons', e.target.value)}
+          onValueChange={(val) => update('keyLessons', val)}
           placeholder={"e.g. \"Don't trade the first 15 minutes. Volume confirmation matters.\""}
-          rows={3}
-          className="mt-1.5"
+          minRows={3}
         />
       </div>
 
       {/* Rules Followed */}
       <div>
-        <Label className="text-sm">Did you follow your rules?</Label>
+        <p className="text-sm mb-1.5">Did you follow your rules?</p>
         <div className="mt-1.5">
           <YesNoToggle
             value={data.rulesFollowed}
@@ -190,30 +182,30 @@ export default function PostSessionPage() {
           />
         </div>
         <Textarea
+          aria-label="Notes on rule adherence"
           value={data.rulesNotes}
-          onChange={(e) => update('rulesNotes', e.target.value)}
+          onValueChange={(val) => update('rulesNotes', val)}
           placeholder="Notes on rule adherence..."
-          rows={2}
+          minRows={2}
           className="mt-2"
         />
       </div>
 
       {/* Plan for Tomorrow */}
       <div>
-        <Label htmlFor="plan" className="text-sm">Plan for Tomorrow</Label>
+        <p className="text-sm mb-1.5">Plan for Tomorrow</p>
         <Textarea
-          id="plan"
+          aria-label="Plan for Tomorrow"
           value={data.planForTomorrow}
-          onChange={(e) => update('planForTomorrow', e.target.value)}
+          onValueChange={(val) => update('planForTomorrow', val)}
           placeholder='e.g. "Only trade if SOL is above 200 EMA. Max 2 trades."'
-          rows={3}
-          className="mt-1.5"
+          minRows={3}
         />
       </div>
 
       {/* Bottom save */}
       <div className="flex justify-end pb-4">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button color="primary" onPress={handleSave} isDisabled={saving}>
           {saving ? 'Saving...' : existingId ? 'Update Post-Session' : 'Save Post-Session'}
         </Button>
       </div>
