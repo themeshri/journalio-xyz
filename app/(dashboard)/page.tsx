@@ -10,6 +10,7 @@ import { SessionHero, SessionPills, getAutoTab, type Tab } from '@/components/ov
 import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
 import { Evaluation } from '@/components/overview/Evaluation'
 import { StreakCard } from '@/components/overview/StreakCard'
+import { GettingStarted } from '@/components/overview/GettingStarted'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 import { filterTradesByRange } from '@/lib/time-filters'
 import { getTradingDay } from '@/lib/trading-day'
@@ -26,7 +27,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, streak } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, streak, strategies } = useMetadata()
 
   // Set page title
   useEffect(() => {
@@ -159,6 +160,16 @@ export default function OverviewPage() {
           <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
         </div>
       </div>
+
+      {/* Cold-start checklist — self-hides once all setup steps are done */}
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <GettingStarted
+          hasWallets={hasActiveWallets}
+          hasTimezone={timezone !== 'UTC'}
+          hasStrategies={strategies.length > 0}
+          preSessionDone={preSessionDone}
+        />
+      </ErrorBoundary>
 
       {/* Row 1: Session Hero */}
       <div data-tour="session-hero">
