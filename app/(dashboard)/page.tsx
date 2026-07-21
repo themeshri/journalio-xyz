@@ -12,6 +12,7 @@ import { Evaluation } from '@/components/overview/Evaluation'
 import { StreakCard } from '@/components/overview/StreakCard'
 import { GettingStarted } from '@/components/overview/GettingStarted'
 import { DisciplineMeter } from '@/components/overview/DisciplineMeter'
+import { InsightsCard } from '@/components/overview/InsightsCard'
 import { Card, CardContent } from '@/components/ui/card'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 import { filterTradesByRange } from '@/lib/time-filters'
@@ -221,6 +222,11 @@ export default function OverviewPage() {
           <StreakCard streak={streak} journaledToday={journaledToday} />
         </ErrorBoundary>
       </div>
+
+      {/* Row 2.6: Auto-detected insights (self-hides when none) */}
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <InsightsCard trades={filteredTrades} journalMap={journalMap} tradeComments={tradeComments} />
+      </ErrorBoundary>
 
       {/* Row 3: Recent Trades + Evaluation */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
