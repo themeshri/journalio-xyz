@@ -1,10 +1,31 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatValue } from '@/lib/formatters'
 import { AreaChart, Area } from 'recharts'
+import { useMotionValue, useSpring, useTransform, useReducedMotion, motion } from 'motion/react'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
+
+/**
+ * Animated count-up for a numeric KPI value. Springs from 0 → `value` on mount
+ * and whenever `value` changes, formatting each frame through `format`. Honors
+ * reduced-motion (renders the final value statically). Keep parents `tabular-nums`
+ * so the changing digits don't cause layout jitter.
+ */
+function CountUp({ value, format }: { value: number; format: (n: number) => string }) {
+  const reduce = useReducedMotion()
+  const mv = useMotionValue(0)
+  const spring = useSpring(mv, { stiffness: 90, damping: 20 })
+  const text = useTransform(spring, (n) => format(n))
+
+  useEffect(() => {
+    mv.set(value)
+  }, [value, mv])
+
+  if (reduce) return <>{format(value)}</>
+  return <motion.span>{text}</motion.span>
+}
 
 /** Format USD without cents (whole dollars only) */
 function formatWhole(amount: number, showSign: boolean = false): string {
@@ -220,7 +241,7 @@ export function KPICards({ trades }: KPICardsProps) {
           <div className="flex flex-col justify-center gap-2">
             <p className="text-[11px] text-muted-foreground">Net Return</p>
             <p className="text-lg font-mono tabular-nums font-bold">
-              {formatWhole(stats.totalPL, true)}
+              <CountUp value={stats.totalPL} format={(n) => formatWhole(n, true)} />
             </p>
           </div>
           <div className="flex items-center justify-center">
@@ -234,7 +255,9 @@ export function KPICards({ trades }: KPICardsProps) {
         <CardContent className="flex items-center justify-between p-4 h-[100px]">
           <div className="flex flex-col justify-center gap-2">
             <p className="text-[11px] text-muted-foreground">Winrate</p>
-            <p className="text-lg font-mono tabular-nums font-bold">{stats.winRate}%</p>
+            <p className="text-lg font-mono tabular-nums font-bold">
+              <CountUp value={stats.winRate} format={(n) => `${Math.round(n)}%`} />
+            </p>
           </div>
           <div className="flex flex-col items-center justify-center">
             <DonutRing winPct={stats.winRate} lossPct={stats.lossRate} />
@@ -253,7 +276,7 @@ export function KPICards({ trades }: KPICardsProps) {
           <div className="flex flex-col justify-center gap-2 shrink-0">
             <p className="text-[11px] text-muted-foreground">Avg P/L</p>
             <p className="text-lg font-mono tabular-nums font-bold">
-              {formatWhole(stats.avgPL, true)}
+              <CountUp value={stats.avgPL} format={(n) => formatWhole(n, true)} />
             </p>
           </div>
           <div className="flex items-center justify-center w-1/2 max-w-[50%]">
