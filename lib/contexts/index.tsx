@@ -18,6 +18,7 @@ import { APP_FEE_RATES } from '../constants'
 import { type TimePreset, type TimeRange } from '../time-filters'
 import { type MissedTradeEntry } from '../analytics'
 import { getTradingDay } from '../trading-day'
+import { computeStreakFromDates } from '../streaks'
 
 import {
   WalletIdentityContext,
@@ -92,52 +93,6 @@ function buildJournalMap(journals: JournalRecord[]): Record<string, JournalRecor
   return map
 }
 
-function computeStreakFromJournals(journals: JournalRecord[], todayOverride?: string): { current: number; longest: number } {
-  const dates = new Set<string>()
-  for (const j of journals) {
-    if (j.journaledAt) dates.add(j.journaledAt.slice(0, 10))
-  }
-  if (dates.size === 0) return { current: 0, longest: 0 }
-
-  const sortedDates = [...dates].sort().reverse()
-  const today = todayOverride || new Date().toISOString().slice(0, 10)
-  const yesterday = (() => {
-    const d = new Date(today + 'T12:00:00Z')
-    d.setUTCDate(d.getUTCDate() - 1)
-    return d.toISOString().slice(0, 10)
-  })()
-
-  let current = 0
-  let checkDate = ''
-  if (sortedDates[0] === today) checkDate = today
-  else if (sortedDates[0] === yesterday) checkDate = yesterday
-
-  if (checkDate) {
-    const dateSet = new Set(sortedDates)
-    let day = new Date(checkDate + 'T00:00:00')
-    while (dateSet.has(day.toISOString().slice(0, 10))) {
-      current++
-      day = new Date(day.getTime() - 86400000)
-    }
-  }
-
-  const allDatesAsc = [...dates].sort()
-  let longest = 0
-  let streak = 1
-  for (let i = 1; i < allDatesAsc.length; i++) {
-    const prev = new Date(allDatesAsc[i - 1] + 'T00:00:00')
-    const curr = new Date(allDatesAsc[i] + 'T00:00:00')
-    if ((curr.getTime() - prev.getTime()) / 86400000 === 1) {
-      streak++
-    } else {
-      longest = Math.max(longest, streak)
-      streak = 1
-    }
-  }
-  longest = Math.max(longest, streak, current)
-
-  return { current, longest }
-}
 
 // ─── DashboardProviders ─────────────────────────────────────────
 
@@ -472,7 +427,10 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       }
       journalsRef.current = updated
       const tz = userTimezoneRef.current
-      setStreak(computeStreakFromJournals(updated, getTradingDay(tz.timezone, tz.tradingStartTime)))
+      setStreak(computeStreakFromDates(
+        updated.map((j) => j.journaledAt).filter((d): d is string => Boolean(d)),
+        getTradingDay(tz.timezone, tz.tradingStartTime)
+      ))
     }
   }, [])
 
@@ -493,7 +451,10 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     journalsRef.current = all
     setJournalMap(buildJournalMap(all))
     const tz = userTimezoneRef.current
-    setStreak(computeStreakFromJournals(all, getTradingDay(tz.timezone, tz.tradingStartTime)))
+    setStreak(computeStreakFromDates(
+      all.map((j) => j.journaledAt).filter((d): d is string => Boolean(d)),
+      getTradingDay(tz.timezone, tz.tradingStartTime)
+    ))
   }, [activeWallets])
 
   const reloadPreSessionStatus = useCallback(async () => {

@@ -8,6 +8,7 @@ import { APP_FEE_RATES } from '@/lib/constants'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
 import { type Chain } from '@/lib/chains'
 import { getTradingDay } from '@/lib/trading-day'
+import { computeStreakFromDates } from '@/lib/streaks'
 
 export const maxDuration = 60
 
@@ -29,48 +30,6 @@ function parseJournal(j: any) {
   }
 }
 
-function computeStreak(journals: any[]): { current: number; longest: number } {
-  const dates = new Set<string>()
-  for (const j of journals) {
-    if (j.journaledAt) dates.add(j.journaledAt.slice(0, 10))
-  }
-  if (dates.size === 0) return { current: 0, longest: 0 }
-
-  const sortedDates = [...dates].sort().reverse()
-  const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-
-  let current = 0
-  let checkDate = ''
-  if (sortedDates[0] === today) checkDate = today
-  else if (sortedDates[0] === yesterday) checkDate = yesterday
-
-  if (checkDate) {
-    const dateSet = new Set(sortedDates)
-    let day = new Date(checkDate + 'T00:00:00')
-    while (dateSet.has(day.toISOString().slice(0, 10))) {
-      current++
-      day = new Date(day.getTime() - 86400000)
-    }
-  }
-
-  const allDatesAsc = [...dates].sort()
-  let longest = 0
-  let streak = 1
-  for (let i = 1; i < allDatesAsc.length; i++) {
-    const prev = new Date(allDatesAsc[i - 1] + 'T00:00:00')
-    const curr = new Date(allDatesAsc[i] + 'T00:00:00')
-    if ((curr.getTime() - prev.getTime()) / 86400000 === 1) {
-      streak++
-    } else {
-      longest = Math.max(longest, streak)
-      streak = 1
-    }
-  }
-  longest = Math.max(longest, streak, current)
-
-  return { current, longest }
-}
 
 /**
  * Batch-fetch all wallet trades in a single DB query, then group by wallet.
@@ -293,8 +252,10 @@ export async function GET(request: NextRequest) {
     // Parse journals
     const allJournals = journalResults.map(parseJournal)
 
-    // Compute streak
-    const streak = computeStreak(allJournals)
+    // Compute streak from journaled dates
+    const streak = computeStreakFromDates(
+      allJournals.map((j) => j.journaledAt).filter(Boolean)
+    )
 
     const response = {
       walletTrades,
