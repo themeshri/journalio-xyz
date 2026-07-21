@@ -29,6 +29,53 @@ export function parseWalletParamsFromBody(body: any, userId: string): WalletPara
   }
 }
 
+/** Minimal shape of a cached DB Trade row consumed by the row→TradeInput projection. */
+export interface DbTradeRow {
+  signature: string
+  timestamp: number
+  type: string
+  tokenInData: string | null
+  tokenOutData: string | null
+  amountIn: number | null
+  amountOut: number | null
+  priceUSD: number | null
+  valueUSD: number
+  dex: string
+}
+
+/**
+ * Project cached DB trade rows into the `TradeInput` shape used by
+ * `calculateTradeCycles`. This is the single source of the row-mapping logic
+ * that previously lived (copy-pasted) in dashboard/route.ts, trades/route.ts,
+ * and resolveWalletTrades below.
+ *
+ * @param opts.address  becomes the `maker` on each TradeInput.
+ * @param opts.feeRate  when > 0, `valueUSD` is multiplied by (1 - feeRate)
+ *   ("fee-inside", as used by dashboard + resolveWalletTrades). DEFAULTS TO 0
+ *   (raw valueUSD) — trades/route.ts relies on this and applies its fee later,
+ *   at cycle time. Passing a non-zero feeRate here AND applying the fee again
+ *   downstream would double-count it.
+ */
+export function mapDbRowsToTradeInput(
+  rows: DbTradeRow[],
+  opts: { address: string; feeRate?: number }
+): TradeInput[] {
+  const feeRate = opts.feeRate ?? 0
+  return rows.map((t) => ({
+    signature: t.signature,
+    timestamp: t.timestamp,
+    type: t.type,
+    tokenIn: t.tokenInData ? JSON.parse(t.tokenInData) : null,
+    tokenOut: t.tokenOutData ? JSON.parse(t.tokenOutData) : null,
+    amountIn: t.amountIn ?? 0,
+    amountOut: t.amountOut ?? 0,
+    priceUSD: t.priceUSD ?? 0,
+    valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
+    dex: t.dex,
+    maker: opts.address,
+  }))
+}
+
 // --- In-flight deduplication + TTL cache for resolved trades ---
 
 const CACHE_TTL_MS = 60_000 // 1 minute
@@ -68,19 +115,7 @@ async function resolveWalletTrades(
   if (dbTrades.length === 0) return []
 
   const feeRate = APP_FEE_RATES[dex] || 0
-  const trades: TradeInput[] = dbTrades.map((t) => ({
-    signature: t.signature,
-    timestamp: t.timestamp,
-    type: t.type,
-    tokenIn: t.tokenInData ? JSON.parse(t.tokenInData) : null,
-    tokenOut: t.tokenOutData ? JSON.parse(t.tokenOutData) : null,
-    amountIn: t.amountIn ?? 0,
-    amountOut: t.amountOut ?? 0,
-    priceUSD: t.priceUSD ?? 0,
-    valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
-    dex: t.dex,
-    maker: address,
-  }))
+  const trades = mapDbRowsToTradeInput(dbTrades, { address, feeRate })
 
   const cycles = calculateTradeCycles(trades, chain, address)
   return flattenTradeCycles(cycles)

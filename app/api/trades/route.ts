@@ -9,6 +9,7 @@ import { calculateTradeCycles, flattenTradeCycles, type TradeInput } from '@/lib
 import { APP_FEE_RATES } from '@/lib/constants'
 import { invalidatePrefix } from '@/lib/server/analytics-cache'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
+import { mapDbRowsToTradeInput } from '@/lib/server/resolve-trades'
 
 interface TradesResponse {
   trades: TradeInput[]
@@ -93,19 +94,8 @@ export async function GET(request: NextRequest) {
 
     // Return cached data if fresh and not forcing refresh
     if (!forceRefresh && cacheAge < CACHE_DURATION && cachedTrades.length > 0) {
-      const trades: TradeInput[] = cachedTrades.map(trade => ({
-        signature: trade.signature,
-        timestamp: trade.timestamp,
-        type: trade.type,
-        tokenIn: trade.tokenInData ? JSON.parse(trade.tokenInData) : null,
-        tokenOut: trade.tokenOutData ? JSON.parse(trade.tokenOutData) : null,
-        amountIn: trade.amountIn ?? 0,
-        amountOut: trade.amountOut ?? 0,
-        priceUSD: trade.priceUSD ?? 0,
-        valueUSD: trade.valueUSD,
-        dex: trade.dex,
-        maker: walletAddress,
-      }))
+      // Fee OFF here — applied later at cycle time in the wantCycles block below.
+      const trades = mapDbRowsToTradeInput(cachedTrades, { address: walletAddress })
 
       const response: TradesResponse = { trades, cached: true, cachedAt: cachedTrades[0].indexedAt }
       if (wantCycles) {
@@ -183,19 +173,8 @@ export async function GET(request: NextRequest) {
       
       // If API fails, return cached data even if stale
       if (cachedTrades.length > 0) {
-        const trades: TradeInput[] = cachedTrades.map(trade => ({
-          signature: trade.signature,
-          timestamp: trade.timestamp,
-          type: trade.type,
-          tokenIn: trade.tokenInData ? JSON.parse(trade.tokenInData) : null,
-          tokenOut: trade.tokenOutData ? JSON.parse(trade.tokenOutData) : null,
-          amountIn: trade.amountIn ?? 0,
-          amountOut: trade.amountOut ?? 0,
-          priceUSD: trade.priceUSD ?? 0,
-          valueUSD: trade.valueUSD,
-          dex: trade.dex,
-          maker: walletAddress,
-        }))
+        // Fee OFF here — applied later at cycle time in the wantCycles block below.
+        const trades = mapDbRowsToTradeInput(cachedTrades, { address: walletAddress })
 
         const staleResponse: TradesResponse = {
           trades,

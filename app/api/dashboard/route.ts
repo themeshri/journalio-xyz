@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { rateLimitByUser } from '@/lib/rate-limit'
-import { parseWalletParams } from '@/lib/server/resolve-trades'
-import { calculateTradeCycles, flattenTradeCycles, type TradeInput } from '@/lib/tradeCycles'
+import { parseWalletParams, mapDbRowsToTradeInput } from '@/lib/server/resolve-trades'
+import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
 import { type Chain } from '@/lib/chains'
@@ -69,19 +69,7 @@ async function batchResolveWalletTrades(
     }
 
     const feeRate = APP_FEE_RATES[p.dex] || 0
-    const trades: TradeInput[] = wallet.trades.map((t) => ({
-      signature: t.signature,
-      timestamp: t.timestamp,
-      type: t.type,
-      tokenIn: t.tokenInData ? JSON.parse(t.tokenInData) : null,
-      tokenOut: t.tokenOutData ? JSON.parse(t.tokenOutData) : null,
-      amountIn: t.amountIn ?? 0,
-      amountOut: t.amountOut ?? 0,
-      priceUSD: t.priceUSD ?? 0,
-      valueUSD: feeRate > 0 ? t.valueUSD * (1 - feeRate) : t.valueUSD,
-      dex: t.dex,
-      maker: p.address,
-    }))
+    const trades = mapDbRowsToTradeInput(wallet.trades, { address: p.address, feeRate })
 
     const cycles = calculateTradeCycles(trades, p.chain, p.address)
     const flattenedTrades = flattenTradeCycles(cycles)
