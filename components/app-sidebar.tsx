@@ -111,7 +111,7 @@ export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { state, setOpen, toggleSidebar } = useSidebar()
-  const { activeWallets, walletSlots, streak, tradeComments, journalMap } = useWallet()
+  const { activeWallets, walletSlots, tradeComments, journalMap } = useWallet()
   const { preSessionDone } = useMetadata()
   const { theme, setTheme } = useTheme()
   const isDark = theme === 'dark'

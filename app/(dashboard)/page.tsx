@@ -9,8 +9,10 @@ import { RecentCycles } from '@/components/overview/RecentCycles'
 import { SessionHero, SessionPills, getAutoTab, type Tab } from '@/components/overview/SessionHero'
 import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
 import { Evaluation } from '@/components/overview/Evaluation'
+import { StreakCard } from '@/components/overview/StreakCard'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 import { filterTradesByRange } from '@/lib/time-filters'
+import { getTradingDay } from '@/lib/trading-day'
 import JournalModal, { type JournalData } from '@/components/JournalModal'
 import { saveJournal } from '@/lib/journals'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -24,7 +26,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, streak } = useMetadata()
 
   // Set page title
   useEffect(() => {
@@ -46,6 +48,14 @@ export default function OverviewPage() {
     const unjournaled = completed.filter(t => !journalMap[journalKey(t)])
     return { unjournalledCount: unjournaled.length, firstUnjournaled: unjournaled[0] || null }
   }, [filteredTrades, journalMap])
+
+  // Has the user journaled during today's trading day? Drives the streak nudge.
+  const journaledToday = useMemo(() => {
+    const today = getTradingDay(timezone, tradingStartTime)
+    return Object.values(journalMap).some(
+      (j) => typeof j?.journaledAt === 'string' && j.journaledAt.slice(0, 10) === today,
+    )
+  }, [journalMap, timezone, tradingStartTime])
 
   // State for ActionBanner-triggered journal modal
   const [bannerJournalTrade, setBannerJournalTrade] = useState<FlattenedTrade | null>(null)
@@ -172,6 +182,11 @@ export default function OverviewPage() {
         <KPICards trades={filteredTrades} />
       </ErrorBoundary>
       </div>
+
+      {/* Row 2.5: Journaling streak */}
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <StreakCard streak={streak} journaledToday={journaledToday} />
+      </ErrorBoundary>
 
       {/* Row 3: Recent Trades + Evaluation */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
