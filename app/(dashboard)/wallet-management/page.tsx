@@ -3,13 +3,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useWallet, makeWalletKey } from '@/lib/wallet-context'
 import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+// HeroUI migration: this page uses HeroUI (v2) components. Logic/state/API unchanged.
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+  Input,
+  Button,
+  Divider,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from '@heroui/react'
 import { toast } from 'sonner'
 
 interface ApiWallet {
@@ -153,7 +157,7 @@ export default function WalletManagementPage() {
         </p>
       </div>
 
-      <Separator />
+      <Divider />
 
       {/* Add wallet form */}
       <div className="space-y-3">
@@ -162,70 +166,63 @@ export default function WalletManagementPage() {
           <div className="flex gap-2">
             <div className="flex-1 space-y-1.5">
               <Input
+                size="sm"
                 value={address}
-                onChange={(e) => handleAddressChange(e.target.value)}
+                onValueChange={handleAddressChange}
                 placeholder="Wallet address (Solana or 0x)..."
-                className="text-sm font-mono"
+                className="font-mono"
+                aria-label="Wallet address"
               />
             </div>
           </div>
           <div className="flex gap-2 items-end">
             <div className="flex-1">
               <Input
+                size="sm"
                 value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
+                onValueChange={setNickname}
                 placeholder="Nickname (optional)"
-                className="text-sm"
+                aria-label="Wallet nickname"
               />
             </div>
             <div className="flex gap-1.5">
-              {(['solana', 'base', 'bnb'] as Chain[]).map((chain) => {
-                const isSelected = selectedChain === chain
-                return (
-                  <button
-                    key={chain}
-                    type="button"
-                    onClick={() => setSelectedChain(chain)}
-                    className={`text-xs px-2 py-1.5 rounded border transition-colors ${
-                      isSelected
-                        ? 'font-medium bg-muted border-border'
-                        : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
-                    }`}
-                  >
-                    {CHAIN_CONFIG[chain].label}
-                  </button>
-                )
-              })}
+              {(['solana', 'base', 'bnb'] as Chain[]).map((chain) => (
+                <Button
+                  key={chain}
+                  type="button"
+                  size="sm"
+                  variant={selectedChain === chain ? 'solid' : 'bordered'}
+                  color={selectedChain === chain ? 'primary' : 'default'}
+                  onPress={() => setSelectedChain(chain)}
+                >
+                  {CHAIN_CONFIG[chain].label}
+                </Button>
+              ))}
             </div>
           </div>
           <div className="flex gap-1.5 items-center">
             <span className="text-xs text-muted-foreground mr-1" title="Which trading app/DEX do you use with this wallet?">App:</span>
-            {DEX_OPTIONS.map((opt) => {
-              const isSelected = selectedDex === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setSelectedDex(opt.value)}
-                  className={`text-xs px-2 py-1.5 rounded border transition-colors ${
-                    isSelected
-                      ? 'font-medium bg-muted border-border'
-                      : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
+            {DEX_OPTIONS.map((opt) => (
+              <Button
+                key={opt.value}
+                type="button"
+                size="sm"
+                variant={selectedDex === opt.value ? 'solid' : 'bordered'}
+                color={selectedDex === opt.value ? 'primary' : 'default'}
+                onPress={() => setSelectedDex(opt.value)}
+              >
+                {opt.label}
+              </Button>
+            ))}
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button type="submit" size="sm" className="text-xs">
+          <Button type="submit" size="sm" color="primary">
             Add Wallet
           </Button>
         </form>
       </div>
 
-      <Separator />
+      <Divider />
 
       {/* Saved wallets list */}
       <div className="space-y-3">
@@ -296,20 +293,19 @@ export default function WalletManagementPage() {
                 <div className="flex gap-1.5 shrink-0">
                   {active && (
                     <Button
-                      variant="outline"
+                      variant="bordered"
                       size="sm"
-                      className="text-xs"
-                      onClick={() => refreshWallet(w.address, w.chain)}
-                      disabled={slot?.isLoading}
+                      onPress={() => refreshWallet(w.address, w.chain)}
+                      isDisabled={slot?.isLoading}
                     >
                       Refresh
                     </Button>
                   )}
                   <Button
-                    variant="ghost"
+                    variant="light"
                     size="sm"
-                    className="text-xs text-destructive"
-                    onClick={() => setRemoveWalletIdx(wallets.indexOf(w))}
+                    color="danger"
+                    onPress={() => setRemoveWalletIdx(wallets.indexOf(w))}
                   >
                     Remove
                   </Button>
@@ -321,20 +317,38 @@ export default function WalletManagementPage() {
       </div>
     </div>
 
-    <AlertDialog open={removeWalletIdx !== null} onOpenChange={(open) => !open && setRemoveWalletIdx(null)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Remove this wallet?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will remove the wallet and delete all cached trade data for it. This cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => { if (removeWalletIdx !== null) handleRemove(wallets[removeWalletIdx]); setRemoveWalletIdx(null) }}>Remove</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    {/* Remove-wallet confirm — HeroUI Modal (replaces shadcn AlertDialog) */}
+    <Modal
+      isOpen={removeWalletIdx !== null}
+      onOpenChange={(open) => { if (!open) setRemoveWalletIdx(null) }}
+      size="sm"
+    >
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader>Remove this wallet?</ModalHeader>
+            <ModalBody>
+              <p className="text-sm text-muted-foreground">
+                This will remove the wallet and delete all cached trade data for it. This cannot be undone.
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="light" size="sm" onPress={onClose}>Cancel</Button>
+              <Button
+                color="danger"
+                size="sm"
+                onPress={() => {
+                  if (removeWalletIdx !== null) handleRemove(wallets[removeWalletIdx])
+                  setRemoveWalletIdx(null)
+                }}
+              >
+                Remove
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
     </>
   )
 }
