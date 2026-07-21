@@ -131,6 +131,16 @@ const JournalModal = memo(function JournalModal({
   const [takeProfit, setTakeProfit] = useState<number | null>(initialData?.takeProfit ?? null);
   const [saving, setSaving] = useState(false);
 
+  // Quick mode: hide the heavier fields (strategy/rules, comments, exit plan,
+  // SL/TP, attachments) by default so journaling is fast. Auto-expand when the
+  // trade already has any of those set, so editing an existing journal shows them.
+  const hasAdvancedData = Boolean(
+    initialData?.strategyId || initialData?.entryCommentId || initialData?.exitCommentId ||
+    initialData?.managementCommentId || initialData?.exitPlan || initialData?.stopLoss != null ||
+    initialData?.takeProfit != null || (initialData?.attachment && initialData.attachment.length > 0)
+  );
+  const [showAdvanced, setShowAdvanced] = useState(hasAdvancedData);
+
   // Track if form has been modified
   const initialSnapshot = useRef({
     strategy: initialStrategy,
@@ -406,6 +416,7 @@ const JournalModal = memo(function JournalModal({
             <h4 className="text-sm font-medium mb-3">Journal the Buy</h4>
 
             <div className="space-y-4">
+              {showAdvanced && (
               <div>
                 <Label className="text-xs mb-1.5">
                   Strategy
@@ -437,6 +448,7 @@ const JournalModal = memo(function JournalModal({
                   </SelectContent>
                 </Select>
               </div>
+              )}
 
               {/* Strategy Rule Checklist */}
 
@@ -463,7 +475,7 @@ const JournalModal = memo(function JournalModal({
               </div>
 
               {/* Entry Comment */}
-              {entryComments.length > 0 && renderCommentSelect(
+              {showAdvanced && entryComments.length > 0 && renderCommentSelect(
                 'Entry Comment',
                 entryComments,
                 entryCommentId,
@@ -478,6 +490,7 @@ const JournalModal = memo(function JournalModal({
                 label="Rate the entry execution"
               />
 
+              {showAdvanced && (<>
               <div>
                 <Label htmlFor="exit-plan" className="text-xs mb-1.5">
                   Your exit plan
@@ -490,7 +503,7 @@ const JournalModal = memo(function JournalModal({
                   rows={3}
                 />
               </div>
-              
+
               {/* Stop Loss and Take Profit */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -516,6 +529,7 @@ const JournalModal = memo(function JournalModal({
                   />
                 </div>
               </div>
+              </>)}
             </div>
           </section>
 
@@ -535,7 +549,7 @@ const JournalModal = memo(function JournalModal({
               />
 
               {/* Exit Comment */}
-              {exitComments.length > 0 && renderCommentSelect(
+              {showAdvanced && exitComments.length > 0 && renderCommentSelect(
                 'Exit Comment',
                 exitComments,
                 exitCommentId,
@@ -579,7 +593,7 @@ const JournalModal = memo(function JournalModal({
               </div>
 
               {/* Management Comment */}
-              {managementComments.length > 0 && renderCommentSelect(
+              {showAdvanced && managementComments.length > 0 && renderCommentSelect(
                 'Management Comment',
                 managementComments,
                 managementCommentId,
@@ -590,6 +604,8 @@ const JournalModal = memo(function JournalModal({
           </section>
 
 
+
+          {showAdvanced && (<>
           <Separator />
 
           {/* Attachments */}
@@ -637,6 +653,16 @@ const JournalModal = memo(function JournalModal({
               </label>
             </div>
           </section>
+          </>)}
+
+          {/* Quick/full mode toggle */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="w-full text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 py-1"
+          >
+            {showAdvanced ? 'Hide advanced options' : 'Show advanced options (strategy, rules, comments, exit plan, SL/TP, attachments)'}
+          </button>
           </div>
           </TabsContent>
 
