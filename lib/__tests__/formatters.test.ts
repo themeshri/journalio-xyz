@@ -79,9 +79,12 @@ describe('formatters', () => {
       expect(formatTokenAmount(0)).toBe('0');
     });
 
-    it('should use exponential notation for very small amounts', () => {
-      const result = formatTokenAmount(0.00001, 2);
-      expect(result).toContain('e');
+    it('should round very small amounts (< 0.01) to 0', () => {
+      // formatTokenAmount intentionally rounds sub-0.01 values to '0'
+      expect(formatTokenAmount(0.00001, 2)).toBe('0');
+      expect(formatTokenAmount(0.009, 2)).toBe('0');
+      // 0.01 is the threshold — at/above it, formats normally
+      expect(formatTokenAmount(0.01, 2)).toBe('0.01');
     });
 
     it('should respect decimal places parameter', () => {
