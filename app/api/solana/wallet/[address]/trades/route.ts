@@ -2,17 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { dedup } from '@/lib/server/request-dedup';
 import { rateLimit } from '@/lib/rate-limit';
+import { isValidAddress } from '@/lib/chains';
 
 const API_BASE_URL = 'https://data.solanatracker.io';
 const API_KEY = process.env.SOLANA_TRACKER_API_KEY;
 
 const checkRateLimit = rateLimit({ limit: 30, windowSeconds: 60, prefix: 'solana-proxy' });
-
-// Validate Solana wallet address (base58, 32-44 characters)
-function isValidSolanaAddress(address: string): boolean {
-  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-  return base58Regex.test(address);
-}
 
 export async function GET(
   request: NextRequest,
@@ -27,7 +22,7 @@ export async function GET(
     const limit = searchParams.get('limit') || '50';
 
     // Validate wallet address
-    if (!isValidSolanaAddress(address)) {
+    if (!isValidAddress(address, 'solana')) {
       return NextResponse.json(
         { error: 'Invalid Solana wallet address' },
         { status: 400 }

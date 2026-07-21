@@ -52,7 +52,7 @@ export function AddWalletStep({ onNext }: AddWalletStepProps) {
     const detected = detectChainFromAddress(trimmed)
     if (detected === 'solana') {
       setSelectedChain('solana')
-    } else if (detected === null && /^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
+    } else if (detected === null && isValidAddress(trimmed, 'base')) {
       if (selectedChain === 'solana') setSelectedChain('base')
     }
   }

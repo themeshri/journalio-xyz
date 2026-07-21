@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { isValidAddress } from '@/lib/chains'
 
 const API_BASE_URL = 'https://api.zerion.io/v1'
 const API_KEY = process.env.ZERION_API_KEY
 
 const checkRateLimit = rateLimit({ limit: 30, windowSeconds: 60, prefix: 'evm-proxy' })
 
+// EVM address format is identical for base/bnb; validate against 'base'.
 function isValidEvmAddress(address: string): boolean {
-  return /^0x[a-fA-F0-9]{40}$/.test(address)
+  return isValidAddress(address, 'base')
 }
 
 export async function GET(

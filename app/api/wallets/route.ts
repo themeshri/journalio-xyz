@@ -2,6 +2,7 @@ import { validateBody, createWalletSchema } from '@/lib/validations'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
+import { isValidAddress as isValidChainAddress } from '@/lib/chains'
 
 // GET - List all wallets for the current user
 export async function GET(request: NextRequest) {
@@ -36,7 +37,11 @@ export async function POST(request: NextRequest) {
     if ('error' in validation) return validation.error
     const { address, nickname, isDefault, chain, dex } = validation.data
 
-    // Validate wallet address format based on chain
+    // Validate wallet address format based on chain. Delegates the solana +
+    // EVM patterns to lib/chains (single source), while preserving the extra
+    // chain aliases and bitcoin/default cases this route historically accepted.
+    // (chain is a free string here, not the Chain union, so we can't call the
+    // shared helper directly for every case.)
     const isValidAddress = (addr: string, chainType: string): boolean => {
       switch (chainType.toLowerCase()) {
         case 'ethereum':
@@ -46,13 +51,13 @@ export async function POST(request: NextRequest) {
         case 'base':
         case 'avalanche':
         case 'bsc':
-          return /^0x[a-fA-F0-9]{40}$/.test(addr)
+          return isValidChainAddress(addr, 'base') // EVM pattern
         case 'solana':
-          return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr)
+          return isValidChainAddress(addr, 'solana')
         case 'bitcoin':
           return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(addr)
         default:
-          return /^0x[a-fA-F0-9]{40}$/.test(addr)
+          return isValidChainAddress(addr, 'base') // EVM pattern
       }
     }
 

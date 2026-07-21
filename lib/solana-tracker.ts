@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isValidAddress } from './chains';
 
 // Configuration for Solana Tracker API
 const USE_PROXY = typeof window !== 'undefined'; // Use proxy in browser
@@ -58,10 +59,10 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-// Validate Solana wallet address (base58, 32-44 characters)
+// Validate Solana wallet address (base58, 32-44 characters).
+// Delegates to lib/chains (single source of the base58 pattern).
 export function isValidSolanaAddress(address: string): boolean {
-  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-  return base58Regex.test(address);
+  return isValidAddress(address, 'solana');
 }
 
 // Determine trade type based on tokens involved
