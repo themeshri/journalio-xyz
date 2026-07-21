@@ -12,6 +12,8 @@ import { Evaluation } from '@/components/overview/Evaluation'
 import { StreakCard } from '@/components/overview/StreakCard'
 import { GettingStarted } from '@/components/overview/GettingStarted'
 import { DisciplineMeter } from '@/components/overview/DisciplineMeter'
+import { InsightsCard } from '@/components/overview/InsightsCard'
+import { PerformanceScoreCard } from '@/components/overview/PerformanceScoreCard'
 import { Card, CardContent } from '@/components/ui/card'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 import { filterTradesByRange } from '@/lib/time-filters'
@@ -205,8 +207,11 @@ export default function OverviewPage() {
       </ErrorBoundary>
       </div>
 
-      {/* Row 2.5: Discipline meter + journaling streak */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Row 2.5: Performance score + discipline meter + journaling streak */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <ErrorBoundary fallback={sectionErrorFallback}>
+          <PerformanceScoreCard trades={filteredTrades} />
+        </ErrorBoundary>
         <ErrorBoundary fallback={sectionErrorFallback}>
           <Card>
             <CardContent className="p-4">
@@ -221,6 +226,11 @@ export default function OverviewPage() {
           <StreakCard streak={streak} journaledToday={journaledToday} />
         </ErrorBoundary>
       </div>
+
+      {/* Row 2.6: Auto-detected insights (self-hides when none) */}
+      <ErrorBoundary fallback={sectionErrorFallback}>
+        <InsightsCard trades={filteredTrades} journalMap={journalMap} tradeComments={tradeComments} />
+      </ErrorBoundary>
 
       {/* Row 3: Recent Trades + Evaluation */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
