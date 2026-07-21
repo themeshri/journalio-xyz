@@ -2,39 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { useSupabase } from '@/components/providers/supabase-provider'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+// HeroUI pilot: this page is migrated from shadcn/ui to HeroUI (v2). All logic,
+// state, effects and API calls are unchanged — only the UI primitives differ.
 import {
+  Button,
+  Input,
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+  Autocomplete,
+  AutocompleteItem,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+} from '@heroui/react'
 import { toast } from 'sonner'
 import { FormSkeleton } from '@/components/skeletons'
 import {
@@ -49,14 +32,14 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState('')
   const [timezone, setTimezone] = useState('')
   const [tradingStartTime, setTradingStartTime] = useState('09:00')
-  const [tzSearch, setTzSearch] = useState('')
-  const [tzOpen, setTzOpen] = useState(false)
   const [journalViewMode, setJournalViewMode] = useState<'merged' | 'grouped'>('merged')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>(
     'idle'
   )
   const [isLoading, setIsLoading] = useState(true)
-  const [resetConfirm, setResetConfirm] = useState(false)
+
+  // Reset-to-default confirm modal (HeroUI)
+  const resetModal = useDisclosure()
 
   // Trade Comments state
   const [tradeComments, setTradeComments] = useState<TradeComment[]>([])
@@ -195,7 +178,7 @@ export default function SettingsPage() {
   }
 
   async function executeReset() {
-    setResetConfirm(false)
+    resetModal.onClose()
     setSaveStatus('saving')
     try {
       const res = await fetch('/api/settings', {
@@ -222,6 +205,16 @@ export default function SettingsPage() {
     }
   }
 
+  // Timezone options for the HeroUI Autocomplete (replaces the shadcn
+  // Popover+Command combobox). Autocomplete does its own filtering.
+  const timezones: string[] = (() => {
+    try {
+      return Intl.supportedValuesOf('timeZone')
+    } catch {
+      return []
+    }
+  })()
+
   if (isLoading) {
     return (
       <div className="pt-8">
@@ -238,8 +231,8 @@ export default function SettingsPage() {
         <p className="text-sm text-muted-foreground mb-4">
           Sign in to manage settings.
         </p>
-        <Button asChild variant="outline" size="sm">
-          <a href="/auth/signin">Sign In</a>
+        <Button as="a" href="/auth/signin" variant="bordered" size="sm">
+          Sign In
         </Button>
       </div>
     )
@@ -253,19 +246,15 @@ export default function SettingsPage() {
       <section className="mb-8">
         <h2 className="text-sm font-semibold mb-4">Profile</h2>
         <div className="space-y-4">
+          <Input
+            label="Display Name"
+            labelPlacement="outside"
+            value={displayName}
+            onValueChange={setDisplayName}
+            placeholder="Enter your name"
+          />
           <div>
-            <Label htmlFor="displayName" className="text-xs mb-1.5">
-              Display Name
-            </Label>
-            <Input
-              id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Enter your name"
-            />
-          </div>
-          <div>
-            <Label className="text-xs mb-1.5">Email</Label>
+            <p className="text-xs mb-1.5">Email</p>
             <p className="text-sm text-muted-foreground">
               {session?.user?.email || 'Not set'}
             </p>
@@ -279,104 +268,55 @@ export default function SettingsPage() {
       <section className="mb-8">
         <h2 className="text-sm font-semibold mb-4">Preferences</h2>
         <div className="space-y-5">
-          <div>
-            <Label htmlFor="timezone" className="text-xs mb-1.5">
-              Timezone
-            </Label>
-            <p className="text-xs text-muted-foreground mb-2">
-              Used to determine when your trading day starts
-            </p>
-            <Popover open={tzOpen} onOpenChange={setTzOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={tzOpen}
-                  className="w-full justify-between text-xs font-normal"
-                >
-                  {timezone || 'Select timezone...'}
-                  <svg className="ml-2 h-3 w-3 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                  <CommandInput
-                    placeholder="Search timezone..."
-                    value={tzSearch}
-                    onValueChange={setTzSearch}
-                  />
-                  <CommandList>
-                    <CommandEmpty>No timezone found.</CommandEmpty>
-                    <CommandGroup>
-                      {(() => {
-                        try {
-                          return Intl.supportedValuesOf('timeZone')
-                            .filter((tz: string) => tz.toLowerCase().includes(tzSearch.toLowerCase()))
-                            .slice(0, 50)
-                            .map((tz: string) => (
-                              <CommandItem
-                                key={tz}
-                                value={tz}
-                                onSelect={() => {
-                                  setTimezone(tz)
-                                  setTzOpen(false)
-                                  setTzSearch('')
-                                }}
-                              >
-                                <span className={timezone === tz ? 'font-medium' : ''}>{tz.replace(/_/g, ' ')}</span>
-                              </CommandItem>
-                            ))
-                        } catch {
-                          return <CommandItem disabled>Timezone list unavailable</CommandItem>
-                        }
-                      })()}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+          <Autocomplete
+            label="Timezone"
+            labelPlacement="outside"
+            description="Used to determine when your trading day starts"
+            placeholder="Select timezone..."
+            defaultItems={timezones.map((tz) => ({ key: tz, label: tz.replace(/_/g, ' ') }))}
+            selectedKey={timezone || null}
+            onSelectionChange={(key) => {
+              if (key) setTimezone(String(key))
+            }}
+          >
+            {(item: { key: string; label: string }) => (
+              <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>
+            )}
+          </Autocomplete>
 
           <div>
-            <Label htmlFor="tradingStartTime" className="text-xs mb-1.5">
-              Trading Start Time
-            </Label>
+            <p className="text-xs mb-1.5">Trading Start Time</p>
             <p className="text-xs text-muted-foreground mb-2">
               When your trading day begins (pre-session resets at this time)
             </p>
-            <input
-              id="tradingStartTime"
+            <Input
               type="time"
               value={tradingStartTime}
-              onChange={(e) => setTradingStartTime(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              onValueChange={setTradingStartTime}
+              aria-label="Trading start time"
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-xs">Journal View Mode</Label>
+              <p className="text-xs">Journal View Mode</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 How to display trades from multiple wallets
               </p>
             </div>
             <div className="flex gap-1">
               {(['merged', 'grouped'] as const).map((mode) => (
-                <button
+                <Button
                   key={mode}
-                  aria-pressed={journalViewMode === mode}
-                  onClick={() => {
+                  size="sm"
+                  variant={journalViewMode === mode ? 'solid' : 'bordered'}
+                  onPress={() => {
                     setJournalViewMode(mode)
                     safeLocalStorage.setItem('journalio_journal_view_mode', mode)
                   }}
-                  className={`text-xs px-2.5 py-1 rounded border transition-colors ${
-                    journalViewMode === mode
-                      ? 'font-medium bg-muted border-border'
-                      : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
-                  }`}
                 >
                   {mode === 'merged' ? 'Merged List' : 'By Wallet'}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -393,17 +333,14 @@ export default function SettingsPage() {
         {/* Category tabs */}
         <div className="flex gap-1 mb-4">
           {(['entry', 'exit', 'management'] as const).map((tab) => (
-            <button
+            <Button
               key={tab}
-              onClick={() => setActiveCommentTab(tab)}
-              className={`text-xs px-2.5 py-1 rounded border transition-colors ${
-                activeCommentTab === tab
-                  ? 'font-medium bg-muted border-border'
-                  : 'text-muted-foreground border-border hover:bg-muted/50 cursor-pointer'
-              }`}
+              size="sm"
+              variant={activeCommentTab === tab ? 'solid' : 'bordered'}
+              onPress={() => setActiveCommentTab(tab)}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -414,23 +351,29 @@ export default function SettingsPage() {
               {editingCommentId === c.id ? (
                 <>
                   <Input
+                    size="sm"
                     value={editingLabel}
-                    onChange={(e) => setEditingLabel(e.target.value)}
-                    className="h-7 text-xs flex-1"
+                    onValueChange={setEditingLabel}
+                    className="flex-1"
+                    aria-label="Edit comment label"
                     onKeyDown={(e) => e.key === 'Enter' && saveEditComment()}
                   />
-                  <Select value={editingRating} onValueChange={(v) => setEditingRating(v as TradeComment['rating'])}>
-                    <SelectTrigger className="h-7 w-24 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="positive">Positive</SelectItem>
-                      <SelectItem value="neutral">Neutral</SelectItem>
-                      <SelectItem value="negative">Negative</SelectItem>
-                    </SelectContent>
+                  <Select
+                    size="sm"
+                    aria-label="Edit comment rating"
+                    className="w-28"
+                    selectedKeys={[editingRating]}
+                    onSelectionChange={(keys) => {
+                      const v = Array.from(keys)[0]
+                      if (v) setEditingRating(v as TradeComment['rating'])
+                    }}
+                  >
+                    <SelectItem key="positive">Positive</SelectItem>
+                    <SelectItem key="neutral">Neutral</SelectItem>
+                    <SelectItem key="negative">Negative</SelectItem>
                   </Select>
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={saveEditComment}>Save</Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={cancelEditComment}>Cancel</Button>
+                  <Button variant="bordered" size="sm" onPress={saveEditComment}>Save</Button>
+                  <Button variant="light" size="sm" onPress={cancelEditComment}>Cancel</Button>
                 </>
               ) : (
                 <>
@@ -441,13 +384,13 @@ export default function SettingsPage() {
                   {deleteCommentConfirm === c.id ? (
                     <>
                       <span className="text-xs text-muted-foreground">Delete?</span>
-                      <Button variant="destructive" size="sm" className="h-6 text-xs px-2" onClick={() => deleteComment(c.id)}>Yes</Button>
-                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setDeleteCommentConfirm(null)}>No</Button>
+                      <Button color="danger" size="sm" onPress={() => deleteComment(c.id)}>Yes</Button>
+                      <Button variant="light" size="sm" onPress={() => setDeleteCommentConfirm(null)}>No</Button>
                     </>
                   ) : (
                     <>
-                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => startEditComment(c)}>Edit</Button>
-                      <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-destructive" onClick={() => setDeleteCommentConfirm(c.id)}>Delete</Button>
+                      <Button variant="light" size="sm" onPress={() => startEditComment(c)}>Edit</Button>
+                      <Button variant="light" size="sm" color="danger" onPress={() => setDeleteCommentConfirm(c.id)}>Delete</Button>
                     </>
                   )}
                 </>
@@ -460,25 +403,31 @@ export default function SettingsPage() {
         </div>
 
         {/* Add form */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-end">
           <Input
+            size="sm"
             value={newCommentLabel}
-            onChange={(e) => setNewCommentLabel(e.target.value)}
+            onValueChange={setNewCommentLabel}
             placeholder={`New ${activeCommentTab} comment...`}
-            className="text-xs h-8 flex-1"
+            className="flex-1"
+            aria-label="New comment label"
             onKeyDown={(e) => e.key === 'Enter' && addComment()}
           />
-          <Select value={newCommentRating} onValueChange={(v) => setNewCommentRating(v as TradeComment['rating'])}>
-            <SelectTrigger className="h-8 w-24 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="positive">Positive</SelectItem>
-              <SelectItem value="neutral">Neutral</SelectItem>
-              <SelectItem value="negative">Negative</SelectItem>
-            </SelectContent>
+          <Select
+            size="sm"
+            aria-label="New comment rating"
+            className="w-28"
+            selectedKeys={[newCommentRating]}
+            onSelectionChange={(keys) => {
+              const v = Array.from(keys)[0]
+              if (v) setNewCommentRating(v as TradeComment['rating'])
+            }}
+          >
+            <SelectItem key="positive">Positive</SelectItem>
+            <SelectItem key="neutral">Neutral</SelectItem>
+            <SelectItem key="negative">Negative</SelectItem>
           </Select>
-          <Button size="sm" className="h-8 text-xs" onClick={addComment} disabled={!newCommentLabel.trim()}>
+          <Button size="sm" onPress={addComment} isDisabled={!newCommentLabel.trim()}>
             Add
           </Button>
         </div>
@@ -489,10 +438,9 @@ export default function SettingsPage() {
       {/* Actions */}
       <div className="flex gap-2 justify-end">
         <Button
-          variant="ghost"
+          variant="light"
           size="sm"
-          className="text-muted-foreground"
-          onClick={async () => {
+          onPress={async () => {
             try {
               await fetch('/api/settings', {
                 method: 'PATCH',
@@ -507,13 +455,14 @@ export default function SettingsPage() {
         >
           Replay Onboarding
         </Button>
-        <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setResetConfirm(true)}>
+        <Button variant="light" size="sm" onPress={resetModal.onOpen}>
           Reset to Default
         </Button>
         <Button
+          color="primary"
           size="sm"
-          onClick={handleSave}
-          disabled={saveStatus === 'saving'}
+          onPress={handleSave}
+          isDisabled={saveStatus === 'saving'}
         >
           {saveStatus === 'saving'
             ? 'Saving...'
@@ -523,18 +472,25 @@ export default function SettingsPage() {
         </Button>
       </div>
 
-      <AlertDialog open={resetConfirm} onOpenChange={setResetConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset all settings to default?</AlertDialogTitle>
-            <AlertDialogDescription>This will revert all preferences to their default values.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={executeReset}>Reset</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Reset confirm — HeroUI Modal (replaces shadcn AlertDialog) */}
+      <Modal isOpen={resetModal.isOpen} onOpenChange={resetModal.onOpenChange} size="sm">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>Reset all settings to default?</ModalHeader>
+              <ModalBody>
+                <p className="text-sm text-muted-foreground">
+                  This will revert all preferences to their default values.
+                </p>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" size="sm" onPress={onClose}>Cancel</Button>
+                <Button color="danger" size="sm" onPress={executeReset}>Reset</Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   )
 }
