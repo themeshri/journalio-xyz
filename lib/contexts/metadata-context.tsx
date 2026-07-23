@@ -6,6 +6,9 @@ import { type Strategy } from '../strategies'
 import { type JournalRecord } from '../journals'
 import { type MissedTradeEntry } from '../analytics'
 import { type TimePreset, type TimeRange } from '../time-filters'
+import { type TypedRule } from '../rules-engine'
+import { type AdherenceRecord, type RuleStats } from '../analytics/rule-stats'
+import { type TradeTag } from '../tags'
 
 export interface MetadataContextValue {
   tradeComments: TradeComment[]
@@ -17,6 +20,17 @@ export interface MetadataContextValue {
   missedTrades: MissedTradeEntry[]
   yearlyPreSessions: { date: string; savedAt?: string }[]
   yearlyPostSessions: { date: string }[]
+  /** Typed rules + their evaluated adherence (Phase B1). */
+  rules: TypedRule[]
+  adherence: AdherenceRecord[]
+  ruleStats: RuleStats[]
+  /** Today's followed/total, for the score-first badge in the nav. */
+  todayRuleScore: { followed: number; total: number } | null
+  tags: TradeTag[]
+  /** journal entry id -> tag ids attached to it. */
+  tagsByJournalId: Record<string, string[]>
+  reloadRules: () => Promise<void>
+  reloadTags: () => Promise<void>
   updateJournalEntry: (key: string, data: Partial<JournalRecord>) => void
   reloadStrategies: () => Promise<void>
   reloadTradeComments: () => Promise<void>

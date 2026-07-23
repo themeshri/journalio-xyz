@@ -19,6 +19,9 @@ import { type TimePreset, type TimeRange } from '../time-filters'
 import { type MissedTradeEntry } from '../analytics'
 import { getTradingDay } from '../trading-day'
 import { computeStreakFromDates } from '../streaks'
+import { type TypedRule } from '../rules-engine'
+import { type AdherenceRecord, type RuleStats } from '../analytics/rule-stats'
+import { loadTags, type TradeTag } from '../tags'
 
 import {
   WalletIdentityContext,
@@ -115,6 +118,11 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [missedTrades, setMissedTrades] = useState<MissedTradeEntry[]>([])
   const [yearlyPreSessions, setYearlyPreSessions] = useState<{ date: string; savedAt?: string }[]>([])
   const [yearlyPostSessions, setYearlyPostSessions] = useState<{ date: string }[]>([])
+  const [rules, setRules] = useState<TypedRule[]>([])
+  const [adherence, setAdherence] = useState<AdherenceRecord[]>([])
+  const [ruleStats, setRuleStats] = useState<RuleStats[]>([])
+  const [tags, setTags] = useState<TradeTag[]>([])
+  const [tagsByJournalId, setTagsByJournalId] = useState<Record<string, string[]>>({})
   const [timeRange, setTimeRange] = useState<TimeRange>({ startDate: null, endDate: null })
   const [timePreset, setTimePreset] = useState<TimePreset>('all')
   const journalsRef = useRef<JournalRecord[]>([])
@@ -279,6 +287,11 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         if (data.missedTrades) setMissedTrades(data.missedTrades)
         if (data.yearlyPreSessions) setYearlyPreSessions(data.yearlyPreSessions)
         if (data.yearlyPostSessions) setYearlyPostSessions(data.yearlyPostSessions)
+        if (data.rules) setRules(data.rules)
+        if (data.adherence) setAdherence(data.adherence)
+        if (data.ruleStats) setRuleStats(data.ruleStats)
+        if (data.tags) setTags(data.tags)
+        if (data.tagsByJournalId) setTagsByJournalId(data.tagsByJournalId)
 
         if (active.length === 0) return
 
@@ -442,6 +455,21 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const reloadTradeComments = useCallback(async () => {
     const comments = await loadTradeComments()
     setTradeComments(comments)
+  }, [])
+
+  const reloadRules = useCallback(async () => {
+    try {
+      const res = await fetch('/api/rules')
+      if (!res.ok) return
+      setRules(await res.json())
+    } catch {
+      // Non-fatal: the nav badge simply stays on its previous value.
+    }
+  }, [])
+
+  const reloadTags = useCallback(async () => {
+    const loaded = await loadTags()
+    setTags(loaded)
   }, [])
 
   const reloadJournals = useCallback(async () => {
@@ -619,11 +647,31 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     refreshAll,
   }), [walletSlots, allTrades, flattenedTrades, isAnyLoading, isAnyStale, refreshWallet, refreshAll])
 
+  // Today's followed/total across active rules — the score-first badge.
+  // Derived from adherence rows rather than re-evaluating client-side, so the
+  // nav and the Progress Tracker can never disagree.
+  const todayRuleScore = useMemo(() => {
+    const activeRuleIds = new Set(rules.filter((r) => r.isActive).map((r) => r.id))
+    if (activeRuleIds.size === 0) return null
+    const today = getTradingDay(userTimezone, userTradingStartTime)
+    const todays = adherence.filter((a) => a.date === today && activeRuleIds.has(a.ruleId))
+    if (todays.length === 0) return null
+    return { followed: todays.filter((a) => a.followed).length, total: todays.length }
+  }, [rules, adherence, userTimezone, userTradingStartTime])
+
   const metadataValue = useMemo(() => ({
     tradeComments,
     strategies,
     journalMap,
     streak,
+    rules,
+    adherence,
+    ruleStats,
+    todayRuleScore,
+    tags,
+    tagsByJournalId,
+    reloadRules,
+    reloadTags,
     preSessionDone,
     postSessionDone,
     missedTrades,
@@ -643,7 +691,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     tradingStartTime: userTradingStartTime,
     onboardingStep,
     setOnboardingStep,
-  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter, userTimezone, userTradingStartTime, onboardingStep, setOnboardingStep])
+  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, rules, adherence, ruleStats, todayRuleScore, tags, tagsByJournalId, reloadRules, reloadTags, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter, userTimezone, userTradingStartTime, onboardingStep, setOnboardingStep])
 
   const balanceValue = useMemo(() => ({
     walletTokens,
