@@ -13,7 +13,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { DayDetailModal } from '@/components/DayDetailModal'
-import { useWallet } from '@/lib/wallet-context'
+import { useWallet, useMetadata } from '@/lib/wallet-context'
 
 interface PreSessionRecord {
   date: string
@@ -31,9 +31,17 @@ interface ActivityCalendarProps {
   postSessions: PostSessionRecord[]
 }
 
+/** One of the five score components, and whether the day earned it. */
+interface ScorePoint {
+  label: string
+  earned: boolean
+  detail?: string
+}
+
 interface ActivityDay {
   date: string
   score: number // 0-5
+  points: ScorePoint[]
   traded: boolean
   preSession: boolean
   postSession: boolean
@@ -61,6 +69,7 @@ function buildActivityData(
   preSessions: PreSessionRecord[],
   postSessions: PostSessionRecord[],
   year: number,
+  adherenceByDate: Map<string, { followed: number; total: number }>,
 ): Map<string, ActivityDay> {
   // Get trade data from existing heatmap logic
   const tradeDays = computeYearlyHeatmap(trades, year)
@@ -89,6 +98,8 @@ function buildActivityData(
   tradeDayMap.forEach((_, k) => allDates.add(k))
   preSessionDates.forEach(d => allDates.add(d))
   postSessionDates.forEach(d => allDates.add(d))
+  // A day with only rule adherence recorded still deserves a square.
+  adherenceByDate.forEach((_, d) => { if (d.startsWith(String(year))) allDates.add(d) })
 
   const result = new Map<string, ActivityDay>()
 
@@ -117,7 +128,13 @@ function buildActivityData(
       .map(t => journalMap[`${t.tokenMint}-${t.tradeNumber}-${t.walletAddress}`])
       .filter(Boolean)
 
-    if (dayJournals.length > 0) {
+    // Prefer real RuleAdherence rows (Phase B1) — they score the user's own
+    // typed global rules for the day. Fall back to per-trade strategy rule
+    // results only where no adherence has been recorded.
+    const dayAdherence = adherenceByDate.get(date)
+    if (dayAdherence && dayAdherence.total > 0) {
+      ruleAdherence = dayAdherence.followed / dayAdherence.total
+    } else if (dayJournals.length > 0) {
       let totalRules = 0
       let followedRules = 0
       for (const j of dayJournals) {
@@ -130,17 +147,31 @@ function buildActivityData(
       ruleAdherence = totalRules > 0 ? followedRules / totalRules : 1
     }
 
-    // Compute score 0-5
-    let score = 0
-    if (traded) score++ // +1 for trading
-    if (preSession) score++ // +1 for pre-session
-    if (postSession) score++ // +1 for post-session
-    if (journalCoverage >= 1) score++ // +1 for full journal coverage
-    if (ruleAdherence >= 0.7) score++ // +1 for good rule adherence
+    // Score 0-5. Each point is tracked individually so the tooltip can say
+    // WHICH points were earned — "explainable instead of binary" (docs §4).
+    const points: ScorePoint[] = [
+      { label: 'Traded', earned: traded },
+      { label: 'Pre-session', earned: preSession },
+      { label: 'Post-session', earned: postSession },
+      { label: 'All trades journaled', earned: journalCoverage >= 1 },
+      {
+        label: 'Rule adherence ≥ 70%',
+        earned: ruleAdherence >= 0.7,
+        // -1 marks "no rules measured", which is not the same as 0% followed.
+        detail:
+          ruleAdherence < 0
+            ? 'not measured'
+            : dayAdherence && dayAdherence.total > 0
+              ? `${dayAdherence.followed}/${dayAdherence.total} rules`
+              : `${Math.round(ruleAdherence * 100)}%`,
+      },
+    ]
+    const score = points.filter((p) => p.earned).length
 
     result.set(date, {
       date,
       score,
+      points,
       traded,
       preSession,
       postSession,
@@ -220,14 +251,27 @@ export function ActivityCalendar({
   postSessions,
 }: ActivityCalendarProps) {
   const { tradeComments } = useWallet()
+  const { adherence } = useMetadata()
   const currentYear = new Date().getFullYear()
   const minYear = 2024
   const [year, setYear] = useState(currentYear)
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null)
 
+  // Collapse adherence rows into followed/total per day.
+  const adherenceByDate = useMemo(() => {
+    const map = new Map<string, { followed: number; total: number }>()
+    for (const a of adherence) {
+      const entry = map.get(a.date) || { followed: 0, total: 0 }
+      entry.total += 1
+      if (a.followed) entry.followed += 1
+      map.set(a.date, entry)
+    }
+    return map
+  }, [adherence])
+
   const activityData = useMemo(
-    () => buildActivityData(trades, journalMap, preSessions, postSessions, year),
-    [trades, journalMap, preSessions, postSessions, year]
+    () => buildActivityData(trades, journalMap, preSessions, postSessions, year, adherenceByDate),
+    [trades, journalMap, preSessions, postSessions, year, adherenceByDate]
   )
 
   const weeks = useMemo(() => buildWeekGrid(year), [year])
@@ -380,27 +424,38 @@ export function ActivityCalendar({
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="text-xs space-y-1">
-                            <p className="font-medium">{date}</p>
+                            <div className="flex items-baseline justify-between gap-3">
+                              <p className="font-medium">{date}</p>
+                              <p className="font-mono text-muted-foreground">
+                                {activity?.score ?? 0}/5
+                              </p>
+                            </div>
                             {activity ? (
                               <>
                                 {activity.traded && (
                                   <p>{activity.tradeCount} trade{activity.tradeCount !== 1 ? 's' : ''} · ${activity.pnl >= 0 ? '+' : ''}${activity.pnl.toFixed(2)}</p>
                                 )}
-                                <p className="flex items-center gap-1.5">
-                                  <span className={activity.preSession ? 'text-emerald-400' : 'text-zinc-500'}>
-                                    {activity.preSession ? '✓' : '○'} Pre
-                                  </span>
-                                  <span className={activity.postSession ? 'text-emerald-400' : 'text-zinc-500'}>
-                                    {activity.postSession ? '✓' : '○'} Post
-                                  </span>
-                                </p>
-                                {activity.traded && (
-                                  <p>Journal: {Math.round(activity.journalCoverage * 100)}%</p>
-                                )}
-                                {activity.ruleAdherence >= 0 && (
-                                  <p>Rules: {Math.round(activity.ruleAdherence * 100)}%</p>
-                                )}
-                                <p className="text-muted-foreground">Score: {activity.score}/5</p>
+                                {/* Name each point earned and missed, so the
+                                    score is explainable rather than a bare
+                                    number (docs §4, Tier 1 item 1). */}
+                                <ul className="space-y-0.5 pt-0.5">
+                                  {activity.points.map((p) => (
+                                    <li
+                                      key={p.label}
+                                      className={`flex items-center gap-1.5 ${
+                                        p.earned ? 'text-emerald-400' : 'text-zinc-500'
+                                      }`}
+                                    >
+                                      <span>{p.earned ? '✓' : '○'}</span>
+                                      <span>{p.label}</span>
+                                      {p.detail && (
+                                        <span className="ml-auto pl-2 font-mono text-[10px] opacity-70">
+                                          {p.detail}
+                                        </span>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
                               </>
                             ) : (
                               <p className="text-muted-foreground">No activity</p>

@@ -22,6 +22,12 @@ import { computeStreakFromDates } from '../streaks'
 import { type TypedRule } from '../rules-engine'
 import { type AdherenceRecord, type RuleStats } from '../analytics/rule-stats'
 import { loadTags, type TradeTag } from '../tags'
+import { safeLocalStorage } from '../local-storage'
+import {
+  useWalletUrlSync,
+  sameWalletSet,
+  type WalletRef,
+} from '../hooks/use-wallet-url-sync'
 
 import {
   WalletIdentityContext,
@@ -63,16 +69,41 @@ async function fetchSavedWalletsFromAPI(): Promise<SavedWallet[]> {
 
 function loadActiveWalletKeys(): { address: string; chain: Chain }[] | null {
   if (typeof window === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(ACTIVE_WALLETS_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+  // null means "never chosen" — the caller then defaults to all wallets.
+  return safeLocalStorage.getItem<{ address: string; chain: Chain }[] | null>(
+    ACTIVE_WALLETS_KEY,
+    null
+  )
 }
 
 function saveActiveWalletKeys(keys: { address: string; chain: Chain }[]) {
-  localStorage.setItem(ACTIVE_WALLETS_KEY, JSON.stringify(keys))
+  // Must go through safeLocalStorage — it handles QuotaExceededError and
+  // surfaces a toast rather than throwing (CLAUDE.md § Error Handling).
+  safeLocalStorage.setItem(ACTIVE_WALLETS_KEY, keys)
+}
+
+/**
+ * Resolve which of the saved wallets are active.
+ *
+ * Precedence (Phase C11): the URL wins when it carries a `?wallets=` param, so
+ * a shared link shows the sender's selection. Otherwise fall back to the stored
+ * selection, and finally to "all wallets" for a first-ever visit.
+ *
+ * Refs naming a wallet the user does not have are ignored rather than treated
+ * as an empty selection — a stale link should degrade, not blank the dashboard.
+ */
+function resolveActiveWallets(
+  saved: SavedWallet[],
+  urlWallets: WalletRef[] | null
+): SavedWallet[] {
+  const refs = urlWallets ?? loadActiveWalletKeys()
+  if (refs === null) return saved
+  const matched = saved.filter((w) =>
+    refs.some((k) => k.address === w.address && k.chain === w.chain)
+  )
+  // A URL that matched nothing at all is more likely wrong than intentional.
+  if (matched.length === 0 && refs.length > 0 && urlWallets !== null) return saved
+  return matched
 }
 
 async function fetchTradesForWallet(
@@ -104,6 +135,13 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [savedWallets, setSavedWallets] = useState<SavedWallet[]>([])
   const [activeWallets, setActiveWallets] = useState<SavedWallet[]>([])
   const [initialized, setInitialized] = useState(false)
+
+  // Wallet selection lives in the URL (Phase C11) so analytics views are
+  // shareable. Held in a ref as well because the init effect runs once and
+  // must not re-run on every navigation.
+  const { urlWallets, setUrlWallets } = useWalletUrlSync()
+  const urlWalletsRef = useRef<WalletRef[] | null>(urlWallets)
+  urlWalletsRef.current = urlWallets
 
   // ─── Trades ───────────────────────────────────────────
   const [walletSlots, setWalletSlots] = useState<Record<WalletKey, WalletSlot>>({})
@@ -231,10 +269,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
           // Fallback: fetch wallets separately, then individual trades
           const saved = await fetchSavedWalletsFromAPI()
           setSavedWallets(saved)
-          const activeKeys = loadActiveWalletKeys()
-          const active = activeKeys === null ? saved : saved.filter((w) =>
-            activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
-          )
+          const active = resolveActiveWallets(saved, urlWalletsRef.current)
           setActiveWallets(active)
           setInitialized(true)
           if (active.length > 0) {
@@ -255,10 +290,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         setSavedWallets(saved)
 
         // Determine active wallets from localStorage selection
-        const activeKeys = loadActiveWalletKeys()
-        const active = activeKeys === null ? saved : saved.filter((w) =>
-          activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
-        )
+        const active = resolveActiveWallets(saved, urlWalletsRef.current)
         setActiveWallets(active)
         setInitialized(true)
 
@@ -337,10 +369,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         console.error('Dashboard fetch failed, falling back to individual fetches:', err)
         const saved = await fetchSavedWalletsFromAPI()
         setSavedWallets(saved)
-        const activeKeys = loadActiveWalletKeys()
-        const active = activeKeys === null ? saved : saved.filter((w) =>
-          activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
-        )
+        const active = resolveActiveWallets(saved, urlWalletsRef.current)
         setActiveWallets(active)
         setInitialized(true)
         if (active.length > 0) {
@@ -372,12 +401,34 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
             return rest
           })
         }
-        saveActiveWalletKeys(next.map((w) => ({ address: w.address, chain: w.chain })))
+        const refs = next.map((w) => ({ address: w.address, chain: w.chain }))
+        saveActiveWalletKeys(refs)
+        // Mirror into the URL so the view stays shareable. Deferred out of the
+        // state updater — router.replace must not run during a React render.
+        queueMicrotask(() => setUrlWallets(refs))
         return next
       })
     },
-    [fetchAndSetTrades, savedWallets]
+    [fetchAndSetTrades, savedWallets, setUrlWallets]
   )
+
+  // Adopt an externally-changed URL: back/forward, or a pasted link. Guarded by
+  // sameWalletSet so our own writes above do not bounce back as a second update.
+  useEffect(() => {
+    if (!initialized || urlWallets === null || savedWallets.length === 0) return
+    const next = resolveActiveWallets(savedWallets, urlWallets)
+    setActiveWallets((prev) => {
+      if (sameWalletSet(prev, next)) return prev
+      const prevKeys = new Set(prev.map((w) => makeWalletKey(w.address, w.chain)))
+      for (const w of next) {
+        if (!prevKeys.has(makeWalletKey(w.address, w.chain))) {
+          fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)
+        }
+      }
+      saveActiveWalletKeys(next.map((w) => ({ address: w.address, chain: w.chain })))
+      return next
+    })
+  }, [urlWallets, savedWallets, initialized, fetchAndSetTrades])
 
   const refreshWallet = useCallback(
     async (address: string, chain: Chain) => {
