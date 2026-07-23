@@ -28,17 +28,31 @@ App Router under `app/`, with a `(dashboard)` route group holding the authentica
 ```
 RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
   └── DashboardLayout (Suspense → WalletProvider → SidebarProvider)
-        ├── AppSidebar (nav links, active wallet display, dark mode toggle, collapse)
+        ├── ProductRail (thin icon rail — outer nav level)
+        ├── AppSidebar (section nav for the active product, active wallet, dark mode, collapse)
         └── SidebarInset → header (GlobalFilterBar, SyncButton + last synced time, ThemeToggle, AccountDropdown) + main content area
 ```
 
+**Two-level navigation.** `lib/nav-structure.ts` is the single source for both
+levels: `PRODUCTS` drives `ProductRail`, `PRODUCT_SECTIONS` drives `AppSidebar`,
+and `productForPath()` resolves the active product (longest prefix match).
+Adding a page means adding one entry there — `nav-structure.test.ts` asserts
+every section link resolves back to its own product.
+
+**Gotcha:** the rail sits beside shadcn's `fixed left-0` sidebar via a
+`--sidebar-offset` CSS variable set in `app/(dashboard)/layout.tsx` and read in
+`components/ui/sidebar.tsx`. That's a local edit to a generated file — re-running
+`shadcn add sidebar` would revert it and hide the rail.
+
 ## Pages
 
-Routes map to directories under `app/(dashboard)/`. Most pages are DB-backed via `/api/*`; **exceptions**: `/wallet-management` and the journal view-mode preference use localStorage (see Data Storage). `/chart-lab` and `/analytics` are read-only analytics; `/settings` covers display name, timezone, trading start time, journal view mode, and trade comments.
+Routes map to directories under `app/(dashboard)/`. Most pages are DB-backed via `/api/*`; **exception**: the journal view-mode preference uses localStorage (see Data Storage). `/chart-lab` and `/analytics` are read-only analytics; `/settings` covers display name, timezone, trading start time, journal view mode, and trade comments.
+
+Note: **global rules are managed on `/strategies` (anchor `#rules`), not `/settings`** — the Progress Tracker's "Edit rules" CTA points there. `/progress-tracker` is the rule streak / follow-rate surface; `/analytics/compare` and `/analytics/drawdown` are the two newer report pages.
 
 ## Key Components
 
-Components live in `components/` (shared) and `components/overview/` (home-page cards). Non-obvious ones worth knowing: `SessionHero`/`SessionPills` (tabbed Pre/Active/Post session card), `ActivityCalendar` (GitHub-style 0–5 daily heatmap — see scoring below), `StaleDataBanner` (renders when trade data is served from stale cache), `LocalStorageMigration` (one-time localStorage→DB migration). Legacy, not used in dashboard: `SummaryView.tsx`.
+Components live in `components/` (shared), `components/overview/` (home-page cards) and `components/nav/` (product rail). Non-obvious ones worth knowing: `SessionHero`/`SessionPills` (tabbed Pre/Active/Post session card), `ActivityCalendar` (GitHub-style 0–5 daily heatmap — see scoring below), `StaleDataBanner` (renders when trade data is served from stale cache), `LocalStorageMigration` (one-time localStorage→DB migration), `ViewMyDayButton` (the repeated daily-review entry point; opens `DayDetailModal` for today), `DayDetailModal` (the single day-review surface — reached from the calendars and from `ViewMyDayButton`). Legacy, not used in dashboard: `SummaryView.tsx`.
 
 ## Lib Modules
 
@@ -46,9 +60,12 @@ Components live in `components/` (shared) and `components/overview/` (home-page 
 - `wallet-context.tsx` is a **barrel re-export** of split contexts in `lib/contexts/`; `useWallet()` is the compat accessor, `useMetadata()` is metadata-only. The split contexts are `WalletIdentityContext`, `TradeContext`, `MetadataContext`, `BalanceContext`.
 - `trading-day.ts` — timezone-aware trading-day calc (see Trading Day section for the rationale).
 - `solana-tracker.ts` — browser requests **must** proxy through `/api/solana/*` (the API key is server-only); `zerion.ts` is the EVM (Base/BNB) equivalent.
-- `analytics.ts` is a re-export barrel over `lib/analytics/` (`core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`).
+- `analytics.ts` is a re-export barrel over `lib/analytics/` (`core`, `calendar`, `time`, `discipline`, `what-if`, `patterns`, `strategy`, `missed-trades`, `rule-stats`, `r-multiple`, `drawdown`).
 - `local-storage.ts` exports `safeLocalStorage` — **all** localStorage writes must go through it (see Error Handling).
 - `validations.ts` (Zod + `validateBody`) validates every POST/PATCH body; `rate-limit.ts` provides `rateLimit`/`rateLimitByUser`; `env.ts` `validateEnv()` runs from `instrumentation.ts`.
+- `rules-engine.ts` — pure, I/O-free evaluation of typed rules against a day (see Typed Rules below). `lib/server/adherence.ts` is the DB-writing wrapper shared by `/api/rules/adherence` and `/api/dashboard`.
+- `trade-filters.ts` — the shared filter vocabulary. `applyDateFilter` in `lib/server/resolve-trades.ts` is a thin wrapper over it, so the six `/api/analytics/*` routes keep their exact previous behaviour (pinned by `trade-filters.test.ts`).
+- `nav-structure.ts` — the two-level nav definition (see Layout Hierarchy).
 
 ## Security
 
@@ -76,10 +93,11 @@ Components live in `components/` (shared) and `components/overview/` (home-page 
 Routes live under `app/api/`; methods and paths are self-describing there. What's **not** obvious from the file tree:
 
 - **Auth**: every route requires a Supabase session **except** the proxies — `/api/solana/*`, `/api/evm/*` (unauthenticated on purpose; they hide the server-side API keys). `/api/auth/sync-user` syncs the authenticated user to the DB.
-- **`/api/dashboard`** is a **combined** endpoint returning trades + strategies + journals + comments + streak + pre/post-session status + missed trades in one call (see Dashboard data flow).
+- **`/api/dashboard`** is a **combined** endpoint returning trades + strategies + journals + comments + streak + pre/post-session status + missed trades + rules + adherence + ruleStats + tags in one call (see Dashboard data flow). Add new dashboard data to its batched `Promise.all` rather than introducing a client fetch — `AppSidebar` and the contexts read from `MetadataContext`.
 - **`/api/trades`** has 5-min DB cache with stale fallback; `refresh=true` bypasses it.
-- **`/api/analytics/*`** (6 endpoints) accept optional `startDate`/`endDate` (UNIX seconds).
-- **`/api/trade-comments`** auto-seeds defaults on first GET.
+- **`/api/analytics/*`** (9 endpoints) accept optional `startDate`/`endDate` (UNIX seconds). `compare` additionally reads two namespaced filter sets (`a.*` / `b.*`); `drawdown` returns `hasInitialBalance: false` when no wallet has one set, so the UI can name what's missing.
+- **`/api/trade-comments`** and **`/api/tags`** auto-seed defaults on first GET.
+- **`/api/tags/[id]` DELETE archives rather than deletes** when the tag is in use — hard-deleting would cascade away `JournalEntryTag` rows and silently rewrite history in the mistake-cost report.
 - `pre-sessions`/`post-sessions` support `from`/`to` ranges and have `[date]`-keyed sub-routes.
 - `[id]` sub-routes verify ownership and return **404** (not 403) — see Security.
 
@@ -91,13 +109,36 @@ Routes live under `app/api/`; methods and paths are self-describing there. What'
 |-----|---------|---------|
 | `journalio_saved_wallets` | Wallet Management | Saved wallet objects |
 | `journalio_journal_view_mode` | Settings, Trade Journal | Journal view mode preference (merged/grouped) |
+| `journalio_active_wallets` | WalletProvider | Active wallet selection — **fallback only**; `?wallets=` in the URL wins when present (see below) |
 | `journalio_migration_v1_complete` | LocalStorageMigration | Flag indicating one-time migration is done |
 
 **Migrated to DB (Phase 3)**: strategies, rules, pre-sessions, journals, trade comments — legacy localStorage keys still read by `LocalStorageMigration` component for one-time migration.
 
+### Filter state in the URL
+
+Analytics views are shareable and back-button-correct because filter state lives
+in the query string, not in context:
+- `GlobalFilterBar` writes `outcome` / `month` / `day` / `search` / `minPl` / `maxPl` / `lastN`
+- `?wallets=solana:addr,base:addr` carries the wallet selection
+  (`lib/hooks/use-wallet-url-sync.ts`). The URL wins when present; localStorage
+  is the cold-load fallback and is kept in sync. A link naming wallets the
+  viewer doesn't have falls back to all wallets rather than blanking the page.
+- Compare namespaces two independent cohorts as `a.*` and `b.*`
+
+`lib/trade-filters.ts` parses and applies all of it; `parseTradeFilters` takes a
+prefix so the same code reads both Compare cohorts.
+
 ### Database (Prisma)
 
-Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`, `Strategy`, `GlobalRule`, `PreSession`, `PostSession`, `JournalEntry`, `TradeComment`, `Note`
+Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`, `Strategy`, `GlobalRule`, `RuleAdherence`, `TradeTag`, `JournalEntryTag`, `PreSession`, `PostSession`, `JournalEntry`, `TradeComment`, `Note`
+
+**Grading fields live on `JournalEntry`, not `Trade`.** `Trade` is an immutable
+on-chain swap row wiped and refetched by the 5-min sync cache, and a P&L "trade"
+is a *cycle* derived at read time by `lib/tradeCycles.ts` — so it has no stable
+row to hang user data on. `rMultiple`, `tradeRating` and `reviewed` are therefore
+on `JournalEntry`, which is already keyed per cycle. `Note` trade-links mirror
+that same composite key (`walletAddress` + `tokenMint` + `tradeNumber`) for the
+same reason.
 
 Trade cache: 5-minute TTL on `Trade.indexedAt`, force refresh bypasses cache, stale fallback on API failure. `Trade.signature` is unique per wallet (`@@unique([walletId, signature])`), allowing multiple users to store the same blockchain transactions. Storage uses batched `createMany` (200/batch) with `skipDuplicates: true`.
 
@@ -115,7 +156,7 @@ Analytics data flow: 6 server-side endpoints (`/api/analytics/*`) accept optiona
 ### Home Page Layout
 
 ```
-Row 1: Header + SessionPills + TimeRangeFilter
+Row 1: Header + SessionPills + ViewMyDayButton + TimeRangeFilter
 Row 2: SessionHero (tabbed: Pre-Session/Active/Post-Session with session-scoped stats)
 Row 3: KPICards (7 metrics)
 Row 4: RecentCycles (left 3 cols) + Evaluation (right 2 cols)
@@ -133,6 +174,39 @@ Row 5: ActivityCalendar (full width)
 | Rule adherence >= 70% | +1 |
 
 Color: emerald scale from zinc-800 (0) to emerald-400 (5).
+
+Each point is tracked individually (`ActivityDay.points`) so the tooltip names
+which were earned and which were missed. "Rule adherence" reads real
+`RuleAdherence` rows when present, falling back to per-trade strategy rule
+results otherwise.
+
+### Typed Rules & Adherence
+
+`GlobalRule` carries a `type` (`manual | time | percentage | currency | count`)
+and a `condition` (`"09:30"`, `"100"`, `"5"`). `lib/rules-engine.ts` evaluates
+each rule against a trading day and `RuleAdherence` persists one row per
+(user, rule, day) with the observed `actual` value — that's what renders the
+`09:26 / 09:30` display on the Progress Tracker.
+
+Two invariants worth preserving:
+- **A manual override is never clobbered by auto-evaluation.** Rows with
+  `source: "manual"` are skipped when re-evaluating (`lib/server/adherence.ts`).
+- **An unevaluable rule writes no row at all.** An absent row means "not
+  measured", which is different from "broken" — the day score counts only
+  evaluated rules in its denominator.
+
+`GET /api/rules/adherence` backfills recent trading days before returning, so
+streaks reflect real history rather than only accumulating from first use.
+
+### Tag Namespaces
+
+`TradeTag.kind` splits `mistake` from `custom`. This is what makes "what is
+costing me money" a plain aggregation (`computeTagCost`) rather than a text
+search. `MistakesSummary` ranks by **$ cost, not frequency**.
+
+Migration state: `JournalEntry.sellMistakesJson` is still read as a fallback for
+journals written before tags existed. It is dual-written and will be dropped
+once the backfill (`npm run backfill:tags`) is confirmed in production.
 
 ## Styling Notes
 
@@ -170,6 +244,19 @@ In Tailwind v4 this must be `w-(--sidebar-width)` (parentheses, not brackets).
 ## Development
 
 Standard scripts (`dev`, `build`, `lint`, `test`, `test:watch`, `test:coverage`) — see `package.json`. Prisma: `npx prisma studio`, `npx prisma migrate dev --name <name>`, `npx prisma generate`. Required env vars are in `.env.example`; note `DATABASE_URL` is the pooled connection (port 6543, `?pgbouncer=true`) and `DIRECT_URL` is direct (port 5432, migrations only).
+
+One-off data scripts (all support `--dry-run`, all idempotent):
+- `npm run backfill:tags` — legacy `sellMistakesJson` → `TradeTag` + join rows, and seeds the default mistake tags
+- `npm run seed:templates` — `lib/strategy-templates.ts` → `Strategy` rows with `isTemplate: true`, owned by a system user
+
+**Migration fallback.** On some networks Prisma's migration engine cannot reach
+Supabase (`P1001` on both 5432 and 6543) even though the Prisma *client*
+connects fine. `npx tsx scripts/apply-migration.ts <migration-dir>` applies a
+`migration.sql` statement-by-statement through the client connection and records
+it in `_prisma_migrations`. Prefer `prisma migrate deploy` when it works.
+
+**Do not run `npm run build` while `npm run dev` is running** — the build wipes
+`.next` out from under the dev server and every route 500s until you restart it.
 
 ### Deployment (Vercel)
 
