@@ -64,6 +64,17 @@ export function getCalendarDate(timezone: string = 'UTC'): string {
 }
 
 /**
+ * Formats a Date as "HH:mm" in the given timezone.
+ *
+ * Exported for the rule engine (lib/rules-engine.ts), which reports the
+ * observed clock time of a trader's first trade for the "09:26 / 09:30"
+ * actual-vs-condition display.
+ */
+export function formatTimeInZone(date: Date, timezone: string = 'UTC'): string {
+  return getTimeFormatter(timezone).format(date)
+}
+
+/**
  * Server-side version: computes the trading day for a given Date object.
  */
 export function getTradingDayForDate(date: Date, timezone: string = 'UTC', tradingStartTime: string = '09:00'): string {

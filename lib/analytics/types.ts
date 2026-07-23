@@ -40,6 +40,16 @@ export interface CommentPerformance {
   winRate: number
 }
 
+export interface TagCost {
+  tagId: string
+  label: string
+  kind: 'mistake' | 'custom'
+  occurrences: number
+  totalPnL: number
+  avgPnL: number
+  winRate: number
+}
+
 export interface EfficiencyPoint {
   tradeIndex: number
   date: string

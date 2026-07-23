@@ -5,7 +5,9 @@ import type {
   CommentPerformance,
   EfficiencyPoint,
   DisciplineEquityPoint,
+  TagCost,
 } from './types'
+import { journalKey } from '../journal-utils'
 
 export function computeCommentPerformance(
   trades: FlattenedTrade[],
@@ -54,6 +56,66 @@ export function computeCommentPerformance(
   }
 
   return results.sort((a, b) => b.totalPnL - a.totalPnL)
+}
+
+/**
+ * Aggregate P&L by tag — "what is costing me money".
+ *
+ * This is the payoff of splitting mistakes into their own namespace
+ * (docs/TRADEZELLA-JOURNAL-ANALYSIS.md §2): with typed tags, the most
+ * compelling insight a journal can show becomes a plain aggregation rather
+ * than a text search.
+ *
+ * Mirrors `computeCommentPerformance` above — same shape, keyed by tag.
+ * Sorted ASCENDING by totalPnL, so the costliest tags come first.
+ *
+ * @param tagsByJournalId  journal entry id -> tag ids attached to it
+ * @param tagsById         tag id -> its label/kind
+ */
+export function computeTagCost(
+  trades: FlattenedTrade[],
+  journalMap: Record<string, JournalData & { id?: string }>,
+  tagsByJournalId: Record<string, string[]>,
+  tagsById: Record<string, { label: string; kind: 'mistake' | 'custom' }>
+): TagCost[] {
+  const agg = new Map<string, { totalPnL: number; count: number; wins: number }>()
+
+  for (const trade of trades) {
+    if (!trade.isComplete) continue
+    const journal = journalMap[journalKey(trade)]
+    if (!journal?.id) continue
+
+    const tagIds = tagsByJournalId[journal.id]
+    if (!tagIds?.length) continue
+
+    // A tag counts once per trade even if somehow linked twice.
+    for (const tagId of new Set(tagIds)) {
+      if (!tagsById[tagId]) continue
+      const entry = agg.get(tagId) || { totalPnL: 0, count: 0, wins: 0 }
+      entry.totalPnL += trade.profitLoss
+      entry.count += 1
+      if (trade.profitLoss > 0) entry.wins += 1
+      agg.set(tagId, entry)
+    }
+  }
+
+  const results: TagCost[] = []
+  for (const [tagId, data] of agg) {
+    const tag = tagsById[tagId]
+    results.push({
+      tagId,
+      label: tag.label,
+      kind: tag.kind,
+      occurrences: data.count,
+      totalPnL: Math.round(data.totalPnL * 100) / 100,
+      avgPnL: Math.round((data.totalPnL / data.count) * 100) / 100,
+      winRate: Math.round((data.wins / data.count) * 100),
+    })
+  }
+
+  // Costliest first — the opposite of computeCommentPerformance, because the
+  // question here is "what is hurting me", not "what is working".
+  return results.sort((a, b) => a.totalPnL - b.totalPnL)
 }
 
 export function computeEfficiency(
