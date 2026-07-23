@@ -22,6 +22,7 @@ import { TokenWithBadge } from '@/components/chain-badge'
 import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from '@/lib/discipline'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ManualTradeDialog } from '@/components/ManualTradeDialog'
+import { ViewMyDayButton } from '@/components/ViewMyDayButton'
 import { Plus } from 'lucide-react'
 import {
   Tooltip,
@@ -421,10 +422,13 @@ export default function TradeJournalPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Trade Journal</h1>
-        <Button size="sm" variant="outline" onClick={() => setShowManualTrade(true)}>
-          <Plus className="w-4 h-4 mr-1" />
-          Add Manual Trade
-        </Button>
+        <div className="flex items-center gap-2">
+          <ViewMyDayButton />
+          <Button size="sm" variant="outline" onClick={() => setShowManualTrade(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add Manual Trade
+          </Button>
+        </div>
       </div>
 
       {loadingBalances && (

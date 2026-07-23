@@ -8,6 +8,7 @@ import { Flame, Target, CheckCircle2, Circle, MinusCircle, Settings } from 'luci
 import { useWallet, useMetadata, buildWalletQueryParams } from '@/lib/wallet-context'
 import { useRuleAdherence } from '@/lib/hooks/use-analytics'
 import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
+import { ViewMyDayButton } from '@/components/ViewMyDayButton'
 import { computeStreakFromDates } from '@/lib/streaks'
 import type { RuleStats } from '@/lib/analytics/rule-stats'
 
@@ -141,12 +142,15 @@ export default function ProgressTrackerPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Progress Tracker</h1>
-        <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
-          <Link href="/strategies#rules">
-            <Settings className="mr-1.5 h-3.5 w-3.5" />
-            Edit rules
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <ViewMyDayButton />
+          <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
+            <Link href="/strategies#rules">
+              <Settings className="mr-1.5 h-3.5 w-3.5" />
+              Edit rules
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Score-first row */}
