@@ -25,9 +25,15 @@ function ok<T>(r: { data: T } | { error: unknown }): T {
 }
 
 describe('validateBody wrapper', () => {
-  it('returns { data } on success', () => {
+  it('returns { data } on success, applying schema defaults', () => {
     const r = validateBody(createRuleSchema, { text: 'hold the line' })
-    expect(ok(r)).toEqual({ text: 'hold the line' })
+    // A rule with no declared type defaults to `manual` — a user-checked rule.
+    expect(ok(r)).toEqual({
+      text: 'hold the line',
+      type: 'manual',
+      condition: '',
+      isActive: true,
+    })
   })
 
   it('returns { error } (a 400 NextResponse) on failure', async () => {

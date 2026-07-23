@@ -92,20 +92,44 @@ export const createJournalSchema = z.object({
   tradeHigh: z.number().nullish(),
   tradeLow: z.number().nullish(),
   journaledAt: z.string().optional(),
+  /** Auto-computed server-side from stopLoss; accepted so the client can send
+   *  its optimistic value, but the server recomputes on save. */
+  rMultiple: z.number().nullish(),
+  tradeRating: z.number().int().min(1).max(5).nullish(),
+  reviewed: z.boolean().optional(),
+  /** TradeTag ids; replaces the legacy freeform sellMistakes string array. */
+  tagIds: z.array(z.string()).optional(),
 })
 
 // ── Notes ──
+const noteFolderSchema = z.enum([
+  'trade-notes',
+  'daily-journal',
+  'sessions-recap',
+  'my-notes',
+])
+
 export const createNoteSchema = z.object({
   id: z.string().optional(),
   title: z.string().optional().default(''),
   content: z.string().optional().default(''),
   tags: z.array(z.string()).optional().default([]),
+  folder: noteFolderSchema.optional().default('my-notes'),
+  favorite: z.boolean().optional().default(false),
+  linkedWalletAddress: z.string().nullish(),
+  linkedTokenMint: z.string().nullish(),
+  linkedTradeNumber: z.number().int().nullish(),
 })
 
 export const updateNoteSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  folder: noteFolderSchema.optional(),
+  favorite: z.boolean().optional(),
+  linkedWalletAddress: z.string().nullish(),
+  linkedTokenMint: z.string().nullish(),
+  linkedTradeNumber: z.number().int().nullish(),
 })
 
 // ── Pre-Sessions ──
@@ -193,12 +217,44 @@ export const updateStrategySchema = z.object({
 })
 
 // ── Rules ──
+const ruleTypeSchema = z.enum(['manual', 'time', 'percentage', 'currency', 'count'])
+
 export const createRuleSchema = z.object({
   text: z.string().min(1, 'text is required').transform(s => s.trim()),
+  type: ruleTypeSchema.optional().default('manual'),
+  condition: z.string().optional().default(''),
+  isActive: z.boolean().optional().default(true),
 })
 
 export const updateRuleSchema = z.object({
   text: z.string().min(1).transform(s => s.trim()).optional(),
+  type: ruleTypeSchema.optional(),
+  condition: z.string().optional(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).optional(),
+})
+
+/** Manual override of a single rule's adherence for one trading day. */
+export const upsertAdherenceSchema = z.object({
+  ruleId: z.string().min(1, 'ruleId is required'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
+  followed: z.boolean(),
+  actual: z.string().optional().default(''),
+})
+
+// ── Tags ──
+const tagKindSchema = z.enum(['mistake', 'custom'])
+
+export const createTagSchema = z.object({
+  label: z.string().min(1, 'label is required').transform(s => s.trim()),
+  kind: tagKindSchema,
+  color: z.string().optional().default('#71717a'),
+})
+
+export const updateTagSchema = z.object({
+  label: z.string().min(1).transform(s => s.trim()).optional(),
+  color: z.string().optional(),
+  isArchived: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
 })
 

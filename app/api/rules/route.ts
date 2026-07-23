@@ -44,6 +44,9 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         text: v.text,
+        type: v.type,
+        condition: v.condition,
+        isActive: v.isActive,
         sortOrder: (maxSort?.sortOrder ?? -1) + 1,
       },
     })

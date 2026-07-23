@@ -18,8 +18,16 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth
     const userId = auth.userId
 
+    const { searchParams } = new URL(request.url)
+    const folder = searchParams.get('folder')
+    const favorite = searchParams.get('favorite')
+
     const notes = await prisma.note.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(folder ? { folder } : {}),
+        ...(favorite === 'true' ? { favorite: true } : {}),
+      },
       orderBy: { updatedAt: 'desc' },
     })
     return NextResponse.json(notes.map(parseNote))
@@ -54,6 +62,11 @@ export async function POST(request: NextRequest) {
           title: v.title,
           content: v.content,
           tagsJson: JSON.stringify(v.tags),
+          folder: v.folder,
+          favorite: v.favorite,
+          linkedWalletAddress: v.linkedWalletAddress ?? null,
+          linkedTokenMint: v.linkedTokenMint ?? null,
+          linkedTradeNumber: v.linkedTradeNumber ?? null,
         },
       })
       return NextResponse.json(parseNote(note))
@@ -66,6 +79,11 @@ export async function POST(request: NextRequest) {
         title: v.title,
         content: v.content,
         tagsJson: JSON.stringify(v.tags),
+        folder: v.folder,
+        favorite: v.favorite,
+        linkedWalletAddress: v.linkedWalletAddress ?? null,
+        linkedTokenMint: v.linkedTokenMint ?? null,
+        linkedTradeNumber: v.linkedTradeNumber ?? null,
       },
     })
     return NextResponse.json(parseNote(note), { status: 201 })
