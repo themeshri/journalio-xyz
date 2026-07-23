@@ -18,6 +18,7 @@ interface ApiWallet {
   chain: Chain
   nickname: string | null
   dex: string
+  initialBalance: number | null
 }
 
 const DEX_OPTIONS = [
@@ -58,6 +59,35 @@ export default function WalletManagementPage() {
     fetchWallets()
     setMounted(true)
   }, [fetchWallets])
+
+  /** Persist a wallet's starting balance. Blank clears it back to unset. */
+  const saveInitialBalance = useCallback(
+    async (wallet: ApiWallet, raw: string) => {
+      const trimmed = raw.trim()
+      const parsed = trimmed === '' ? null : Number(trimmed)
+      if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) {
+        toast.error('Starting balance must be a positive number')
+        return
+      }
+      if (parsed === (wallet.initialBalance ?? null)) return
+
+      try {
+        const res = await fetch(`/api/wallets/${wallet.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initialBalance: parsed }),
+        })
+        if (!res.ok) throw new Error()
+        setWallets((prev) =>
+          prev.map((w) => (w.id === wallet.id ? { ...w, initialBalance: parsed } : w))
+        )
+        toast.success(parsed === null ? 'Starting balance cleared' : 'Starting balance saved')
+      } catch {
+        toast.error('Failed to save starting balance')
+      }
+    },
+    []
+  )
 
   function handleAddressChange(value: string) {
     setAddress(value)
@@ -291,6 +321,30 @@ export default function WalletManagementPage() {
                         Last synced {slot.cacheInfo.cachedAt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </p>
                     )}
+                    {/* Anchors the balance / drawdown curve — without it that
+                        chart has no origin and shows a named empty state. */}
+                    <div
+                      className="mt-1.5 flex items-center gap-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="text-[10px] text-muted-foreground">Starting balance</span>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          defaultValue={w.initialBalance ?? ''}
+                          placeholder="—"
+                          className="h-6 w-28 pl-4 font-mono text-[11px]"
+                          onBlur={(e) => saveInitialBalance(w, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur()
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-1.5 shrink-0">

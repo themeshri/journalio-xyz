@@ -271,6 +271,8 @@ export const updateWalletSchema = z.object({
   nickname: z.string().nullish(),
   isDefault: z.boolean().optional(),
   dex: z.string().optional(),
+  /** Starting equity in USD — required for the drawdown / balance curve. */
+  initialBalance: z.number().nonnegative().nullish(),
 })
 
 // ── Trade Comments ──

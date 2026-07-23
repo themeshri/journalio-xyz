@@ -7,6 +7,7 @@ import Link from 'next/link'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
 import type { TradeComment } from '@/lib/trade-comments'
 import { journalKey } from '@/lib/journal-utils'
+import { useMetadata } from '@/lib/wallet-context'
 
 interface MistakesSummaryProps {
   trades: FlattenedTrade[]
@@ -15,7 +16,17 @@ interface MistakesSummaryProps {
 }
 
 export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesSummaryProps) {
-  const { disciplineScore, topMistake, emotionTags, hasData } = useMemo(() => {
+  const { tags, tagsByJournalId } = useMetadata()
+
+  const mistakeLabelById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of tags) {
+      if (t.kind === 'mistake') map.set(t.id, t.label)
+    }
+    return map
+  }, [tags])
+
+  const { disciplineScore, topMistakes, emotionTags, hasData } = useMemo(() => {
     const completed = trades.filter((t) => t.isComplete)
 
     // Build comment rating lookup
@@ -47,14 +58,22 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
         scores.push(((score + 3) / 6) * 100)
       }
 
-      // Sell mistakes
-      if (j.sellMistakes && Array.isArray(j.sellMistakes)) {
-        for (const mistake of j.sellMistakes) {
-          const existing = mistakeCount.get(mistake) || { count: 0, totalPnL: 0 }
-          existing.count++
-          existing.totalPnL += t.profitLoss
-          mistakeCount.set(mistake, existing)
-        }
+      // Mistake tags (TradeTag, kind: mistake). Falls back to the legacy
+      // sellMistakes string array for journals written before the migration —
+      // both are read until sellMistakesJson is dropped in Phase E.
+      const tagLabels = j.id
+        ? (tagsByJournalId[j.id] ?? [])
+            .map((id) => mistakeLabelById.get(id))
+            .filter((l): l is string => !!l)
+        : []
+      const legacyLabels =
+        tagLabels.length === 0 && Array.isArray(j.sellMistakes) ? j.sellMistakes : []
+
+      for (const mistake of [...tagLabels, ...legacyLabels]) {
+        const existing = mistakeCount.get(mistake) || { count: 0, totalPnL: 0 }
+        existing.count++
+        existing.totalPnL += t.profitLoss
+        mistakeCount.set(mistake, existing)
       }
 
       // Emotion tags
@@ -67,7 +86,7 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
     }
 
     if (scores.length === 0 && mistakeCount.size === 0 && emotionCount.size === 0) {
-      return { disciplineScore: 0, topMistake: null, emotionTags: [], hasData: false }
+      return { disciplineScore: 0, topMistakes: [], emotionTags: [], hasData: false }
     }
 
     // Rolling discipline (last 20 scores)
@@ -76,12 +95,19 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
       ? Math.round(recentScores.reduce((s, v) => s + v, 0) / recentScores.length)
       : 0
 
-    // Top mistake by frequency
-    const sortedMistakes = Array.from(mistakeCount.entries())
-      .sort((a, b) => b[1].count - a[1].count)
-    const topM = sortedMistakes.length > 0
-      ? { name: sortedMistakes[0][0], count: sortedMistakes[0][1].count, avgPnL: sortedMistakes[0][1].totalPnL / sortedMistakes[0][1].count }
-      : null
+    // Top mistakes by $ COST, not frequency — "the single most compelling
+    // insight a journal can show" (docs §4). A rare mistake that costs $500
+    // matters more than a frequent one that costs $5.
+    const topMistakes = Array.from(mistakeCount.entries())
+      .filter(([, v]) => v.totalPnL < 0)
+      .sort((a, b) => a[1].totalPnL - b[1].totalPnL)
+      .slice(0, 3)
+      .map(([name, v]) => ({
+        name,
+        count: v.count,
+        totalPnL: v.totalPnL,
+        avgPnL: v.totalPnL / v.count,
+      }))
 
     // Emotion tags sorted by count, filter out neutral ones
     const negativeEmotions = ['fomo', 'revenge', 'greedy', 'fearful', 'bored', 'anxious']
@@ -91,8 +117,8 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
       .slice(0, 3)
       .map(([tag, data]) => ({ tag, count: data.count, totalPnL: data.totalPnL }))
 
-    return { disciplineScore: avgDiscipline, topMistake: topM, emotionTags: emotionEntries, hasData: true }
-  }, [trades, journalMap, tradeComments])
+    return { disciplineScore: avgDiscipline, topMistakes, emotionTags: emotionEntries, hasData: true }
+  }, [trades, journalMap, tradeComments, tagsByJournalId, mistakeLabelById])
 
   return (
     <Card>
@@ -124,16 +150,22 @@ export function MistakesSummary({ trades, journalMap, tradeComments }: MistakesS
               </div>
             )}
 
-            {topMistake && (
+            {topMistakes.length > 0 && (
               <div>
-                <p className="text-xs font-medium">{topMistake.name}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {topMistake.count} time{topMistake.count !== 1 ? 's' : ''} &middot; avg{' '}
-                  <span className={topMistake.avgPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
-                    {topMistake.avgPnL >= 0 ? '+' : ''}{formatValue(topMistake.avgPnL)}
-                  </span>
-                  /trade
-                </p>
+                <p className="text-[10px] text-muted-foreground">Costliest mistakes</p>
+                <div className="mt-0.5 space-y-1">
+                  {topMistakes.map((m) => (
+                    <div key={m.name} className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-xs" title={m.name}>
+                        {m.name}
+                      </span>
+                      <span className="shrink-0 font-mono text-[10px] tabular-nums text-red-500">
+                        {formatValue(m.totalPnL)}
+                        <span className="ml-1 text-muted-foreground">&times;{m.count}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

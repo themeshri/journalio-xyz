@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef, memo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef, memo } from 'react';
 import { FlattenedTrade } from '@/lib/tradeCycles';
 import { formatDuration, formatTime, formatValue, formatMarketCap } from '@/lib/formatters';
 import { getCommentsByCategory, type TradeComment } from '@/lib/trade-comments';
 import { computeTradeDiscipline } from '@/lib/discipline';
 import { DisciplineMeter } from '@/components/overview/DisciplineMeter';
 import { type Strategy, type StrategyRule } from '@/lib/strategies';
-import { useWallet } from '@/lib/wallet-context';
+import { useWallet, useMetadata } from '@/lib/wallet-context';
+import { getTagsByKind } from '@/lib/tags';
+import { computeRMultiple } from '@/lib/analytics/r-multiple';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -121,6 +123,7 @@ const JournalModal = memo(function JournalModal({
     return [raw]; // legacy single image
   });
   const { strategies, tradeComments } = useWallet();
+  const { tags } = useMetadata();
   const [strategyId, setStrategyId] = useState<string | null>(initialData?.strategyId ?? null);
   const [ruleResults, setRuleResults] = useState<TradeRuleResult[]>(initialData?.ruleResults ?? []);
   const [entryCommentId, setEntryCommentId] = useState<string | null>(initialData?.entryCommentId ?? null);
@@ -129,7 +132,23 @@ const JournalModal = memo(function JournalModal({
   const [emotionTag, setEmotionTag] = useState<string | null>(initialData?.emotionTag ?? null);
   const [stopLoss, setStopLoss] = useState<number | null>(initialData?.stopLoss ?? null);
   const [takeProfit, setTakeProfit] = useState<number | null>(initialData?.takeProfit ?? null);
+  const [tagIds, setTagIds] = useState<string[]>(initialData?.tagIds ?? []);
+  const [tradeRating, setTradeRating] = useState<number>(initialData?.tradeRating ?? 0);
+  const [reviewed, setReviewed] = useState<boolean>(initialData?.reviewed ?? false);
   const [saving, setSaving] = useState(false);
+
+  // R-multiple is derived, never typed in — it only exists once a stop is set.
+  const rMultiple = useMemo(
+    () => computeRMultiple(trade, { stopLoss }),
+    [trade, stopLoss]
+  );
+
+  const mistakeTags = useMemo(() => getTagsByKind(tags, 'mistake'), [tags]);
+  const customTags = useMemo(() => getTagsByKind(tags, 'custom'), [tags]);
+
+  const toggleTag = useCallback((id: string) => {
+    setTagIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+  }, []);
 
   // Quick mode: hide the heavier fields (strategy/rules, comments, exit plan,
   // SL/TP, attachments) by default so journaling is fast. Auto-expand when the
@@ -192,8 +211,12 @@ const JournalModal = memo(function JournalModal({
     emotionTag,
     stopLoss,
     takeProfit,
+    tagIds,
+    tradeRating: tradeRating > 0 ? tradeRating : null,
+    reviewed,
+    rMultiple,
     journaledAt: initialData?.journaledAt || new Date().toISOString(),
-  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachments, entryCommentId, exitCommentId, managementCommentId, emotionTag, stopLoss, takeProfit, initialData?.journaledAt]);
+  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachments, entryCommentId, exitCommentId, managementCommentId, emotionTag, stopLoss, takeProfit, tagIds, tradeRating, reviewed, rMultiple, initialData?.journaledAt]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -567,29 +590,97 @@ const JournalModal = memo(function JournalModal({
                 </div>
               </div>
 
-              {/* Mistakes */}
+              {/* Mistakes — a distinct tag namespace, so "what is costing me
+                  money" is a query rather than a text search (docs §2). */}
               <div>
                 <Label className="text-xs mb-1.5">Mistakes</Label>
-                <div className="grid grid-cols-2 gap-1.5 mt-1">
-                  {mistakeOptions.map((mistake) => (
-                    <label
-                      key={mistake}
-                      className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-md border cursor-pointer transition-colors ${
-                        sellMistakes.includes(mistake)
-                          ? 'border-primary bg-primary/5 text-foreground'
-                          : 'border-border text-muted-foreground hover:bg-muted/50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={sellMistakes.includes(mistake)}
-                        onChange={() => toggleMistake(mistake)}
-                        className="sr-only"
-                      />
-                      {mistake}
-                    </label>
-                  ))}
+                {mistakeTags.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    No mistake tags yet — they are created automatically the first time
+                    you open the journal.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1.5 mt-1">
+                    {mistakeTags.map((tag) => (
+                      <label
+                        key={tag.id}
+                        className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-md border cursor-pointer transition-colors ${
+                          tagIds.includes(tag.id)
+                            ? 'border-red-500/50 bg-red-500/5 text-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={tagIds.includes(tag.id)}
+                          onChange={() => toggleTag(tag.id)}
+                          className="sr-only"
+                        />
+                        {tag.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Custom tags — the second namespace, visually distinct */}
+              {customTags.length > 0 && (
+                <div>
+                  <Label className="text-xs mb-1.5">Tags</Label>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {customTags.map((tag) => (
+                      <label
+                        key={tag.id}
+                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border cursor-pointer transition-colors ${
+                          tagIds.includes(tag.id)
+                            ? 'border-primary bg-primary/10 text-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={tagIds.includes(tag.id)}
+                          onChange={() => toggleTag(tag.id)}
+                          className="sr-only"
+                        />
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                        {tag.label}
+                      </label>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              {/* Grade + review state */}
+              <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+                <div>
+                  <Label className="text-xs mb-1.5">Trade grade</Label>
+                  {/* 1-5 subjective self-grade, per docs §2 (`tradeRating`). */}
+                  <RatingScale value={tradeRating} onChange={setTradeRating} max={5} size="sm" />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1.5">Reviewed</Label>
+                  <YesNoToggle
+                    value={reviewed}
+                    onChange={(v) => setReviewed(v === true)}
+                  />
+                </div>
+                {rMultiple !== null && (
+                  <div>
+                    <Label className="text-xs mb-1.5">R-multiple</Label>
+                    <p
+                      className={`font-mono text-sm tabular-nums ${
+                        rMultiple >= 0 ? 'text-emerald-500' : 'text-red-500'
+                      }`}
+                      title="Profit or loss in units of the risk implied by your stop loss"
+                    >
+                      {rMultiple >= 0 ? '+' : ''}{rMultiple.toFixed(2)}R
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Management Comment */}
