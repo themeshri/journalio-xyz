@@ -45,7 +45,11 @@ export default function DashboardLayout({
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <DashboardProviders>
-        <SidebarProvider>
+        {/* --sidebar-offset reserves the rail's width (w-14 = 3.5rem) so the
+            fixed section sidebar sits beside it rather than on top of it. */}
+        <SidebarProvider
+          style={{ '--sidebar-offset': '3.5rem' } as React.CSSProperties}
+        >
           {/* Two-level nav: product rail (outer) + section sidebar (inner). */}
           <div className="hidden md:block">
             <ProductRail />

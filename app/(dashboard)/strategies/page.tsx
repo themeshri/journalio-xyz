@@ -946,7 +946,7 @@ export default function StrategiesPage() {
       {/* ========== GLOBAL RULES SECTION ========== */}
       <Separator className="my-8" />
 
-      <div className="mb-4">
+      <div className="mb-4 scroll-mt-4" id="rules">
         <h2 className="text-lg font-semibold">Global Rules</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
           Trading rules that apply across all strategies. These show up in your pre-session checklist.

@@ -55,8 +55,6 @@ export default function ProgressTrackerPage() {
     todayRuleScore,
     yearlyPreSessions,
     yearlyPostSessions,
-    timezone,
-    tradingStartTime,
   } = useMetadata()
 
   const walletQueryParams = useMemo(
@@ -128,7 +126,7 @@ export default function ProgressTrackerPage() {
               </p>
             </div>
             <Button asChild size="sm">
-              <Link href="/settings#rules">
+              <Link href="/strategies#rules">
                 <Settings className="mr-1.5 h-3.5 w-3.5" />
                 Set up your rules
               </Link>
@@ -144,7 +142,7 @@ export default function ProgressTrackerPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Progress Tracker</h1>
         <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
-          <Link href="/settings#rules">
+          <Link href="/strategies#rules">
             <Settings className="mr-1.5 h-3.5 w-3.5" />
             Edit rules
           </Link>
