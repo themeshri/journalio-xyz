@@ -12,7 +12,9 @@
     "test:watch": "TZ=UTC jest --watch",
     "test:coverage": "TZ=UTC jest --coverage",
     "test:tz": "TZ=Asia/Makassar jest streak trading-day time-filters",
-    "test:all": "npm run test && npm run test:tz"
+    "test:all": "npm run test && npm run test:tz",
+    "backfill:tags": "tsx scripts/backfill-trade-tags.ts",
+    "seed:templates": "tsx scripts/seed-strategy-templates.ts"
   },
   "keywords": [],
   "author": "",
@@ -77,6 +79,7 @@
     "@types/jest": "^30.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "ts-jest": "^29.4.4"
+    "ts-jest": "^29.4.4",
+    "tsx": "^4.23.1"
   }
 }
