@@ -26,7 +26,7 @@ import { type FlattenedTrade } from '@/lib/tradeCycles'
 import { type TradeComment } from '@/lib/trade-comments'
 import { saveJournal } from '@/lib/journals'
 import { useWallet } from '@/lib/wallet-context'
-import { CheckCircle, XCircle, ChevronRight } from 'lucide-react'
+import { CheckCircle, XCircle, ChevronRight, CalendarOff } from 'lucide-react'
 import { type PreSessionData } from '@/lib/pre-sessions'
 import { type PostSessionData } from '@/lib/post-sessions'
 import { journalKey } from '@/lib/journal-utils'
@@ -178,19 +178,95 @@ export function DayDetailModal({
     setJournalTrade(null)
   }
 
+  // Pre/Post-session rows are useful on any day — even one with no trades you
+  // can still prep or recap. Shared between the populated and empty states.
+  const sessionRows = selectedDay && (
+    <div className="space-y-2">
+      {/* Pre-Session */}
+      <div
+        onClick={() => {
+          router.push(`/history?tab=pre-sessions&date=${selectedDay.date}`)
+          onClose()
+        }}
+        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {preSessions.find(p => p.date === selectedDay.date) ? (
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          )}
+          <div>
+            <p className="text-xs font-medium">Pre-Session</p>
+            <p className="text-[10px] text-muted-foreground">
+              {preSessions.find(p => p.date === selectedDay.date)
+                ? 'Completed'
+                : 'Not completed'}
+            </p>
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </div>
+
+      {/* Post-Session */}
+      <div
+        onClick={() => {
+          router.push(`/history?tab=post-sessions&date=${selectedDay.date}`)
+          onClose()
+        }}
+        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {postSessions.find(p => p.date === selectedDay.date) ? (
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+          ) : (
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          )}
+          <div>
+            <p className="text-xs font-medium">Post-Session</p>
+            <p className="text-[10px] text-muted-foreground">
+              {postSessions.find(p => p.date === selectedDay.date)
+                ? `Rating: ${postSessions.find(p => p.date === selectedDay.date)?.rating}/10`
+                : 'Not completed'}
+            </p>
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </div>
+    </div>
+  )
+
   return (
     <>
       {/* Day Detail Dialog */}
       <Dialog open={!!selectedDay} onOpenChange={(open) => { if (!open) onClose() }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          {selectedDay && (
+            <DialogHeader>
+              <DialogTitle className="text-base">
+                {new Date(selectedDay.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              </DialogTitle>
+            </DialogHeader>
+          )}
+
+          {/* Empty state — day with no trades. Named, not blank (docs §5). */}
+          {selectedDay && !dayDetail && (
+            <>
+              <div className="flex flex-col items-center text-center py-6">
+                <CalendarOff className="h-8 w-8 text-muted-foreground/60 mb-3" />
+                <p className="text-sm font-medium">No trades on this day</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+                  Nothing was traded yet. You can still review your session
+                  checklist below, or come back after the day&apos;s trades sync.
+                </p>
+              </div>
+              <Separator className="my-1" />
+              {sessionRows}
+            </>
+          )}
+
           {selectedDay && dayDetail && (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-base">
-                  {new Date(selectedDay.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                </DialogTitle>
-              </DialogHeader>
-
               {/* Day Stats */}
               <div className="grid grid-cols-3 gap-3 mt-2">
                 <div className="rounded-lg border p-3 text-center">
@@ -277,59 +353,7 @@ export function DayDetailModal({
 
               {/* Pre-Session and Post-Session */}
               <Separator className="my-3" />
-              <div className="space-y-2">
-                {/* Pre-Session */}
-                <div 
-                  onClick={() => {
-                    router.push(`/history?tab=pre-sessions&date=${selectedDay.date}`)
-                    onClose()
-                  }}
-                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    {preSessions.find(p => p.date === selectedDay.date) ? (
-                      <CheckCircle className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <div>
-                      <p className="text-xs font-medium">Pre-Session</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {preSessions.find(p => p.date === selectedDay.date) 
-                          ? 'Completed' 
-                          : 'Not completed'}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-
-                {/* Post-Session */}
-                <div 
-                  onClick={() => {
-                    router.push(`/history?tab=post-sessions&date=${selectedDay.date}`)
-                    onClose()
-                  }}
-                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    {postSessions.find(p => p.date === selectedDay.date) ? (
-                      <CheckCircle className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <div>
-                      <p className="text-xs font-medium">Post-Session</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {postSessions.find(p => p.date === selectedDay.date) 
-                          ? `Rating: ${postSessions.find(p => p.date === selectedDay.date)?.rating}/10` 
-                          : 'Not completed'}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
+              {sessionRows}
 
               {/* Trades Table */}
               <Separator className="my-3" />
