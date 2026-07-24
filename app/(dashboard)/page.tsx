@@ -6,7 +6,7 @@ import type { FlattenedTrade } from '@/lib/tradeCycles'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import { KPICards } from '@/components/overview/KPICards'
 import { RecentCycles } from '@/components/overview/RecentCycles'
-import { SessionHero, SessionPills, getAutoTab, type Tab } from '@/components/overview/SessionHero'
+import { SessionHero, getAutoTab, type Tab } from '@/components/overview/SessionHero'
 import { ActivityCalendar } from '@/components/overview/ActivityCalendar'
 import { Evaluation } from '@/components/overview/Evaluation'
 import { StreakCard } from '@/components/overview/StreakCard'
@@ -15,7 +15,6 @@ import { DisciplineMeter } from '@/components/overview/DisciplineMeter'
 import { InsightsCard } from '@/components/overview/InsightsCard'
 import { PerformanceScoreCard } from '@/components/overview/PerformanceScoreCard'
 import { Card, CardContent } from '@/components/ui/card'
-import { TimeRangeFilter } from '@/components/TimeRangeFilter'
 import { ViewMyDayButton } from '@/components/ViewMyDayButton'
 import { filterTradesByRange } from '@/lib/time-filters'
 import { getTradingDay } from '@/lib/trading-day'
@@ -33,7 +32,7 @@ const sectionErrorFallback = (
 
 export default function OverviewPage() {
   const { allTrades, flattenedTrades, isAnyLoading, hasActiveWallets, initialized, walletSlots, activeWallets, journalMap, updateJournalEntry } = useWallet()
-  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timePreset, setTimeFilter, timezone, tradingStartTime, streak, strategies, tradeComments } = useMetadata()
+  const { preSessionDone, postSessionDone, yearlyPreSessions, yearlyPostSessions, timeRange, timezone, tradingStartTime, streak, strategies, tradeComments } = useMetadata()
 
   // Set page title
   useEffect(() => {
@@ -164,16 +163,9 @@ export default function OverviewPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Home</h1>
-        <div className="flex items-center gap-3">
-          <SessionPills
-            selectedTab={sessionTab}
-            onTabChange={setSessionTab}
-            preSessionDone={preSessionDone}
-            postSessionDone={postSessionDone}
-          />
-          <ViewMyDayButton />
-          <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
-        </div>
+        {/* Date range and wallet filters now live in the global header toolbar.
+            The Pre/Active/Post session tabs moved onto the SessionHero card. */}
+        <ViewMyDayButton />
       </div>
 
       {/* Cold-start checklist — self-hides once all setup steps are done */}
@@ -196,6 +188,7 @@ export default function OverviewPage() {
           journalMap={journalMap}
           onJournalClick={handleJournalClick}
           selectedTab={sessionTab}
+          onTabChange={setSessionTab}
           timezone={timezone}
           tradingStartTime={tradingStartTime}
         />
