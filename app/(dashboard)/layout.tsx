@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { AccountDropdown } from '@/components/AccountDropdown'
 import { GlobalFilterBar } from '@/components/GlobalFilterBar'
 import { WalletFilterChip } from '@/components/WalletFilterChip'
+import { DateRangeChip } from '@/components/DateRangeChip'
 import { SyncButton } from '@/components/SyncButton'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 
@@ -59,8 +60,11 @@ export default function DashboardLayout({
           <SidebarInset>
             <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
               <SidebarTrigger className="md:hidden" />
-              <div className="hidden md:flex md:items-center md:gap-1">
+              <div className="hidden md:flex md:items-center md:gap-1 md:rounded-md md:border md:bg-muted/30 md:px-1 md:py-0.5">
                 <GlobalFilterBar />
+                <div className="h-4 w-px bg-border" />
+                <DateRangeChip />
+                <div className="h-4 w-px bg-border" />
                 <WalletFilterChip />
               </div>
               <div className="ml-auto flex items-center gap-2">

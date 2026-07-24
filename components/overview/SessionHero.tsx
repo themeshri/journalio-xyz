@@ -18,6 +18,11 @@ interface SessionHeroProps {
   journalMap: Record<string, JournalRecord>
   onJournalClick: () => void
   selectedTab: Tab
+  /**
+   * When provided, the Pre/Active/Post tab switcher renders on the card itself
+   * (moved off the page header). The page still owns `selectedTab` state.
+   */
+  onTabChange?: (tab: Tab) => void
   timezone?: string
   tradingStartTime?: string
 }
@@ -111,6 +116,7 @@ export function SessionHero({
   journalMap,
   onJournalClick,
   selectedTab,
+  onTabChange,
   timezone = 'UTC',
   tradingStartTime = '09:00',
 }: SessionHeroProps) {
@@ -184,6 +190,16 @@ export function SessionHero({
 
   return (
     <div className={`rounded-xl border ${gradients[selectedTab]} p-5 transition-all`}>
+      {onTabChange && (
+        <div className="mb-4 flex">
+          <SessionPills
+            selectedTab={selectedTab}
+            onTabChange={onTabChange}
+            preSessionDone={preSessionDone}
+            postSessionDone={postSessionDone}
+          />
+        </div>
+      )}
       {selectedTab === 'pre' && (
         <PreSessionPanel preSessionDone={preSessionDone} today={getTradingDay(timezone, tradingStartTime)} />
       )}
