@@ -95,7 +95,20 @@ export const RecentCycles = forwardRef<RecentCyclesHandle, RecentCyclesProps>(
           </CardHeader>
           <CardContent className="pb-3">
             {recentCompleted.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No completed trades yet.</p>
+              // Named empty state (docs §5): say what is missing and where to
+              // go next, rather than leaving a blank panel.
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  No completed trades yet. A cycle completes when you sell your
+                  whole position.
+                </p>
+                <Link
+                  href="/wallet-management"
+                  className="mt-0.5 inline-block text-[10px] text-emerald-500 hover:underline"
+                >
+                  Sync a wallet &rarr;
+                </Link>
+              </div>
             ) : (
               <Table>
                 <TableHeader>

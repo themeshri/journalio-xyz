@@ -19,7 +19,14 @@ import type {
   CompletionBucket,
   MissedTradeAnalytics,
   HesitationCostAnalysis,
+  TagCost,
+  RuleStats,
+  AdherenceRecord,
+  DrawdownResult,
+  WhatIfStats,
 } from '@/lib/analytics'
+import type { TypedRule } from '@/lib/rules-engine'
+import type { TradeFilterSet } from '@/lib/trade-filters'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -113,6 +120,79 @@ export function useStrategyAnalytics(walletQueryParams: string | null, bodyJson:
   return useSWR<StrategyData>(
     walletQueryParams && bodyJson ? [`/api/analytics/strategy?${walletQueryParams}`, bodyJson] : null,
     postFetcher,
+    SWR_OPTIONS
+  )
+}
+
+// ─── TradeZella refactor: rules, tags, drawdown, compare ──────
+
+interface AdherenceData {
+  rules: (TypedRule & { text: string })[]
+  adherence: AdherenceRecord[]
+  stats: RuleStats[]
+  periodScore: number
+  today: string
+}
+
+export function useRuleAdherence(walletQueryParams: string | null, from?: string, to?: string) {
+  const range = [from ? `from=${from}` : '', to ? `to=${to}` : ''].filter(Boolean).join('&')
+  return useSWR<AdherenceData>(
+    walletQueryParams
+      ? `/api/rules/adherence?${walletQueryParams}${range ? `&${range}` : ''}`
+      : null,
+    fetcher,
+    SWR_OPTIONS
+  )
+}
+
+interface TagAnalyticsData {
+  tags: TagCost[]
+  mistakes: TagCost[]
+  custom: TagCost[]
+  topMistakes: TagCost[]
+}
+
+export function useTagAnalytics(walletQueryParams: string | null) {
+  return useSWR<TagAnalyticsData>(
+    walletQueryParams ? `/api/analytics/tags?${walletQueryParams}` : null,
+    fetcher,
+    SWR_OPTIONS
+  )
+}
+
+interface DrawdownData extends Partial<DrawdownResult> {
+  hasInitialBalance: boolean
+  walletsMissingBalance: string[]
+}
+
+export function useDrawdownAnalytics(walletQueryParams: string | null) {
+  return useSWR<DrawdownData>(
+    walletQueryParams ? `/api/analytics/drawdown?${walletQueryParams}` : null,
+    fetcher,
+    SWR_OPTIONS
+  )
+}
+
+interface CompareCohort {
+  filters: TradeFilterSet
+  stats: WhatIfStats
+  cumulativePL: CumulativePLPoint[]
+}
+
+interface CompareData {
+  a: CompareCohort
+  b: CompareCohort
+  delta: WhatIfStats
+  totalTrades: number
+}
+
+/** @param filterQuery already-encoded "a.*"/"b.*" params from the URL. */
+export function useCompareAnalytics(walletQueryParams: string | null, filterQuery: string) {
+  return useSWR<CompareData>(
+    walletQueryParams
+      ? `/api/analytics/compare?${walletQueryParams}${filterQuery ? `&${filterQuery}` : ''}`
+      : null,
+    fetcher,
     SWR_OPTIONS
   )
 }

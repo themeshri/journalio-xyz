@@ -21,7 +21,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const includeArchived = searchParams.get('includeArchived') === 'true'
 
-    const where: Record<string, unknown> = { userId }
+    // ?templates=true returns the shared, read-only template library rather
+    // than this user's own strategies. Templates are owned by a system user.
+    if (searchParams.get('templates') === 'true') {
+      const templates = await prisma.strategy.findMany({
+        where: { isTemplate: true },
+        orderBy: { name: 'asc' },
+      })
+      return NextResponse.json(templates.map(parseStrategy))
+    }
+
+    const where: Record<string, unknown> = { userId, isTemplate: false }
     if (!includeArchived) {
       where.isArchived = false
     }

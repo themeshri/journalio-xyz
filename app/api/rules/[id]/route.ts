@@ -28,6 +28,9 @@ export async function PATCH(
       where: { id },
       data: {
         ...(v.text !== undefined ? { text: v.text } : {}),
+        ...(v.type !== undefined ? { type: v.type } : {}),
+        ...(v.condition !== undefined ? { condition: v.condition } : {}),
+        ...(v.isActive !== undefined ? { isActive: v.isActive } : {}),
         ...(v.sortOrder !== undefined ? { sortOrder: v.sortOrder } : {}),
       },
     })

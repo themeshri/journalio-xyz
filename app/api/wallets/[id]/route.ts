@@ -48,7 +48,7 @@ export async function PATCH(
     const body = await request.json()
     const validation = validateBody(updateWalletSchema, body)
     if ('error' in validation) return validation.error
-    const { nickname, isDefault, dex } = validation.data
+    const { nickname, isDefault, dex, initialBalance } = validation.data
 
     const wallet = await prisma.wallet.findUnique({
       where: { id },
@@ -77,6 +77,7 @@ export async function PATCH(
           ...(nickname !== undefined && { nickname }),
           ...(isDefault !== undefined && { isDefault }),
           ...(dex !== undefined && { dex }),
+          ...(initialBalance !== undefined && { initialBalance }),
         },
       })
     })

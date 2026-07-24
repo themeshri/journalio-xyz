@@ -37,8 +37,14 @@ interface DayDetailModalProps {
   trades: FlattenedTrade[]
   journalMap: Record<string, any>
   tradeComments: TradeComment[]
-  preSessions?: PreSessionData[]
-  postSessions?: PostSessionData[]
+  /**
+   * Only `date` (and `rating`, when present) are read — this component just
+   * reports whether a session exists for the day. Typed structurally rather
+   * than as the full Pre/PostSessionData so callers holding the dashboard's
+   * date-only yearly summaries can pass them directly.
+   */
+  preSessions?: Pick<PreSessionData, 'date'>[]
+  postSessions?: (Pick<PostSessionData, 'date'> & { rating?: number })[]
 }
 
 function ratingLabel(rating: string | undefined) {

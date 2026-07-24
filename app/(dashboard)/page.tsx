@@ -16,6 +16,7 @@ import { InsightsCard } from '@/components/overview/InsightsCard'
 import { PerformanceScoreCard } from '@/components/overview/PerformanceScoreCard'
 import { Card, CardContent } from '@/components/ui/card'
 import { TimeRangeFilter } from '@/components/TimeRangeFilter'
+import { ViewMyDayButton } from '@/components/ViewMyDayButton'
 import { filterTradesByRange } from '@/lib/time-filters'
 import { getTradingDay } from '@/lib/trading-day'
 import { computeRollingDiscipline } from '@/lib/discipline'
@@ -170,6 +171,7 @@ export default function OverviewPage() {
             preSessionDone={preSessionDone}
             postSessionDone={postSessionDone}
           />
+          <ViewMyDayButton />
           <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
         </div>
       </div>

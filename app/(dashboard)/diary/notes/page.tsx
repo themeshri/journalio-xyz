@@ -1,17 +1,36 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Plus, Star, Trash2, X } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { type NoteData, loadNotes, saveNote, deleteNote } from '@/lib/notes'
+import {
+  type NoteData,
+  type NoteFolder,
+  NOTE_FOLDERS,
+  isTradeLinked,
+  loadNotes,
+  saveNote,
+  updateNote,
+  deleteNote,
+} from '@/lib/notes'
+import { useWallet } from '@/lib/wallet-context'
+import { formatValue } from '@/lib/formatters'
 
 export default function NotesPage() {
   const [notes, setNotes] = useState<NoteData[]>([])
@@ -22,7 +41,9 @@ export default function NotesPage() {
   const [tagInput, setTagInput] = useState('')
   const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
+  const [activeFolder, setActiveFolder] = useState<string>('all')
   const lastSavedNote = useRef<NoteData | null>(null)
+  const { flattenedTrades } = useWallet()
 
   useEffect(() => {
     loadNotes().then((data) => {
@@ -92,12 +113,63 @@ export default function NotesPage() {
     setIsDirty(true)
   }, [activeNote])
 
-  const filteredNotes = searchQuery
-    ? notes.filter((n) =>
-        n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        n.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
+  const toggleFavorite = useCallback(
+    async (note: NoteData, e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (!note.id) return
+      const next = !note.favorite
+      // Optimistic — a star that lags on click feels broken.
+      setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, favorite: next } : n)))
+      setActiveNote((prev): NoteData | null =>
+        prev && prev.id === note.id ? { ...prev, favorite: next } : prev
       )
-    : notes
+      const saved = await updateNote(note.id, { favorite: next })
+      if (!saved) {
+        setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, favorite: !next } : n)))
+        toast.error('Failed to update favorite')
+      }
+    },
+    []
+  )
+
+  const counts = useMemo(() => {
+    const map: Record<string, number> = { all: notes.length, favorites: 0 }
+    for (const f of NOTE_FOLDERS) map[f.id] = 0
+    for (const n of notes) {
+      if (n.favorite) map.favorites++
+      const folder = n.folder ?? 'my-notes'
+      map[folder] = (map[folder] ?? 0) + 1
+    }
+    return map
+  }, [notes])
+
+  const filteredNotes = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return notes.filter((n) => {
+      if (activeFolder === 'favorites' && !n.favorite) return false
+      if (activeFolder !== 'all' && activeFolder !== 'favorites') {
+        if ((n.folder ?? 'my-notes') !== activeFolder) return false
+      }
+      if (!q) return true
+      return (
+        n.title.toLowerCase().includes(q) ||
+        n.tags.some((t) => t.toLowerCase().includes(q))
+      )
+    })
+  }, [notes, searchQuery, activeFolder])
+
+  /** Stats for the header shown on a trade-linked note (docs §2). */
+  const linkedTrade = useMemo(() => {
+    if (!activeNote || !isTradeLinked(activeNote)) return null
+    return (
+      flattenedTrades.find(
+        (t) =>
+          t.walletAddress === activeNote.linkedWalletAddress &&
+          t.tokenMint === activeNote.linkedTokenMint &&
+          t.tradeNumber === activeNote.linkedTradeNumber
+      ) ?? null
+    )
+  }, [activeNote, flattenedTrades])
 
   if (loading) {
     return (
@@ -128,8 +200,33 @@ export default function NotesPage() {
           placeholder="Search notes..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="mb-3"
+          className="mb-2"
         />
+
+        {/* Folders — counts per folder, as in docs §3.4 */}
+        <div className="mb-3 flex flex-wrap gap-1">
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'favorites', label: 'Favorites' },
+            ...NOTE_FOLDERS,
+          ].map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setActiveFolder(f.id)}
+              className={`rounded-md px-2 py-1 text-[11px] transition-colors ${
+                activeFolder === f.id
+                  ? 'bg-primary/10 text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/50'
+              }`}
+            >
+              {f.label}
+              <span className="ml-1 font-mono tabular-nums opacity-60">
+                {counts[f.id] ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
 
         <div className="flex-1 overflow-y-auto space-y-1.5">
           {filteredNotes.length === 0 ? (
@@ -167,16 +264,37 @@ export default function NotesPage() {
                         </p>
                       )}
                     </div>
-                    <button
-                      className="text-muted-foreground hover:text-destructive shrink-0 p-0.5"
-                      aria-label={`Delete note ${note.title || 'Untitled'}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (note.id) setDeleteNoteId(note.id)
-                      }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        className={`p-0.5 ${
+                          note.favorite
+                            ? 'text-amber-500'
+                            : 'text-muted-foreground hover:text-amber-500'
+                        }`}
+                        aria-label={
+                          note.favorite
+                            ? `Unfavorite ${note.title || 'Untitled'}`
+                            : `Favorite ${note.title || 'Untitled'}`
+                        }
+                        aria-pressed={!!note.favorite}
+                        onClick={(e) => toggleFavorite(note, e)}
+                      >
+                        <Star
+                          className="h-3.5 w-3.5"
+                          fill={note.favorite ? 'currentColor' : 'none'}
+                        />
+                      </button>
+                      <button
+                        className="text-muted-foreground hover:text-destructive p-0.5"
+                        aria-label={`Delete note ${note.title || 'Untitled'}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (note.id) setDeleteNoteId(note.id)
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   {note.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
@@ -218,10 +336,87 @@ export default function NotesPage() {
                 onChange={(e) => { setActiveNote({ ...activeNote, title: e.target.value }); setIsDirty(true) }}
                 className="text-lg font-medium"
               />
+              <Select
+                value={activeNote.folder ?? 'my-notes'}
+                onValueChange={(v) => {
+                  setActiveNote({ ...activeNote, folder: v as NoteFolder })
+                  setIsDirty(true)
+                }}
+              >
+                <SelectTrigger className="h-8 w-[150px] shrink-0 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NOTE_FOLDERS.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button size="sm" onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving...' : 'Save'}
               </Button>
             </div>
+
+            {/* Trade-linked stat header + backlink (docs §2). Rendered only
+                when the note points at a cycle we can still resolve. */}
+            {isTradeLinked(activeNote) && (
+              <Card className="mb-3">
+                <CardContent className="p-3">
+                  {linkedTrade ? (
+                    <>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          {linkedTrade.token}
+                          <span className="ml-1.5 text-xs text-muted-foreground">
+                            #{linkedTrade.tradeNumber}
+                          </span>
+                        </span>
+                        <Link
+                          href="/trade-journal"
+                          className="text-[11px] text-emerald-500 hover:underline"
+                        >
+                          View trade details &rarr;
+                        </Link>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5">
+                        {[
+                          {
+                            label: 'Net P&L',
+                            value: `${linkedTrade.profitLoss >= 0 ? '+' : ''}${formatValue(linkedTrade.profitLoss)}`,
+                            tone:
+                              linkedTrade.profitLoss >= 0 ? 'text-emerald-500' : 'text-red-500',
+                          },
+                          { label: 'Bought', value: formatValue(linkedTrade.totalBuyValue) },
+                          { label: 'Sold', value: formatValue(linkedTrade.totalSellValue) },
+                          {
+                            label: 'Trades',
+                            value: String(linkedTrade.buys.length + linkedTrade.sells.length),
+                          },
+                        ].map((s) => (
+                          <div key={s.label}>
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              {s.label}
+                            </p>
+                            <p
+                              className={`font-mono text-xs tabular-nums ${s.tone ?? ''}`}
+                            >
+                              {s.value}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    // The cycle is not in the current wallet selection.
+                    <p className="text-[11px] text-muted-foreground">
+                      Linked to a trade that isn&apos;t in the active wallet selection.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Tags */}
             <div className="flex flex-wrap items-center gap-1.5 mb-3">

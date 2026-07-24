@@ -9,8 +9,11 @@ function parseJournal(j: any) {
     ...j,
     ruleResults: JSON.parse(j.ruleResultsJson || '[]'),
     sellMistakes: JSON.parse(j.sellMistakesJson || '[]'),
+    // Flatten the join rows to plain ids when they were included.
+    tagIds: Array.isArray(j.tags) ? j.tags.map((t: { tagId: string }) => t.tagId) : undefined,
     ruleResultsJson: undefined,
     sellMistakesJson: undefined,
+    tags: undefined,
   }
 }
 
@@ -31,6 +34,7 @@ export async function GET(request: NextRequest) {
     const journals = await prisma.journalEntry.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      include: { tags: { select: { tagId: true } } },
     })
 
     return NextResponse.json(journals.map(parseJournal))
@@ -74,6 +78,9 @@ export async function POST(request: NextRequest) {
       tradeHigh: v.tradeHigh ?? null,
       tradeLow: v.tradeLow ?? null,
       journaledAt: v.journaledAt || new Date().toISOString(),
+      rMultiple: v.rMultiple ?? null,
+      tradeRating: v.tradeRating ?? null,
+      reviewed: v.reviewed ?? false,
     }
 
     const journal = await prisma.journalEntry.upsert({
@@ -94,6 +101,27 @@ export async function POST(request: NextRequest) {
       },
       update: data,
     })
+
+    // Sync tag links when the client sends them. Omitting `tagIds` entirely
+    // leaves existing links untouched, so older clients keep working.
+    if (v.tagIds !== undefined) {
+      // Only accept tags this user actually owns.
+      const owned = await prisma.tradeTag.findMany({
+        where: { userId, id: { in: v.tagIds } },
+        select: { id: true },
+      })
+      const ownedIds = owned.map((t) => t.id)
+
+      await prisma.journalEntryTag.deleteMany({
+        where: { journalEntryId: journal.id, tagId: { notIn: ownedIds } },
+      })
+      if (ownedIds.length > 0) {
+        await prisma.journalEntryTag.createMany({
+          data: ownedIds.map((tagId) => ({ journalEntryId: journal.id, tagId })),
+          skipDuplicates: true,
+        })
+      }
+    }
 
     return NextResponse.json(parseJournal(journal), { status: 201 })
   } catch (error) {

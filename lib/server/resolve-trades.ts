@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { calculateTradeCycles, flattenTradeCycles, type FlattenedTrade, type TradeInput } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { type Chain } from '@/lib/chains'
+import { parseTradeFilters, applyTradeFilters } from '@/lib/trade-filters'
 
 export interface WalletParams {
   addresses: string[]
@@ -160,16 +161,17 @@ export async function resolveFlattenedTrades(params: WalletParams): Promise<Flat
   }
 }
 
-/** Apply optional startDate/endDate filters from search params */
+/**
+ * Apply optional startDate/endDate filters from search params.
+ *
+ * Thin wrapper over `applyTradeFilters` (lib/trade-filters.ts), which
+ * generalises this to the full filter vocabulary for the Compare view. Kept as
+ * its own export so the six /api/analytics/* routes are untouched — this reads
+ * ONLY the date keys, exactly as it always did.
+ */
 export function applyDateFilter(trades: FlattenedTrade[], searchParams: URLSearchParams): FlattenedTrade[] {
-  const startDate = searchParams.get('startDate')
-  const endDate = searchParams.get('endDate')
-  if (!startDate && !endDate) return trades
-  return trades.filter((t) => {
-    if (startDate && t.startDate < Number(startDate)) return false
-    if (endDate && t.startDate > Number(endDate)) return false
-    return true
-  })
+  const { startDate, endDate } = parseTradeFilters(searchParams)
+  return applyTradeFilters(trades, { startDate, endDate })
 }
 
 /**

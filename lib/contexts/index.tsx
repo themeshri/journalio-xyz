@@ -19,6 +19,15 @@ import { type TimePreset, type TimeRange } from '../time-filters'
 import { type MissedTradeEntry } from '../analytics'
 import { getTradingDay } from '../trading-day'
 import { computeStreakFromDates } from '../streaks'
+import { type TypedRule } from '../rules-engine'
+import { type AdherenceRecord, type RuleStats } from '../analytics/rule-stats'
+import { loadTags, type TradeTag } from '../tags'
+import { safeLocalStorage } from '../local-storage'
+import {
+  useWalletUrlSync,
+  sameWalletSet,
+  type WalletRef,
+} from '../hooks/use-wallet-url-sync'
 
 import {
   WalletIdentityContext,
@@ -60,16 +69,41 @@ async function fetchSavedWalletsFromAPI(): Promise<SavedWallet[]> {
 
 function loadActiveWalletKeys(): { address: string; chain: Chain }[] | null {
   if (typeof window === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(ACTIVE_WALLETS_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+  // null means "never chosen" — the caller then defaults to all wallets.
+  return safeLocalStorage.getItem<{ address: string; chain: Chain }[] | null>(
+    ACTIVE_WALLETS_KEY,
+    null
+  )
 }
 
 function saveActiveWalletKeys(keys: { address: string; chain: Chain }[]) {
-  localStorage.setItem(ACTIVE_WALLETS_KEY, JSON.stringify(keys))
+  // Must go through safeLocalStorage — it handles QuotaExceededError and
+  // surfaces a toast rather than throwing (CLAUDE.md § Error Handling).
+  safeLocalStorage.setItem(ACTIVE_WALLETS_KEY, keys)
+}
+
+/**
+ * Resolve which of the saved wallets are active.
+ *
+ * Precedence (Phase C11): the URL wins when it carries a `?wallets=` param, so
+ * a shared link shows the sender's selection. Otherwise fall back to the stored
+ * selection, and finally to "all wallets" for a first-ever visit.
+ *
+ * Refs naming a wallet the user does not have are ignored rather than treated
+ * as an empty selection — a stale link should degrade, not blank the dashboard.
+ */
+function resolveActiveWallets(
+  saved: SavedWallet[],
+  urlWallets: WalletRef[] | null
+): SavedWallet[] {
+  const refs = urlWallets ?? loadActiveWalletKeys()
+  if (refs === null) return saved
+  const matched = saved.filter((w) =>
+    refs.some((k) => k.address === w.address && k.chain === w.chain)
+  )
+  // A URL that matched nothing at all is more likely wrong than intentional.
+  if (matched.length === 0 && refs.length > 0 && urlWallets !== null) return saved
+  return matched
 }
 
 async function fetchTradesForWallet(
@@ -102,6 +136,13 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [activeWallets, setActiveWallets] = useState<SavedWallet[]>([])
   const [initialized, setInitialized] = useState(false)
 
+  // Wallet selection lives in the URL (Phase C11) so analytics views are
+  // shareable. Held in a ref as well because the init effect runs once and
+  // must not re-run on every navigation.
+  const { urlWallets, setUrlWallets } = useWalletUrlSync()
+  const urlWalletsRef = useRef<WalletRef[] | null>(urlWallets)
+  urlWalletsRef.current = urlWallets
+
   // ─── Trades ───────────────────────────────────────────
   const [walletSlots, setWalletSlots] = useState<Record<WalletKey, WalletSlot>>({})
 
@@ -115,6 +156,11 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [missedTrades, setMissedTrades] = useState<MissedTradeEntry[]>([])
   const [yearlyPreSessions, setYearlyPreSessions] = useState<{ date: string; savedAt?: string }[]>([])
   const [yearlyPostSessions, setYearlyPostSessions] = useState<{ date: string }[]>([])
+  const [rules, setRules] = useState<TypedRule[]>([])
+  const [adherence, setAdherence] = useState<AdherenceRecord[]>([])
+  const [ruleStats, setRuleStats] = useState<RuleStats[]>([])
+  const [tags, setTags] = useState<TradeTag[]>([])
+  const [tagsByJournalId, setTagsByJournalId] = useState<Record<string, string[]>>({})
   const [timeRange, setTimeRange] = useState<TimeRange>({ startDate: null, endDate: null })
   const [timePreset, setTimePreset] = useState<TimePreset>('all')
   const journalsRef = useRef<JournalRecord[]>([])
@@ -223,10 +269,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
           // Fallback: fetch wallets separately, then individual trades
           const saved = await fetchSavedWalletsFromAPI()
           setSavedWallets(saved)
-          const activeKeys = loadActiveWalletKeys()
-          const active = activeKeys === null ? saved : saved.filter((w) =>
-            activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
-          )
+          const active = resolveActiveWallets(saved, urlWalletsRef.current)
           setActiveWallets(active)
           setInitialized(true)
           if (active.length > 0) {
@@ -247,10 +290,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         setSavedWallets(saved)
 
         // Determine active wallets from localStorage selection
-        const activeKeys = loadActiveWalletKeys()
-        const active = activeKeys === null ? saved : saved.filter((w) =>
-          activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
-        )
+        const active = resolveActiveWallets(saved, urlWalletsRef.current)
         setActiveWallets(active)
         setInitialized(true)
 
@@ -279,6 +319,11 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         if (data.missedTrades) setMissedTrades(data.missedTrades)
         if (data.yearlyPreSessions) setYearlyPreSessions(data.yearlyPreSessions)
         if (data.yearlyPostSessions) setYearlyPostSessions(data.yearlyPostSessions)
+        if (data.rules) setRules(data.rules)
+        if (data.adherence) setAdherence(data.adherence)
+        if (data.ruleStats) setRuleStats(data.ruleStats)
+        if (data.tags) setTags(data.tags)
+        if (data.tagsByJournalId) setTagsByJournalId(data.tagsByJournalId)
 
         if (active.length === 0) return
 
@@ -324,10 +369,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
         console.error('Dashboard fetch failed, falling back to individual fetches:', err)
         const saved = await fetchSavedWalletsFromAPI()
         setSavedWallets(saved)
-        const activeKeys = loadActiveWalletKeys()
-        const active = activeKeys === null ? saved : saved.filter((w) =>
-          activeKeys.some((k) => k.address === w.address && k.chain === w.chain)
-        )
+        const active = resolveActiveWallets(saved, urlWalletsRef.current)
         setActiveWallets(active)
         setInitialized(true)
         if (active.length > 0) {
@@ -359,12 +401,34 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
             return rest
           })
         }
-        saveActiveWalletKeys(next.map((w) => ({ address: w.address, chain: w.chain })))
+        const refs = next.map((w) => ({ address: w.address, chain: w.chain }))
+        saveActiveWalletKeys(refs)
+        // Mirror into the URL so the view stays shareable. Deferred out of the
+        // state updater — router.replace must not run during a React render.
+        queueMicrotask(() => setUrlWallets(refs))
         return next
       })
     },
-    [fetchAndSetTrades, savedWallets]
+    [fetchAndSetTrades, savedWallets, setUrlWallets]
   )
+
+  // Adopt an externally-changed URL: back/forward, or a pasted link. Guarded by
+  // sameWalletSet so our own writes above do not bounce back as a second update.
+  useEffect(() => {
+    if (!initialized || urlWallets === null || savedWallets.length === 0) return
+    const next = resolveActiveWallets(savedWallets, urlWallets)
+    setActiveWallets((prev) => {
+      if (sameWalletSet(prev, next)) return prev
+      const prevKeys = new Set(prev.map((w) => makeWalletKey(w.address, w.chain)))
+      for (const w of next) {
+        if (!prevKeys.has(makeWalletKey(w.address, w.chain))) {
+          fetchAndSetTrades(w.address, w.chain, w.dex, w.nickname, false)
+        }
+      }
+      saveActiveWalletKeys(next.map((w) => ({ address: w.address, chain: w.chain })))
+      return next
+    })
+  }, [urlWallets, savedWallets, initialized, fetchAndSetTrades])
 
   const refreshWallet = useCallback(
     async (address: string, chain: Chain) => {
@@ -442,6 +506,21 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const reloadTradeComments = useCallback(async () => {
     const comments = await loadTradeComments()
     setTradeComments(comments)
+  }, [])
+
+  const reloadRules = useCallback(async () => {
+    try {
+      const res = await fetch('/api/rules')
+      if (!res.ok) return
+      setRules(await res.json())
+    } catch {
+      // Non-fatal: the nav badge simply stays on its previous value.
+    }
+  }, [])
+
+  const reloadTags = useCallback(async () => {
+    const loaded = await loadTags()
+    setTags(loaded)
   }, [])
 
   const reloadJournals = useCallback(async () => {
@@ -619,11 +698,31 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     refreshAll,
   }), [walletSlots, allTrades, flattenedTrades, isAnyLoading, isAnyStale, refreshWallet, refreshAll])
 
+  // Today's followed/total across active rules — the score-first badge.
+  // Derived from adherence rows rather than re-evaluating client-side, so the
+  // nav and the Progress Tracker can never disagree.
+  const todayRuleScore = useMemo(() => {
+    const activeRuleIds = new Set(rules.filter((r) => r.isActive).map((r) => r.id))
+    if (activeRuleIds.size === 0) return null
+    const today = getTradingDay(userTimezone, userTradingStartTime)
+    const todays = adherence.filter((a) => a.date === today && activeRuleIds.has(a.ruleId))
+    if (todays.length === 0) return null
+    return { followed: todays.filter((a) => a.followed).length, total: todays.length }
+  }, [rules, adherence, userTimezone, userTradingStartTime])
+
   const metadataValue = useMemo(() => ({
     tradeComments,
     strategies,
     journalMap,
     streak,
+    rules,
+    adherence,
+    ruleStats,
+    todayRuleScore,
+    tags,
+    tagsByJournalId,
+    reloadRules,
+    reloadTags,
     preSessionDone,
     postSessionDone,
     missedTrades,
@@ -643,7 +742,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
     tradingStartTime: userTradingStartTime,
     onboardingStep,
     setOnboardingStep,
-  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter, userTimezone, userTradingStartTime, onboardingStep, setOnboardingStep])
+  }), [tradeComments, strategies, journalMap, streak, preSessionDone, postSessionDone, missedTrades, yearlyPreSessions, yearlyPostSessions, rules, adherence, ruleStats, todayRuleScore, tags, tagsByJournalId, reloadRules, reloadTags, updateJournalEntry, reloadStrategies, reloadTradeComments, reloadJournals, reloadPreSessionStatus, reloadPostSessionStatus, reloadMissedTrades, timeRange, timePreset, setTimeFilter, userTimezone, userTradingStartTime, onboardingStep, setOnboardingStep])
 
   const balanceValue = useMemo(() => ({
     walletTokens,

@@ -4,14 +4,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
-  Home,
-  BookOpen,
-  BookHeart,
-  Clock,
-  BarChart3,
-  Puzzle,
-  Wallet,
-  Settings as SettingsIcon,
   ChevronRight,
   Menu,
   Moon,
@@ -43,76 +35,26 @@ import { useWallet, useMetadata, makeWalletKey } from '@/lib/wallet-context'
 import { CHAIN_CONFIG, type Chain } from '@/lib/chains'
 import { computeTradeDiscipline, disciplineColor, type DisciplineResult } from '@/lib/discipline'
 import type { JournalData } from '@/components/JournalModal'
-import type { LucideIcon } from 'lucide-react'
+import {
+  PRODUCTS,
+  PRODUCT_SECTIONS,
+  productForPath,
+  type NavItem,
+} from '@/lib/nav-structure'
 
-type NavItem = {
-  label: string
-  href: string
-  icon: LucideIcon
-  children?: { label: string; href: string }[]
-  badge?: 'preSession' | 'discipline'
-  dataTour?: string
-}
-
-const mainNav: NavItem[] = [
-  { label: 'Home', href: '/', icon: Home },
-  { label: 'Journal', href: '/trade-journal', icon: BookOpen, badge: 'discipline', dataTour: 'nav-journal' },
-  {
-    label: 'Session Diary',
-    href: '/diary',
-    icon: BookHeart,
-    badge: 'preSession',
-    children: [
-      { label: 'Pre-Session', href: '/diary/pre-session' },
-      { label: 'Post-Session', href: '/diary/post-session' },
-      { label: 'Missed Trades', href: '/missed-trades' },
-      { label: 'Notes', href: '/diary/notes' },
-    ],
-  },
-  {
-    label: 'Analytics',
-    href: '/chart-lab',
-    icon: BarChart3,
-    children: [
-      { label: 'Overview', href: '/analytics' },
-      { label: 'Time Analysis', href: '/analytics?tab=time' },
-      { label: 'Discipline', href: '/analytics?tab=discipline' },
-      { label: 'Strategy', href: '/analytics?tab=strategy' },
-      { label: 'Missed Trades', href: '/analytics?tab=missed' },
-      { label: 'Behavior', href: '/analytics?tab=behavior' },
-      { label: 'Sessions', href: '/analytics?tab=sessions' },
-      { label: 'Calendar', href: '/chart-lab/calendar' },
-      { label: 'Equity Curve', href: '/chart-lab/equity' },
-      { label: 'Distribution', href: '/chart-lab/distribution' },
-      { label: 'Holding Time', href: '/chart-lab/holding-time' },
-    ],
-  },
-  {
-    label: 'History',
-    href: '/history',
-    icon: Clock,
-    children: [
-      { label: 'Sessions', href: '/history?tab=pre-sessions' },
-      { label: 'Journal', href: '/history?tab=journal' },
-      { label: 'Transactions', href: '/history?tab=transactions' },
-      { label: 'Missed Trades', href: '/history?tab=missed-trades' },
-      { label: 'Attachments', href: '/history?tab=chartbook' },
-    ],
-  },
-]
-
-const managementNav: NavItem[] = [
-  { label: 'Strategies', href: '/strategies', icon: Puzzle },
-  { label: 'Wallets', href: '/wallet-management', icon: Wallet },
-  { label: 'Settings', href: '/settings', icon: SettingsIcon },
-]
 
 export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { state, setOpen, toggleSidebar } = useSidebar()
   const { activeWallets, walletSlots, tradeComments, journalMap } = useWallet()
-  const { preSessionDone } = useMetadata()
+  const { preSessionDone, todayRuleScore } = useMetadata()
+
+  // Section list is driven by the product the current path belongs to — the
+  // inner level of the two-level nav (lib/nav-structure.ts).
+  const productId = productForPath(pathname)
+  const activeProduct = PRODUCTS.find((p) => p.id === productId) ?? PRODUCTS[0]
+  const sections = PRODUCT_SECTIONS[productId]
   const { theme, setTheme } = useTheme()
   const isDark = theme === 'dark'
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
@@ -177,7 +119,23 @@ export function AppSidebar() {
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`
   }
 
-  function renderBadge(badge?: 'preSession' | 'discipline') {
+  function renderBadge(badge?: NavItem['badge']) {
+    if (badge === 'ruleScore') {
+      // Today's rule adherence, e.g. "3/5" — the score-first framing from
+      // docs §5, surfaced in the nav so the target is visible before you click.
+      if (!todayRuleScore || todayRuleScore.total === 0) return null
+      const complete = todayRuleScore.followed === todayRuleScore.total
+      return (
+        <span
+          className={`ml-auto shrink-0 font-mono text-[10px] tabular-nums ${
+            complete ? 'text-emerald-500' : 'text-muted-foreground'
+          }`}
+          title={`${todayRuleScore.followed} of ${todayRuleScore.total} rules followed today`}
+        >
+          {todayRuleScore.followed}/{todayRuleScore.total}
+        </span>
+      )
+    }
     if (badge === 'preSession') {
       return (
         <span
@@ -341,17 +299,13 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarMenu>
-            {mainNav.map(renderNavItem)}
-          </SidebarMenu>
+          {/* Names the active product so the rail selection is legible even
+              when several products share similar section labels. */}
+          <div className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden">
+            {activeProduct.label}
+          </div>
+          <SidebarMenu>{sections.map(renderNavItem)}</SidebarMenu>
         </SidebarGroup>
-        <SidebarSeparator />
-        <SidebarGroup>
-          <SidebarMenu>
-            {managementNav.map(renderNavItem)}
-          </SidebarMenu>
-        </SidebarGroup>
-
       </SidebarContent>
       <SidebarFooter className="px-2 py-3">
         <SidebarMenu>

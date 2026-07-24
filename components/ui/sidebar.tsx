@@ -244,9 +244,12 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
+            // --sidebar-offset lets an outer nav (the product rail) reserve
+            // space to the left of this fixed panel. Defaults to 0 when unset,
+            // so the component behaves exactly as shipped without it.
             "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
             side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
+              ? "left-[var(--sidebar-offset,0px)] group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-offset,0px)_-_var(--sidebar-width))]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
             // Adjust the padding for floating and inset variants.
             variant === "floating" || variant === "inset"

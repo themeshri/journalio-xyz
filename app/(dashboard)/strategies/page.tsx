@@ -42,6 +42,7 @@ import {
 } from '@/lib/strategies'
 import {
   type GlobalRule,
+  RULE_TYPE_META,
   loadRules,
   createRule,
   updateRule,
@@ -49,6 +50,8 @@ import {
 } from '@/lib/rules'
 import { useWallet } from '@/lib/wallet-context'
 import { safeLocalStorage } from '@/lib/local-storage'
+import { DEFAULT_TYPED_RULES, type RuleType } from '@/lib/rules-engine'
+import { STRATEGY_TEMPLATES, type StrategyTemplate } from '@/lib/strategy-templates'
 import { toast } from 'sonner'
 
 // ─── Constants ────────────────────────────────────────────────
@@ -66,131 +69,13 @@ const PRESET_COLORS = [
 
 const PRESET_ICONS = ['🚀', '🎯', '📊', '🔄', '💎', '⚡', '🔥', '🧠', '🦈', '🐂', '🎲', '🛡️']
 
-// ─── Templates ────────────────────────────────────────────────
+/** Soft cap shown inline next to the heading. Not enforced server-side. */
+const MAX_STRATEGIES = 10
 
-interface StrategyTemplate {
-  name: string
-  description: string
-  icon: string
-  color: string
-  ruleGroups: Omit<RuleGroup, 'id'>[]
-}
+// Templates now live in the DB as Strategy rows with isTemplate = true
+// (seeded by scripts/seed-strategy-templates.ts). STRATEGY_TEMPLATES is the
+// bundled fallback for a database that has not been seeded yet.
 
-const TEMPLATES: StrategyTemplate[] = [
-  {
-    name: 'Solana Momentum',
-    description: 'High-volume meme plays with strong social buzz',
-    icon: '🚀',
-    color: '#10b981',
-    ruleGroups: [
-      {
-        name: 'Entry Criteria',
-        sortOrder: 0,
-        rules: [
-          { id: '', text: 'Token has strong social buzz (CT/Telegram mentions)', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Volume spike detected (>2x normal)', isRequired: true, showWhen: 'always', sortOrder: 1 },
-          { id: '', text: 'Market cap in my target range', isRequired: true, showWhen: 'always', sortOrder: 2 },
-          { id: '', text: 'Not a copy/fork of an existing token', isRequired: false, showWhen: 'always', sortOrder: 3 },
-        ],
-      },
-      {
-        name: 'Exit Criteria',
-        sortOrder: 1,
-        rules: [
-          { id: '', text: 'Hit take-profit target (2x-5x)', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Volume dying / momentum fading', isRequired: true, showWhen: 'always', sortOrder: 1 },
-          { id: '', text: 'Dev wallet dumping / insider selling', isRequired: true, showWhen: 'always', sortOrder: 2 },
-        ],
-      },
-      {
-        name: 'Risk Parameters',
-        sortOrder: 2,
-        rules: [
-          { id: '', text: 'Position size within my limits', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Not already overexposed to this narrative', isRequired: true, showWhen: 'always', sortOrder: 1 },
-          { id: '', text: 'Stop loss plan defined before entry', isRequired: true, showWhen: 'always', sortOrder: 2 },
-        ],
-      },
-      {
-        name: 'Market Conditions',
-        sortOrder: 3,
-        rules: [
-          { id: '', text: 'SOL trending up or stable', isRequired: false, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'No major FUD events ongoing', isRequired: false, showWhen: 'always', sortOrder: 1 },
-          { id: '', text: 'Not trading during low-liquidity hours', isRequired: false, showWhen: 'always', sortOrder: 2 },
-        ],
-      },
-    ],
-  },
-  {
-    name: 'Sniper Entry',
-    description: 'Fresh deployments with quick scalp targets',
-    icon: '🎯',
-    color: '#f59e0b',
-    ruleGroups: [
-      {
-        name: 'Entry Criteria',
-        sortOrder: 0,
-        rules: [
-          { id: '', text: 'Fresh deployment (< 1 hour old)', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Liquidity locked or burned', isRequired: true, showWhen: 'always', sortOrder: 1 },
-          { id: '', text: 'Contract verified / no honeypot flags', isRequired: true, showWhen: 'always', sortOrder: 2 },
-          { id: '', text: 'Social accounts created (Twitter/Telegram)', isRequired: false, showWhen: 'always', sortOrder: 3 },
-        ],
-      },
-      {
-        name: 'Exit Criteria',
-        sortOrder: 1,
-        rules: [
-          { id: '', text: 'Quick 2-3x scalp target', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Exit if no movement in 15 min', isRequired: true, showWhen: 'always', sortOrder: 1 },
-        ],
-      },
-      {
-        name: 'Risk Parameters',
-        sortOrder: 2,
-        rules: [
-          { id: '', text: 'Max loss: predetermined amount', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Small position (1-2% of portfolio)', isRequired: true, showWhen: 'always', sortOrder: 1 },
-        ],
-      },
-    ],
-  },
-  {
-    name: 'Swing / Narrative Play',
-    description: 'Catalyst-driven trades held for 1-7 days',
-    icon: '📊',
-    color: '#8b5cf6',
-    ruleGroups: [
-      {
-        name: 'Entry Criteria',
-        sortOrder: 0,
-        rules: [
-          { id: '', text: 'Clear narrative/catalyst identified', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Token survived initial pump/dump cycle', isRequired: true, showWhen: 'always', sortOrder: 1 },
-          { id: '', text: 'Building higher lows on chart', isRequired: true, showWhen: 'always', sortOrder: 2 },
-          { id: '', text: 'Community active and growing', isRequired: false, showWhen: 'always', sortOrder: 3 },
-        ],
-      },
-      {
-        name: 'Exit Criteria',
-        sortOrder: 1,
-        rules: [
-          { id: '', text: 'Narrative plays out / catalyst happens', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Scale out in chunks (25% at each target)', isRequired: true, showWhen: 'always', sortOrder: 1 },
-        ],
-      },
-      {
-        name: 'Risk Parameters',
-        sortOrder: 2,
-        rules: [
-          { id: '', text: 'Comfortable holding for 1-7 days', isRequired: true, showWhen: 'always', sortOrder: 0 },
-          { id: '', text: 'Position size accounts for volatility', isRequired: true, showWhen: 'always', sortOrder: 1 },
-        ],
-      },
-    ],
-  },
-]
 
 // ─── Form Helpers ─────────────────────────────────────────────
 
@@ -405,7 +290,13 @@ function RuleGroupEditor({
   )
 }
 
-function TemplateSelector({ onSelect }: { onSelect: (t: StrategyTemplate) => void }) {
+function TemplateSelector({
+  templates,
+  onSelect,
+}: {
+  templates: StrategyTemplate[]
+  onSelect: (t: StrategyTemplate) => void
+}) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -417,7 +308,7 @@ function TemplateSelector({ onSelect }: { onSelect: (t: StrategyTemplate) => voi
       </PopoverTrigger>
       <PopoverContent className="w-72 p-2" align="start">
         <div className="space-y-1">
-          {TEMPLATES.map((t) => (
+          {templates.map((t) => (
             <button
               key={t.name}
               type="button"
@@ -561,6 +452,7 @@ export default function StrategiesPage() {
   const { reloadStrategies: reloadCtxStrategies } = useWallet()
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [rules, setRules] = useState<GlobalRule[]>([])
+  const [templates, setTemplates] = useState<StrategyTemplate[]>(STRATEGY_TEMPLATES)
   const [loaded, setLoaded] = useState(false)
   const [advancedMode, setAdvancedMode] = useState(() => {
     return safeLocalStorage.getItem<boolean>('journalio_strategies_advanced', false)
@@ -583,8 +475,12 @@ export default function StrategiesPage() {
 
   // Rule form state
   const [newRule, setNewRule] = useState('')
+  const [newRuleType, setNewRuleType] = useState<RuleType>('manual')
+  const [newRuleCondition, setNewRuleCondition] = useState('')
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [editingRuleText, setEditingRuleText] = useState('')
+  const [editingRuleType, setEditingRuleType] = useState<RuleType>('manual')
+  const [editingRuleCondition, setEditingRuleCondition] = useState('')
 
   useEffect(() => {
     Promise.all([loadStrategies(true), loadRules()]).then(([strats, loadedRules]) => {
@@ -592,6 +488,32 @@ export default function StrategiesPage() {
       setRules(loadedRules)
       setLoaded(true)
     })
+  }, [])
+
+  // Templates come from the DB; the bundled STRATEGY_TEMPLATES stay as the
+  // initial value so an unseeded database still shows something useful.
+  useEffect(() => {
+    let stale = false
+    fetch('/api/strategies?templates=true')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((rows: Strategy[] | null) => {
+        if (stale || !rows?.length) return
+        setTemplates(
+          rows.map((r) => ({
+            name: r.name,
+            description: r.description,
+            icon: r.icon,
+            color: r.color,
+            ruleGroups: r.ruleGroups,
+          }))
+        )
+      })
+      .catch(() => {
+        // Keep the bundled fallback.
+      })
+    return () => {
+      stale = true
+    }
   }, [])
 
   // ─── Strategy CRUD ──────────────────────────────────────────
@@ -740,10 +662,21 @@ export default function StrategiesPage() {
   async function handleAddRule() {
     const text = newRule.trim()
     if (!text) return
-    const created = await createRule(text)
+    // A typed rule without a condition has nothing to measure against, so it
+    // would silently never evaluate — block it rather than store a dud.
+    if (newRuleType !== 'manual' && !newRuleCondition.trim()) {
+      toast.error('This rule type needs a target value')
+      return
+    }
+    const created = await createRule(text, {
+      type: newRuleType,
+      condition: newRuleCondition.trim(),
+    })
     if (created) {
       setRules((prev) => [...prev, created])
       setNewRule('')
+      setNewRuleType('manual')
+      setNewRuleCondition('')
       toast.success('Rule added')
     } else {
       toast.error('Failed to add rule')
@@ -764,26 +697,52 @@ export default function StrategiesPage() {
   function startEditRule(rule: GlobalRule) {
     setEditingRuleId(rule.id)
     setEditingRuleText(rule.text)
+    setEditingRuleType(rule.type ?? 'manual')
+    setEditingRuleCondition(rule.condition ?? '')
   }
 
   async function saveEditRule() {
     if (!editingRuleId) return
     const text = editingRuleText.trim()
     if (!text) return
-    const updated = await updateRule(editingRuleId, { text })
+    if (editingRuleType !== 'manual' && !editingRuleCondition.trim()) {
+      toast.error('This rule type needs a target value')
+      return
+    }
+    const updated = await updateRule(editingRuleId, {
+      text,
+      type: editingRuleType,
+      condition: editingRuleCondition.trim(),
+    })
     if (updated) {
       setRules((prev) => prev.map((r) => (r.id === editingRuleId ? updated : r)))
       toast.success('Rule updated')
     } else {
       toast.error('Failed to update rule')
     }
-    setEditingRuleId(null)
-    setEditingRuleText('')
+    cancelEditRule()
   }
 
   function cancelEditRule() {
     setEditingRuleId(null)
     setEditingRuleText('')
+    setEditingRuleType('manual')
+    setEditingRuleCondition('')
+  }
+
+  /** Seed the five defaults from docs §3.8 for a user with no rules yet. */
+  async function handleSeedDefaultRules() {
+    const created: GlobalRule[] = []
+    for (const r of DEFAULT_TYPED_RULES) {
+      const rule = await createRule(r.text, { type: r.type, condition: r.condition })
+      if (rule) created.push(rule)
+    }
+    if (created.length > 0) {
+      setRules((prev) => [...prev, ...created])
+      toast.success(`Added ${created.length} starter rules`)
+    } else {
+      toast.error('Failed to add starter rules')
+    }
   }
 
   // ─── Render ─────────────────────────────────────────────────
@@ -808,7 +767,13 @@ export default function StrategiesPage() {
       {/* ========== STRATEGIES SECTION ========== */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Strategies</h1>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-xl font-semibold">Strategies</h1>
+            {/* Quota surfaced inline (docs §5) — sets expectations early. */}
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              {activeStrategies.length}/{MAX_STRATEGIES}
+            </span>
+          </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             Define trading strategies with organized rule groups and checklists
           </p>
@@ -849,7 +814,7 @@ export default function StrategiesPage() {
         <div className="mb-6 border rounded-lg p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">{editingId ? 'Edit Strategy' : 'New Strategy'}</h2>
-            <TemplateSelector onSelect={applyTemplate} />
+            <TemplateSelector templates={templates} onSelect={applyTemplate} />
           </div>
 
           <div className="flex items-center gap-3">
@@ -918,7 +883,7 @@ export default function StrategiesPage() {
             No strategies yet. Create your own or start from a template.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            {TEMPLATES.map((t) => (
+            {templates.map((t) => (
               <button
                 key={t.name}
                 onClick={() => { openAdd(); applyTemplate(t) }}
@@ -981,14 +946,14 @@ export default function StrategiesPage() {
       {/* ========== GLOBAL RULES SECTION ========== */}
       <Separator className="my-8" />
 
-      <div className="mb-4">
+      <div className="mb-4 scroll-mt-4" id="rules">
         <h2 className="text-lg font-semibold">Global Rules</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
           Trading rules that apply across all strategies. These show up in your pre-session checklist.
         </p>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="mb-1 flex gap-2">
         <Input
           value={newRule}
           onChange={(e) => setNewRule(e.target.value)}
@@ -997,16 +962,49 @@ export default function StrategiesPage() {
             if (e.key === 'Enter') handleAddRule()
           }}
         />
+        <Select value={newRuleType} onValueChange={(v) => setNewRuleType(v as RuleType)}>
+          <SelectTrigger className="w-[172px] shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(RULE_TYPE_META) as RuleType[]).map((t) => (
+              <SelectItem key={t} value={t}>
+                {RULE_TYPE_META[t].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {newRuleType !== 'manual' && (
+          <Input
+            value={newRuleCondition}
+            onChange={(e) => setNewRuleCondition(e.target.value)}
+            placeholder={RULE_TYPE_META[newRuleType].placeholder}
+            className="w-24 shrink-0 font-mono"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddRule()
+            }}
+          />
+        )}
         <Button size="sm" onClick={handleAddRule} disabled={!newRule.trim()}>
           Add
         </Button>
       </div>
+      <p className="mb-4 text-xs text-muted-foreground">
+        {RULE_TYPE_META[newRuleType].hint}
+      </p>
 
       {rules.length === 0 ? (
         <div className="border border-dashed rounded-lg p-6 text-center">
           <p className="text-sm text-muted-foreground">
             No rules yet. Add rules you want to acknowledge before every session.
           </p>
+          <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+            Typed rules are scored automatically each trading day and tracked with a
+            streak and follow rate on the Progress Tracker.
+          </p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={handleSeedDefaultRules}>
+            Add 5 starter rules
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -1026,6 +1024,33 @@ export default function StrategiesPage() {
                     }}
                     autoFocus
                   />
+                  <Select
+                    value={editingRuleType}
+                    onValueChange={(v) => setEditingRuleType(v as RuleType)}
+                  >
+                    <SelectTrigger className="w-[172px] shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(RULE_TYPE_META) as RuleType[]).map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {RULE_TYPE_META[t].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {editingRuleType !== 'manual' && (
+                    <Input
+                      value={editingRuleCondition}
+                      onChange={(e) => setEditingRuleCondition(e.target.value)}
+                      placeholder={RULE_TYPE_META[editingRuleType].placeholder}
+                      className="w-24 shrink-0 font-mono"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEditRule()
+                        if (e.key === 'Escape') cancelEditRule()
+                      }}
+                    />
+                  )}
                   <Button size="sm" onClick={saveEditRule} disabled={!editingRuleText.trim()}>
                     Save
                   </Button>
@@ -1036,6 +1061,14 @@ export default function StrategiesPage() {
               ) : (
                 <>
                   <span className="text-sm flex-1">{rule.text}</span>
+                  {rule.type && rule.type !== 'manual' && (
+                    <span
+                      className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-muted-foreground"
+                      title={`Auto-scored: ${RULE_TYPE_META[rule.type].label}`}
+                    >
+                      {rule.condition}
+                    </span>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"

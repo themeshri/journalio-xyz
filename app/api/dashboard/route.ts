@@ -10,6 +10,8 @@ import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
 import { type Chain } from '@/lib/chains'
 import { getTradingDay } from '@/lib/trading-day'
 import { computeStreakFromDates } from '@/lib/streaks'
+import { computeAllRuleStats } from '@/lib/analytics/rule-stats'
+import { type RuleType } from '@/lib/rules-engine'
 
 export const maxDuration = 60
 
@@ -26,8 +28,10 @@ function parseJournal(j: any) {
     ...j,
     ruleResults: JSON.parse(j.ruleResultsJson || '[]'),
     sellMistakes: JSON.parse(j.sellMistakesJson || '[]'),
+    tagIds: Array.isArray(j.tags) ? j.tags.map((t: { tagId: string }) => t.tagId) : undefined,
     ruleResultsJson: undefined,
     sellMistakesJson: undefined,
+    tags: undefined,
   }
 }
 
@@ -147,6 +151,11 @@ export async function GET(request: NextRequest) {
       yearlyPreSessions: [],
       yearlyPostSessions: [],
       savedWallets: savedWalletsResponse,
+      rules: [],
+      adherence: [],
+      ruleStats: [],
+      tags: [],
+      tagsByJournalId: {},
     }
 
     if (walletParams.length === 0) {
@@ -171,7 +180,7 @@ export async function GET(request: NextRequest) {
     const addresses = walletParams.map((p) => p.address)
 
     // Run all queries in parallel (batched wallet trades + metadata)
-    const [walletTrades, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, todayPostSession, missedTrades, yearlyPreSessionsRaw, yearlyPostSessionsRaw] = await Promise.all([
+    const [walletTrades, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, todayPostSession, missedTrades, yearlyPreSessionsRaw, yearlyPostSessionsRaw, rulesRaw, adherenceRaw, tagsRaw, tagLinksRaw] = await Promise.all([
       // Batched wallet trades (single DB query)
       batchResolveWalletTrades(walletParams, userId),
       // Trade comments (with auto-seed)
@@ -205,6 +214,7 @@ export async function GET(request: NextRequest) {
       prisma.journalEntry.findMany({
         where: { userId, walletAddress: { in: addresses } },
         orderBy: { createdAt: 'desc' },
+        include: { tags: { select: { tagId: true } } },
       }),
       // Today's pre-session status
       prisma.preSession.findFirst({
@@ -233,6 +243,25 @@ export async function GET(request: NextRequest) {
         select: { date: true },
         orderBy: { date: 'asc' },
       }),
+      // Typed rules — drive the daily checklist and Progress Tracker badge
+      prisma.globalRule.findMany({
+        where: { userId },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      // This year's adherence, for the explainable ActivityCalendar score
+      prisma.ruleAdherence.findMany({
+        where: { userId, date: { gte: yearStart, lte: yearEnd } },
+        select: { ruleId: true, date: true, followed: true, actual: true, source: true },
+      }),
+      // Tags + their journal links, for the mistake-cost summary
+      prisma.tradeTag.findMany({
+        where: { userId },
+        orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }],
+      }),
+      prisma.journalEntryTag.findMany({
+        where: { journalEntry: { userId } },
+        select: { journalEntryId: true, tagId: true },
+      }),
     ])
 
     // Parse strategies
@@ -246,12 +275,39 @@ export async function GET(request: NextRequest) {
       allJournals.map((j) => j.journaledAt).filter(Boolean)
     )
 
+    // Per-rule streak / follow-rate / average, so the sidebar and Progress
+    // Tracker badge read from context rather than fetching separately.
+    const adherence = adherenceRaw.map((a) => ({
+      ruleId: a.ruleId,
+      date: a.date,
+      followed: a.followed,
+      actual: a.actual,
+      source: a.source as 'auto' | 'manual',
+    }))
+    const ruleStats = computeAllRuleStats(
+      rulesRaw.map((r) => ({ id: r.id, type: r.type as RuleType })),
+      adherence,
+      todayDate
+    )
+
+    const tagsByJournalId: Record<string, string[]> = {}
+    for (const l of tagLinksRaw) {
+      const arr = tagsByJournalId[l.journalEntryId]
+      if (arr) arr.push(l.tagId)
+      else tagsByJournalId[l.journalEntryId] = [l.tagId]
+    }
+
     const response = {
       walletTrades,
       tradeComments: tradeCommentsRaw,
       strategies,
       journals: allJournals,
       streak,
+      rules: rulesRaw,
+      adherence,
+      ruleStats,
+      tags: tagsRaw,
+      tagsByJournalId,
       preSessionDone: !!(todayPreSession?.savedAt),
       postSessionDone: !!todayPostSession,
       missedTrades,

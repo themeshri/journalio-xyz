@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
+import { ProductRail } from '@/components/nav/ProductRail'
 import { DashboardProviders } from '@/lib/contexts'
 import { StaleDataBanner } from '@/components/StaleDataBanner'
 import { LocalStorageMigration } from '@/components/LocalStorageMigration'
@@ -44,7 +45,15 @@ export default function DashboardLayout({
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <DashboardProviders>
-        <SidebarProvider>
+        {/* --sidebar-offset reserves the rail's width (w-14 = 3.5rem) so the
+            fixed section sidebar sits beside it rather than on top of it. */}
+        <SidebarProvider
+          style={{ '--sidebar-offset': '3.5rem' } as React.CSSProperties}
+        >
+          {/* Two-level nav: product rail (outer) + section sidebar (inner). */}
+          <div className="hidden md:block">
+            <ProductRail />
+          </div>
           <AppSidebar />
           <SidebarInset>
             <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">

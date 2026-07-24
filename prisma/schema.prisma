@@ -49,10 +49,12 @@ model User {
   paperedPlays   PaperedPlay[]
   postSessions   PostSession[]
   preSessions    PreSession[]
+  ruleAdherence  RuleAdherence[]
   sessions       Session[]
   strategies     Strategy[]
   tradeComments  TradeComment[]
   tradeEdits     TradeEdit[]
+  tradeTags      TradeTag[]
   settings       UserSettings?
   wallets        Wallet[]
 }
@@ -73,6 +75,8 @@ model Wallet {
   chain     String   @default("ethereum")
   dex       String   @default("other")
   isDefault Boolean  @default(false)
+  /// Starting balance in USD — required for the drawdown / balance curve
+  initialBalance Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   trades    Trade[]
@@ -201,6 +205,10 @@ model Strategy {
   icon           String   @default("📋")
   ruleGroupsJson String   @default("[]")
   isArchived     Boolean  @default(false)
+  /// Template rows are owned by the system user and copied into a user's own
+  /// strategies via "Add to my strategies".
+  isTemplate     Boolean  @default(false)
+  templateAuthor String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -212,12 +220,40 @@ model GlobalRule {
   id        String   @id @default(cuid())
   userId    String
   text      String
+  /// manual | time | percentage | currency | count
+  type      String   @default("manual")
+  /// Target the rule is evaluated against: "09:30" | "100" (percent) | "100" (USD) | "5" (count)
+  condition String   @default("")
+  isActive  Boolean  @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adherence RuleAdherence[]
 
   @@index([userId, sortOrder])
+}
+
+/// One row per (user, rule, trading day) — the persisted evaluation of a rule.
+model RuleAdherence {
+  id       String   @id @default(cuid())
+  userId   String
+  ruleId   String
+  /// Trading day, YYYY-MM-DD (from getTradingDay(), not the calendar date)
+  date     String
+  followed Boolean  @default(false)
+  /// Observed value for the "09:26 / 09:30" actual-vs-condition display
+  actual   String   @default("")
+  /// auto | manual
+  source   String   @default("auto")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rule     GlobalRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ruleId, date])
+  @@index([userId, date])
+  @@index([ruleId])
 }
 
 model PreSession {
@@ -278,7 +314,13 @@ model JournalEntry {
   takeProfit          Float?
   tradeHigh           Float?
   tradeLow            Float?
+  /// Auto-computed on save when stopLoss is set; see lib/analytics/r-multiple.ts
+  rMultiple           Float?
+  /// Subjective 1-5 self-grade
+  tradeRating         Int?
+  reviewed            Boolean  @default(false)
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags                JournalEntryTag[]
 
   @@unique([userId, walletAddress, tokenMint, tradeNumber])
   @@index([userId])
@@ -312,11 +354,53 @@ model Note {
   title     String   @default("")
   content   String   @default("")
   tagsJson  String   @default("[]")
+  /// trade-notes | daily-journal | sessions-recap | my-notes
+  folder    String   @default("my-notes")
+  favorite  Boolean  @default(false)
+  /// Mirrors the JournalEntry composite key — trade cycles are derived at read
+  /// time (lib/tradeCycles.ts), so there is no stable synthetic trade id to FK to.
+  linkedWalletAddress String?
+  linkedTokenMint     String?
+  linkedTradeNumber   Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([userId, folder])
+  @@index([userId, linkedWalletAddress, linkedTokenMint, linkedTradeNumber])
+}
+
+/// User-defined tag. Two namespaces via `kind`: "mistake" drives the
+/// what-is-costing-me-money report; "custom" is a freeform taxonomy.
+model TradeTag {
+  id         String   @id @default(cuid())
+  userId     String
+  label      String
+  /// mistake | custom
+  kind       String
+  color      String   @default("#71717a")
+  isArchived Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journalEntries JournalEntryTag[]
+
+  @@unique([userId, label, kind])
+  @@index([userId, kind])
+}
+
+/// Explicit join so per-link metadata can be added later without a migration.
+model JournalEntryTag {
+  journalEntryId String
+  tagId          String
+  createdAt      DateTime @default(now())
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  tag            TradeTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([journalEntryId, tagId])
+  @@index([tagId])
 }
 
 model TradeComment {

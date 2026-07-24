@@ -38,6 +38,11 @@ export async function PATCH(
         ...(v.title !== undefined && { title: v.title }),
         ...(v.content !== undefined && { content: v.content }),
         ...(v.tags !== undefined && { tagsJson: JSON.stringify(v.tags) }),
+        ...(v.folder !== undefined && { folder: v.folder }),
+        ...(v.favorite !== undefined && { favorite: v.favorite }),
+        ...(v.linkedWalletAddress !== undefined && { linkedWalletAddress: v.linkedWalletAddress }),
+        ...(v.linkedTokenMint !== undefined && { linkedTokenMint: v.linkedTokenMint }),
+        ...(v.linkedTradeNumber !== undefined && { linkedTradeNumber: v.linkedTradeNumber }),
       },
     })
     return NextResponse.json(parseNote(note))

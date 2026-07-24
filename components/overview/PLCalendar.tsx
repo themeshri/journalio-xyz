@@ -131,16 +131,29 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
                 )
               })}
 
-              {/* Weekly P/L */}
-              <div className="h-8 rounded flex items-center justify-center">
-                <span
-                  className={`text-[8px] font-mono tabular-nums ${
-                    week.weeklyPnL >= 0 ? 'text-emerald-500' : 'text-red-500'
-                  }`}
-                >
-                  {week.weeklyPnL !== 0 ? (week.weeklyPnL >= 0 ? '+' : '') + formatValue(week.weeklyPnL) : ''}
-                </span>
-              </div>
+              {/* Weekly summary — P/L over the count of days actually traded,
+                  matching the "$0 / 0 days" pattern from the analysis doc §3.1. */}
+              {(() => {
+                const daysTraded = week.days.filter((d) => d && d.tradeCount > 0).length
+                return (
+                  <div className="h-8 rounded flex flex-col items-center justify-center bg-muted/20">
+                    {daysTraded > 0 && (
+                      <>
+                        <span
+                          className={`text-[8px] font-mono tabular-nums leading-tight ${
+                            week.weeklyPnL >= 0 ? 'text-emerald-500' : 'text-red-500'
+                          }`}
+                        >
+                          {week.weeklyPnL >= 0 ? '+' : ''}{formatValue(week.weeklyPnL)}
+                        </span>
+                        <span className="text-[7px] text-muted-foreground leading-tight">
+                          {daysTraded}d
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </CardContent>
