@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -255,7 +255,16 @@ export function AppSidebar() {
             </Link>
           </Button>
         )}
-        <SidebarMenu className="gap-1.5">{sections.map(renderNavItem)}</SidebarMenu>
+        <SidebarMenu className="gap-1.5">
+          {sections.map((item) => (
+            <Fragment key={item.href}>
+              {renderNavItem(item)}
+              {item.dividerAfter && (
+                <li className="my-1 border-t border-sidebar-border" role="separator" />
+              )}
+            </Fragment>
+          ))}
+        </SidebarMenu>
       </SidebarGroup>
     </SidebarContent>
   )
