@@ -9,9 +9,7 @@ import { LocalStorageMigration } from '@/components/LocalStorageMigration'
 import { OnboardingGate } from '@/components/onboarding/OnboardingGate'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AccountDropdown } from '@/components/AccountDropdown'
-import { GlobalFilterBar } from '@/components/GlobalFilterBar'
-import { WalletFilterChip } from '@/components/WalletFilterChip'
-import { DateRangeChip } from '@/components/DateRangeChip'
+import { PageToolbar } from '@/components/PageToolbar'
 import { SyncButton } from '@/components/SyncButton'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 
@@ -72,13 +70,8 @@ export default function DashboardLayout({
                 Journalio
               </Link>
             </div>
-            <div className="hidden md:flex md:items-center md:gap-1 md:rounded-md md:border md:bg-muted/30 md:px-1 md:py-0.5">
-              <GlobalFilterBar />
-              <div className="h-4 w-px bg-border" />
-              <DateRangeChip />
-              <div className="h-4 w-px bg-border" />
-              <WalletFilterChip />
-            </div>
+            {/* Filters/Date/Wallets moved into the page content (PageToolbar),
+                TradeZella-style; the top bar keeps only global chrome. */}
             <div className="ml-auto flex items-center gap-2">
               <SyncButton />
               <ThemeToggle />
@@ -96,6 +89,7 @@ export default function DashboardLayout({
             <div className="flex-1 overflow-auto px-6 py-6">
               <LocalStorageMigration />
               <StaleDataBanner />
+              <PageToolbar />
               <Breadcrumbs />
               {children}
             </div>

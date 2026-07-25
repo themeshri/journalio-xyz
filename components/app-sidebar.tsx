@@ -216,7 +216,7 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon" data-tour="sidebar">
+    <Sidebar collapsible="offcanvas" data-tour="sidebar">
       {/* Spacer clearing the fixed full-width header (h-12); the wordmark,
           hamburger, and wallet summary now live in that header. */}
       <SidebarHeader className="h-12" />
