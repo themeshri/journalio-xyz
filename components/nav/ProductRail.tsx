@@ -23,7 +23,7 @@ export function ProductRail() {
   return (
     <nav
       aria-label="Products"
-      className="relative z-20 flex h-svh w-14 shrink-0 flex-col items-center gap-1 border-r bg-sidebar pb-3 pt-[3.75rem]"
+      className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r bg-sidebar py-3"
     >
       <TooltipProvider delayDuration={0}>
         {PRODUCTS.map((product) => {
