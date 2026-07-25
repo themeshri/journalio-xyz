@@ -78,10 +78,10 @@ export default function DashboardLayout({
             </div>
           </header>
 
-          {/* Icon rail — fixed to the viewport (below the h-12 header) so it
-              stays locked while the page scrolls, matching the fixed section
-              sidebar. z-20 keeps it above the sidebar (z-10) when collapsed. */}
-          <div className="fixed left-0 top-12 bottom-0 z-20 hidden md:block">
+          {/* Icon rail — kept in flow so it reserves its 56px column (the
+              --sidebar-offset the fixed section sidebar and content depend on),
+              but made sticky so it stays locked while the page scrolls. */}
+          <div className="sticky top-12 z-20 hidden h-[calc(100svh-3rem)] shrink-0 self-start md:block">
             <ProductRail />
           </div>
           <AppSidebar />
