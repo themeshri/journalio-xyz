@@ -11,7 +11,6 @@
 import {
   Home,
   BookOpen,
-  BookHeart,
   Clock,
   BarChart3,
   Puzzle,
@@ -20,6 +19,10 @@ import {
   Target,
   GitCompare,
   TrendingDown,
+  ClipboardList,
+  ClipboardCheck,
+  SearchX,
+  StickyNote,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -75,6 +78,12 @@ export const PRODUCT_SECTIONS: Record<ProductId, NavItem[]> = {
 
   journal: [
     {
+      label: 'Pre-Session',
+      href: '/diary/pre-session',
+      icon: ClipboardList,
+      badge: 'preSession',
+    },
+    {
       label: 'Trade Journal',
       href: '/trade-journal',
       icon: BookOpen,
@@ -82,22 +91,25 @@ export const PRODUCT_SECTIONS: Record<ProductId, NavItem[]> = {
       dataTour: 'nav-journal',
     },
     {
-      label: 'Progress Tracker',
+      label: 'Missed Trades',
+      href: '/missed-trades',
+      icon: SearchX,
+    },
+    {
+      label: 'Post-Session',
+      href: '/diary/post-session',
+      icon: ClipboardCheck,
+    },
+    {
+      label: 'Notes',
+      href: '/diary/notes',
+      icon: StickyNote,
+    },
+    {
+      label: 'Journaling Progress',
       href: '/progress-tracker',
       icon: Target,
       badge: 'ruleScore',
-    },
-    {
-      label: 'Session Diary',
-      href: '/diary',
-      icon: BookHeart,
-      badge: 'preSession',
-      children: [
-        { label: 'Pre-Session', href: '/diary/pre-session' },
-        { label: 'Post-Session', href: '/diary/post-session' },
-        { label: 'Missed Trades', href: '/missed-trades' },
-        { label: 'Notes', href: '/diary/notes' },
-      ],
     },
   ],
 
