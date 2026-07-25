@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { CalendarDays } from 'lucide-react'
+import { Rocket } from 'lucide-react'
 import { DayDetailModal } from '@/components/DayDetailModal'
 import { useWallet, useMetadata } from '@/lib/wallet-context'
 import { getTradingDay } from '@/lib/trading-day'
@@ -62,7 +62,7 @@ export function ViewMyDayButton({
         className={className ?? 'h-8 text-xs'}
         onClick={() => setOpen(true)}
       >
-        <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
+        <Rocket className="mr-1.5 h-3.5 w-3.5" />
         View my day
       </Button>
 

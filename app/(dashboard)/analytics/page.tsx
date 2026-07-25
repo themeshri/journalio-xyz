@@ -45,7 +45,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { StatStripSkeleton, ChartSkeleton } from '@/components/skeletons'
 import ErrorBoundary from '@/components/ErrorBoundary'
-import { TimeRangeFilter } from '@/components/TimeRangeFilter'
+import { PageHeader } from '@/components/PageHeader'
 import { SlidersHorizontal } from 'lucide-react'
 import { loadPreSessions, type PreSessionData } from '@/lib/pre-sessions'
 import { loadPostSessions, type PostSessionData } from '@/lib/post-sessions'
@@ -184,7 +184,7 @@ const PIE_COLORS = [
 
 export default function AnalyticsPage() {
   const { flattenedTrades, isAnyLoading, hasActiveWallets, allTrades, tradeComments, strategies: allStrategies, journalMap, activeWallets, initialized } = useWallet()
-  const { timeRange, timePreset, setTimeFilter } = useMetadata()
+  const { timeRange } = useMetadata()
 
   const searchParams = useSearchParams()
   const tabParam = searchParams.get('tab')
@@ -630,10 +630,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Analytics</h1>
-        <TimeRangeFilter value={timeRange} preset={timePreset} onChange={setTimeFilter} />
-      </div>
+      <PageHeader title="Analytics" />
 
       {/* Stats row — overview only */}
       {activeTab === 'overview' && (

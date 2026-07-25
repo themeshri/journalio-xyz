@@ -23,6 +23,7 @@ import { computeTradeDiscipline, disciplineBgClass, disciplineColorClass } from 
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ManualTradeDialog } from '@/components/ManualTradeDialog'
 import { ViewMyDayButton } from '@/components/ViewMyDayButton'
+import { PageHeader } from '@/components/PageHeader'
 import { Plus } from 'lucide-react'
 import {
   Tooltip,
@@ -420,16 +421,18 @@ export default function TradeJournalPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Trade Journal</h1>
-        <div className="flex items-center gap-2">
-          <ViewMyDayButton />
-          <Button size="sm" variant="outline" onClick={() => setShowManualTrade(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Add Manual Trade
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Trade Journal"
+        actions={
+          <>
+            <ViewMyDayButton />
+            <Button size="sm" variant="outline" onClick={() => setShowManualTrade(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Add Manual Trade
+            </Button>
+          </>
+        }
+      />
 
       {loadingBalances && (
         <p className="text-xs text-muted-foreground mb-4">Loading balances...</p>

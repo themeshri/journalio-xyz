@@ -5,12 +5,10 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
   ChevronRight,
-  Menu,
-  Moon,
-  Sun,
   PanelLeftClose,
+  Plus,
 } from 'lucide-react'
-import { useTheme } from 'next-themes'
+import { Button } from '@/components/ui/button'
 import {
   Sidebar,
   SidebarContent,
@@ -22,7 +20,6 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarFooter,
-  SidebarSeparator,
   SidebarGroup,
   useSidebar,
 } from '@/components/ui/sidebar'
@@ -31,8 +28,8 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from '@/components/ui/collapsible'
-import { useWallet, useMetadata, makeWalletKey } from '@/lib/wallet-context'
-import { CHAIN_CONFIG, type Chain } from '@/lib/chains'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { useWallet, useMetadata } from '@/lib/wallet-context'
 import { computeTradeDiscipline, disciplineColor, type DisciplineResult } from '@/lib/discipline'
 import type { JournalData } from '@/components/JournalModal'
 import {
@@ -40,23 +37,35 @@ import {
   PRODUCT_SECTIONS,
   productForPath,
   type NavItem,
+  type ProductId,
 } from '@/lib/nav-structure'
 
 
 export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { state, setOpen, toggleSidebar } = useSidebar()
-  const { activeWallets, walletSlots, tradeComments, journalMap } = useWallet()
+  const { state, setOpen, openMobile, setOpenMobile, toggleSidebar } = useSidebar()
+  const isMobile = useIsMobile()
+  const { tradeComments, journalMap } = useWallet()
   const { preSessionDone, todayRuleScore } = useMetadata()
 
   // Section list is driven by the product the current path belongs to — the
   // inner level of the two-level nav (lib/nav-structure.ts).
   const productId = productForPath(pathname)
-  const activeProduct = PRODUCTS.find((p) => p.id === productId) ?? PRODUCTS[0]
-  const sections = PRODUCT_SECTIONS[productId]
-  const { theme, setTheme } = useTheme()
-  const isDark = theme === 'dark'
+
+  // On mobile the drawer lets you browse a product's sections WITHOUT
+  // navigating: tapping a rail icon (except Home) previews that product's
+  // section menu in place. `mobileProduct` is that previewed product; it
+  // resets to the current page's product each time the drawer opens.
+  const [mobileProduct, setMobileProduct] = useState<ProductId>(productId)
+  useEffect(() => {
+    if (openMobile) setMobileProduct(productId)
+  }, [openMobile, productId])
+
+  // Desktop shows the current product's sections; mobile shows the previewed
+  // product's sections while the drawer is open.
+  const shownProduct = isMobile ? mobileProduct : productId
+  const sections = PRODUCT_SECTIONS[shownProduct]
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
 
   // Compute discipline from journal map (from context)
@@ -115,10 +124,6 @@ export function AppSidebar() {
     return false
   }
 
-  function truncate(addr: string) {
-    return `${addr.slice(0, 4)}...${addr.slice(-4)}`
-  }
-
   function renderBadge(badge?: NavItem['badge']) {
     if (badge === 'ruleScore') {
       // Today's rule adherence, e.g. "3/5" — the score-first framing from
@@ -173,6 +178,8 @@ export function AppSidebar() {
             asChild
             isActive={isActive(item.href)}
             tooltip={item.label}
+            className="h-10 text-sm"
+            onClick={() => { if (isMobile) setOpenMobile(false) }}
           >
             <Link href={item.href} {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}>
               <item.icon />
@@ -199,6 +206,7 @@ export function AppSidebar() {
               tooltip={item.label}
               isActive={parentActive}
               onClick={() => handleParentClick(item)}
+              className="h-10 text-sm"
             >
               <item.icon />
               <span>{item.label}</span>
@@ -213,6 +221,7 @@ export function AppSidebar() {
                   <SidebarMenuSubButton
                     asChild
                     isActive={isActive(child.href)}
+                    onClick={() => { if (isMobile) setOpenMobile(false) }}
                   >
                     <Link href={child.href}>
                       <span>{child.label}</span>
@@ -227,97 +236,65 @@ export function AppSidebar() {
     )
   }
 
-  function renderWalletSummary() {
-    if (activeWallets.length === 0) {
-      return (
-        <Link
-          href="/wallet-management"
-          className="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          No wallets active
-        </Link>
-      )
-    }
+  // Home has a single "Dashboard" section — a one-item menu is noise, so the
+  // section sidebar is omitted on desktop and the icon rail alone drives nav.
+  // On mobile the rail is hidden, so the drawer must still render to carry the
+  // product switcher (see the mobile product nav below).
+  if (productId === 'home' && !isMobile) return null
 
-    if (activeWallets.length === 1) {
-      const w = activeWallets[0]
-      const key = makeWalletKey(w.address, w.chain)
-      const slot = walletSlots[key]
-      return (
-        <Link
-          href="/wallet-management"
-          className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
-          title={w.nickname || w.address}
-        >
-          <span className="text-[10px] font-medium bg-muted px-1 py-0.5 rounded shrink-0">
-            {CHAIN_CONFIG[w.chain].label.toUpperCase()}
-          </span>
-          <span className="font-mono truncate">
-            {w.nickname || truncate(w.address)}
-          </span>
-          {slot?.isLoading && (
-            <span className="ml-auto text-[10px] text-muted-foreground animate-pulse">loading</span>
-          )}
-        </Link>
-      )
-    }
+  const sectionMenu = (
+    <SidebarContent>
+      <SidebarGroup className="px-3">
+        {/* Journal gets a primary "Add Trade" CTA at the top of its section
+            menu (TradeZella pattern), routing to the manual-trade flow. */}
+        {shownProduct === 'journal' && (
+          <Button asChild className="mb-3 w-full justify-center gap-1.5">
+            <Link href="/trade-journal" onClick={() => { if (isMobile) setOpenMobile(false) }}>
+              <Plus className="h-4 w-4" />
+              Add Trade
+            </Link>
+          </Button>
+        )}
+        <SidebarMenu className="gap-1.5">{sections.map(renderNavItem)}</SidebarMenu>
+      </SidebarGroup>
+    </SidebarContent>
+  )
 
-    const chainBadges = [...new Set(activeWallets.map((w) => w.chain))]
+  // Mobile: the icon rail is hidden in the layout (hidden md:block), so the
+  // drawer reproduces the SAME two-level nav — the rail beside the section
+  // menu — exactly as it appears on desktop, rather than a separate list.
+  //
+  // Tapping a rail icon does NOT navigate (except Home, which has no second
+  // menu): it previews that product's sections in place so you can drill into
+  // the intended section, matching how the desktop rail + sidebar behave.
+  if (isMobile) {
     return (
-      <Link
-        href="/wallet-management"
-        className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {chainBadges.map((chain) => (
-          <span key={chain} className="text-[10px] font-medium bg-muted px-1 py-0.5 rounded shrink-0">
-            {CHAIN_CONFIG[chain].label.toUpperCase()}
-          </span>
-        ))}
-        <span>{activeWallets.length} wallets active</span>
-      </Link>
+      <Sidebar collapsible="offcanvas" data-tour="sidebar">
+        <div className="flex h-full">
+          <MobileRail
+            shownProduct={shownProduct}
+            onSelectProduct={(id) => {
+              if (id === 'home') {
+                // Home has no section menu — go straight there.
+                setOpenMobile(false)
+              } else {
+                setMobileProduct(id)
+              }
+            }}
+          />
+          <div className="flex min-w-0 flex-1 flex-col pt-3">{sectionMenu}</div>
+        </div>
+      </Sidebar>
     )
   }
 
   return (
-    <Sidebar collapsible="icon" data-tour="sidebar">
-      <SidebarHeader className="px-4 py-5">
-        <div className="flex items-center justify-between">
-          <div className="text-base font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            Journalio
-          </div>
-          <button
-            onClick={() => toggleSidebar()}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
-            title="Toggle sidebar"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="group-data-[collapsible=icon]:hidden">
-          {renderWalletSummary()}
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          {/* Names the active product so the rail selection is legible even
-              when several products share similar section labels. */}
-          <div className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden">
-            {activeProduct.label}
-          </div>
-          <SidebarMenu>{sections.map(renderNavItem)}</SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
+    <Sidebar collapsible="offcanvas" data-tour="sidebar">
+      {/* Spacer clearing the fixed full-width header (h-12). */}
+      <SidebarHeader className="h-12" />
+      {sectionMenu}
       <SidebarFooter className="px-2 py-3">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip={isDark ? 'Use Light Mode' : 'Use Dark Mode'}
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            >
-              {isDark ? <Sun /> : <Moon />}
-              <span>{isDark ? 'Use Light Mode' : 'Use Dark Mode'}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Collapse Sidebar"
@@ -330,5 +307,69 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+  )
+}
+
+/**
+ * The product icon rail as it appears inside the mobile drawer — the same
+ * outer nav level as the desktop ProductRail, so mobile shows the identical
+ * two-level nav (rail + section menu) rather than a bespoke list.
+ *
+ * A rail tap does NOT navigate; it selects which product's section menu the
+ * drawer previews (`onSelectProduct`). Home is the exception — it has no
+ * section menu, so its handler navigates instead. `shownProduct` drives the
+ * active highlight so the rail reflects the previewed product.
+ */
+function MobileRail({
+  shownProduct,
+  onSelectProduct,
+}: {
+  shownProduct: ProductId
+  onSelectProduct: (id: ProductId) => void
+}) {
+  return (
+    <nav
+      aria-label="Products"
+      className="flex w-14 shrink-0 flex-col items-center gap-1 border-r bg-sidebar py-3"
+    >
+      {PRODUCTS.map((product) => {
+        const Icon = product.icon
+        const isActive = shownProduct === product.id
+        const className = `flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
+          isActive
+            ? 'bg-sidebar-accent text-emerald-500'
+            : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
+        }`
+
+        // Home routes straight to the dashboard (no second menu); every other
+        // product previews its section list in the drawer without navigating.
+        if (product.id === 'home') {
+          return (
+            <Link
+              key={product.id}
+              href={product.href}
+              aria-label={product.label}
+              onClick={() => onSelectProduct('home')}
+              className={className}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+            </Link>
+          )
+        }
+
+        return (
+          <button
+            key={product.id}
+            type="button"
+            aria-label={product.label}
+            aria-current={isActive ? 'page' : undefined}
+            onClick={() => onSelectProduct(product.id)}
+            className={className}
+          >
+            <Icon className="h-[18px] w-[18px]" />
+          </button>
+        )
+      })}
+    </nav>
   )
 }

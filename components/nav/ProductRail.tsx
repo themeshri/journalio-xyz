@@ -23,16 +23,8 @@ export function ProductRail() {
   return (
     <nav
       aria-label="Products"
-      className="flex h-svh w-14 shrink-0 flex-col items-center gap-1 border-r bg-sidebar py-3"
+      className="relative z-20 flex h-svh w-14 shrink-0 flex-col items-center gap-1 border-r bg-sidebar pb-3 pt-[3.75rem]"
     >
-      <Link
-        href="/"
-        aria-label="Journalio home"
-        className="mb-2 flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/10 text-sm font-bold text-emerald-500"
-      >
-        J
-      </Link>
-
       <TooltipProvider delayDuration={0}>
         {PRODUCTS.map((product) => {
           const Icon = product.icon
