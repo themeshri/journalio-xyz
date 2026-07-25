@@ -24,8 +24,14 @@ export function ViewMyDayButton({
   className?: string
 }) {
   const { flattenedTrades, journalMap, tradeComments } = useWallet()
-  const { yearlyPreSessions, yearlyPostSessions, timezone, tradingStartTime } = useMetadata()
+  const { yearlyPreSessions, yearlyPostSessions, timezone, tradingStartTime, preSessionDone } = useMetadata()
   const [open, setOpen] = useState(false)
+
+  // Before the day is started (no pre-session filled), frame the CTA as an
+  // invitation to start — "Start my day" with a green rocket — rather than a
+  // review of a day that hasn't happened. Once the pre-session is in, it
+  // becomes the usual "View my day" review entry point.
+  const notStarted = !preSessionDone
 
   const today = useMemo(
     () => getTradingDay(timezone, tradingStartTime),
@@ -62,8 +68,8 @@ export function ViewMyDayButton({
         className={className ?? 'h-8 text-xs'}
         onClick={() => setOpen(true)}
       >
-        <Rocket className="mr-1.5 h-3.5 w-3.5" />
-        View my day
+        <Rocket className={`mr-1.5 h-3.5 w-3.5 ${notStarted ? 'text-emerald-500' : ''}`} />
+        {notStarted ? 'Start my day' : 'View my day'}
       </Button>
 
       {open && (
