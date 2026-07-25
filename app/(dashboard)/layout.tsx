@@ -9,7 +9,6 @@ import { LocalStorageMigration } from '@/components/LocalStorageMigration'
 import { OnboardingGate } from '@/components/onboarding/OnboardingGate'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AccountDropdown } from '@/components/AccountDropdown'
-import { PageToolbar } from '@/components/PageToolbar'
 import { SyncButton } from '@/components/SyncButton'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 
@@ -89,7 +88,6 @@ export default function DashboardLayout({
             <div className="flex-1 overflow-auto px-6 py-6">
               <LocalStorageMigration />
               <StaleDataBanner />
-              <PageToolbar />
               <Breadcrumbs />
               {children}
             </div>

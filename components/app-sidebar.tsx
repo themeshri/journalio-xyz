@@ -6,7 +6,9 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import {
   ChevronRight,
   PanelLeftClose,
+  Plus,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   Sidebar,
   SidebarContent,
@@ -47,7 +49,6 @@ export function AppSidebar() {
   // Section list is driven by the product the current path belongs to — the
   // inner level of the two-level nav (lib/nav-structure.ts).
   const productId = productForPath(pathname)
-  const activeProduct = PRODUCTS.find((p) => p.id === productId) ?? PRODUCTS[0]
   const sections = PRODUCT_SECTIONS[productId]
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
 
@@ -161,6 +162,7 @@ export function AppSidebar() {
             asChild
             isActive={isActive(item.href)}
             tooltip={item.label}
+            className="h-10 text-sm"
           >
             <Link href={item.href} {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}>
               <item.icon />
@@ -187,6 +189,7 @@ export function AppSidebar() {
               tooltip={item.label}
               isActive={parentActive}
               onClick={() => handleParentClick(item)}
+              className="h-10 text-sm"
             >
               <item.icon />
               <span>{item.label}</span>
@@ -215,19 +218,28 @@ export function AppSidebar() {
     )
   }
 
+  // Home has a single "Dashboard" section — a one-item menu is noise, so the
+  // section sidebar is omitted entirely and the icon rail alone drives nav.
+  if (productId === 'home') return null
+
   return (
     <Sidebar collapsible="offcanvas" data-tour="sidebar">
       {/* Spacer clearing the fixed full-width header (h-12); the wordmark,
           hamburger, and wallet summary now live in that header. */}
       <SidebarHeader className="h-12" />
       <SidebarContent>
-        <SidebarGroup>
-          {/* Names the active product so the rail selection is legible even
-              when several products share similar section labels. */}
-          <div className="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden">
-            {activeProduct.label}
-          </div>
-          <SidebarMenu>{sections.map(renderNavItem)}</SidebarMenu>
+        <SidebarGroup className="px-3">
+          {/* Journal gets a primary "Add Trade" CTA at the top of its section
+              menu (TradeZella pattern), routing to the manual-trade flow. */}
+          {productId === 'journal' && (
+            <Button asChild className="mb-3 w-full justify-center gap-1.5">
+              <Link href="/trade-journal">
+                <Plus className="h-4 w-4" />
+                Add Trade
+              </Link>
+            </Button>
+          )}
+          <SidebarMenu className="gap-1.5">{sections.map(renderNavItem)}</SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="px-2 py-3">

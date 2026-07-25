@@ -16,6 +16,7 @@ import { InsightsCard } from '@/components/overview/InsightsCard'
 import { PerformanceScoreCard } from '@/components/overview/PerformanceScoreCard'
 import { Card, CardContent } from '@/components/ui/card'
 import { ViewMyDayButton } from '@/components/ViewMyDayButton'
+import { PageHeader } from '@/components/PageHeader'
 import { filterTradesByRange } from '@/lib/time-filters'
 import { getTradingDay } from '@/lib/trading-day'
 import { computeRollingDiscipline } from '@/lib/discipline'
@@ -161,12 +162,7 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Home</h1>
-        {/* Date range and wallet filters now live in the global header toolbar.
-            The Pre/Active/Post session tabs moved onto the SessionHero card. */}
-        <ViewMyDayButton />
-      </div>
+      <PageHeader title="Home" actions={<ViewMyDayButton />} />
 
       {/* Cold-start checklist — self-hides once all setup steps are done */}
       <ErrorBoundary fallback={sectionErrorFallback}>
