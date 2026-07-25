@@ -37,6 +37,7 @@ import {
   PRODUCT_SECTIONS,
   productForPath,
   type NavItem,
+  type ProductId,
 } from '@/lib/nav-structure'
 
 
@@ -228,75 +229,97 @@ export function AppSidebar() {
   // product switcher (see the mobile product nav below).
   if (productId === 'home' && !isMobile) return null
 
+  const sectionMenu = (
+    <SidebarContent>
+      <SidebarGroup className="px-3">
+        {/* Journal gets a primary "Add Trade" CTA at the top of its section
+            menu (TradeZella pattern), routing to the manual-trade flow. */}
+        {productId === 'journal' && (
+          <Button asChild className="mb-3 w-full justify-center gap-1.5">
+            <Link href="/trade-journal" onClick={() => { if (isMobile) setOpenMobile(false) }}>
+              <Plus className="h-4 w-4" />
+              Add Trade
+            </Link>
+          </Button>
+        )}
+        <SidebarMenu className="gap-1.5">{sections.map(renderNavItem)}</SidebarMenu>
+      </SidebarGroup>
+    </SidebarContent>
+  )
+
+  // Mobile: the icon rail is hidden in the layout (hidden md:block), so the
+  // drawer reproduces the SAME two-level nav — the rail beside the section
+  // menu — exactly as it appears on desktop, rather than a separate list.
+  if (isMobile) {
+    return (
+      <Sidebar collapsible="offcanvas" data-tour="sidebar">
+        <div className="flex h-full">
+          <MobileRail activeProduct={productId} onNavigate={() => setOpenMobile(false)} />
+          <div className="flex min-w-0 flex-1 flex-col pt-3">{sectionMenu}</div>
+        </div>
+      </Sidebar>
+    )
+  }
+
   return (
     <Sidebar collapsible="offcanvas" data-tour="sidebar">
-      {/* Desktop: spacer clearing the fixed full-width header (h-12). On mobile
-          the drawer is a Sheet with its own top, so no spacer is needed. */}
-      {!isMobile && <SidebarHeader className="h-12" />}
-      <SidebarContent>
-        {/* Mobile: the icon rail is hidden (hidden md:block in the layout), so
-            the drawer carries BOTH nav levels — the product switcher here, the
-            section list below. On desktop the rail owns product switching. */}
-        {isMobile && (
-          <SidebarGroup className="px-3 pt-3">
-            <div className="pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Products
-            </div>
-            <SidebarMenu className="gap-1.5">
-              {PRODUCTS.map((product) => (
-                <SidebarMenuItem key={product.id}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={product.id === productId}
-                    className="h-10 text-sm"
-                    onClick={() => setOpenMobile(false)}
-                  >
-                    <Link href={product.href}>
-                      <product.icon />
-                      <span>{product.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-        )}
-        <SidebarGroup className="px-3">
-          {/* Journal gets a primary "Add Trade" CTA at the top of its section
-              menu (TradeZella pattern), routing to the manual-trade flow. */}
-          {productId === 'journal' && (
-            <Button asChild className="mb-3 w-full justify-center gap-1.5">
-              <Link href="/trade-journal">
-                <Plus className="h-4 w-4" />
-                Add Trade
-              </Link>
-            </Button>
-          )}
-          {isMobile && sections.length > 0 && (
-            <div className="pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              {PRODUCTS.find((p) => p.id === productId)?.label}
-            </div>
-          )}
-          <SidebarMenu className="gap-1.5">{sections.map(renderNavItem)}</SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-      {/* The collapse control is meaningless in the mobile Sheet (it closes via
-          backdrop/swipe), so the footer is desktop-only. */}
-      {!isMobile && (
-        <SidebarFooter className="px-2 py-3">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Collapse Sidebar"
-                onClick={() => toggleSidebar()}
-              >
-                <PanelLeftClose />
-                <span>Collapse Sidebar</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      )}
+      {/* Spacer clearing the fixed full-width header (h-12). */}
+      <SidebarHeader className="h-12" />
+      {sectionMenu}
+      <SidebarFooter className="px-2 py-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Collapse Sidebar"
+              onClick={() => toggleSidebar()}
+            >
+              <PanelLeftClose />
+              <span>Collapse Sidebar</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
+  )
+}
+
+/**
+ * The product icon rail as it appears inside the mobile drawer — the same
+ * outer nav level as the desktop ProductRail, so mobile shows the identical
+ * two-level nav (rail + section menu) rather than a bespoke list.
+ */
+function MobileRail({
+  activeProduct,
+  onNavigate,
+}: {
+  activeProduct: ProductId
+  onNavigate: () => void
+}) {
+  return (
+    <nav
+      aria-label="Products"
+      className="flex w-14 shrink-0 flex-col items-center gap-1 border-r bg-sidebar py-3"
+    >
+      {PRODUCTS.map((product) => {
+        const Icon = product.icon
+        const isActive = activeProduct === product.id
+        return (
+          <Link
+            key={product.id}
+            href={product.href}
+            aria-label={product.label}
+            aria-current={isActive ? 'page' : undefined}
+            onClick={onNavigate}
+            className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
+              isActive
+                ? 'bg-sidebar-accent text-emerald-500'
+                : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
+            }`}
+          >
+            <Icon className="h-[18px] w-[18px]" />
+          </Link>
+        )
+      })}
+    </nav>
   )
 }
