@@ -84,6 +84,8 @@ export default function DrawdownPage() {
         <h1 className="text-lg font-semibold">Drawdown</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Account balance over time and how far below its running peak it fell.
+          Based on realized P&amp;L from closed trades — open positions
+          (unrealized) are not included.
         </p>
       </div>
 
