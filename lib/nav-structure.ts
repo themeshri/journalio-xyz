@@ -55,14 +55,14 @@ export const PRODUCTS: Product[] = [
     label: 'Journal',
     icon: BookOpen,
     href: '/trade-journal',
-    match: ['/trade-journal', '/diary', '/missed-trades', '/progress-tracker'],
+    match: ['/trade-journal', '/diary', '/missed-trades', '/progress-tracker', '/history'],
   },
   {
     id: 'analytics',
     label: 'Analytics',
     icon: BarChart3,
     href: '/analytics',
-    match: ['/analytics', '/chart-lab', '/history'],
+    match: ['/analytics', '/chart-lab'],
   },
   {
     id: 'manage',
@@ -111,6 +111,18 @@ export const PRODUCT_SECTIONS: Record<ProductId, NavItem[]> = {
       icon: Target,
       badge: 'ruleScore',
     },
+    {
+      label: 'History',
+      href: '/history',
+      icon: Clock,
+      children: [
+        { label: 'Sessions', href: '/history?tab=pre-sessions' },
+        { label: 'Journal', href: '/history?tab=journal' },
+        { label: 'Transactions', href: '/history?tab=transactions' },
+        { label: 'Missed Trades', href: '/history?tab=missed-trades' },
+        { label: 'Attachments', href: '/history?tab=chartbook' },
+      ],
+    },
   ],
 
   analytics: [
@@ -139,18 +151,6 @@ export const PRODUCT_SECTIONS: Record<ProductId, NavItem[]> = {
         { label: 'Equity Curve', href: '/chart-lab/equity' },
         { label: 'Distribution', href: '/chart-lab/distribution' },
         { label: 'Holding Time', href: '/chart-lab/holding-time' },
-      ],
-    },
-    {
-      label: 'History',
-      href: '/history',
-      icon: Clock,
-      children: [
-        { label: 'Sessions', href: '/history?tab=pre-sessions' },
-        { label: 'Journal', href: '/history?tab=journal' },
-        { label: 'Transactions', href: '/history?tab=transactions' },
-        { label: 'Missed Trades', href: '/history?tab=missed-trades' },
-        { label: 'Attachments', href: '/history?tab=chartbook' },
       ],
     },
   ],
