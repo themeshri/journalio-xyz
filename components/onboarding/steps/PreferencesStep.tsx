@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ClipboardList, TrendingUp, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Popover,
   PopoverContent,
@@ -18,12 +19,20 @@ import {
 } from '@/components/ui/command'
 import { toast } from 'sonner'
 
-interface TimezoneStepProps {
+interface PreferencesStepProps {
   onNext: () => void
 }
 
-export function TimezoneStep({ onNext }: TimezoneStepProps) {
+/**
+ * Welcome + preferences in one step (merged from the old WelcomeStep +
+ * TimezoneStep). TradeZella opens with a single "Let's set your preferences"
+ * form rather than a separate welcome screen; this mirrors that — a compact
+ * feedback-loop intro plus display name, timezone, and trading start time,
+ * saved via PATCH /api/settings.
+ */
+export function PreferencesStep({ onNext }: PreferencesStepProps) {
   const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const [displayName, setDisplayName] = useState('')
   const [timezone, setTimezone] = useState(browserTz)
   const [tradingStartTime, setTradingStartTime] = useState('09:00')
   const [tzOpen, setTzOpen] = useState(false)
@@ -36,30 +45,65 @@ export function TimezoneStep({ onNext }: TimezoneStepProps) {
       const res = await fetch('/api/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timezone, tradingStartTime }),
+        body: JSON.stringify({
+          timezone,
+          tradingStartTime,
+          ...(displayName.trim() ? { displayName: displayName.trim() } : {}),
+        }),
       })
       if (res.ok) {
         onNext()
       } else {
-        toast.error('Failed to save timezone')
+        toast.error('Failed to save preferences')
       }
     } catch {
-      toast.error('Failed to save timezone')
+      toast.error('Failed to save preferences')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="max-w-md mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-xl font-semibold mb-2">Set Your Timezone</h2>
+    <div className="max-w-lg mx-auto w-full">
+      <div className="text-center mb-6">
+        <h1 className="text-2xl font-bold tracking-tight mb-2">
+          Welcome to Journalio
+        </h1>
         <p className="text-sm text-muted-foreground">
-          We use your timezone to determine when your trading day starts and resets.
+          The trading journal that closes the feedback loop.
         </p>
       </div>
 
-      <div className="space-y-5">
+      {/* Compact feedback-loop visual */}
+      <div className="flex items-center justify-center gap-2 mb-8">
+        {[
+          { icon: ClipboardList, label: 'Pre-Session' },
+          { icon: TrendingUp, label: 'Trade' },
+          { icon: BookOpen, label: 'Post-Session' },
+        ].map(({ icon: Icon, label }, i, arr) => (
+          <div key={label} className="flex items-center gap-2">
+            <div className="flex flex-col items-center gap-1 rounded-lg border bg-card px-3 py-2">
+              <Icon className="h-4 w-4 text-primary" />
+              <span className="text-[11px] font-medium">{label}</span>
+            </div>
+            {i < arr.length - 1 && (
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="text-xs font-medium mb-1.5 block">Display name</label>
+          <Input
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="How should we call you? (optional)"
+            className="text-sm"
+          />
+        </div>
+
         <div>
           <label className="text-xs font-medium mb-1.5 block">Timezone</label>
           <Popover open={tzOpen} onOpenChange={setTzOpen}>
@@ -113,24 +157,27 @@ export function TimezoneStep({ onNext }: TimezoneStepProps) {
               </Command>
             </PopoverContent>
           </Popover>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Determines when your trading day starts and resets.
+          </p>
         </div>
 
         <div>
-          <label className="text-xs font-medium mb-1.5 block">Trading Start Time</label>
-          <p className="text-xs text-muted-foreground mb-2">
-            When your trading day begins (pre-session resets at this time)
-          </p>
+          <label className="text-xs font-medium mb-1.5 block">Trading start time</label>
           <input
             type="time"
             value={tradingStartTime}
             onChange={(e) => setTradingStartTime(e.target.value)}
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            When your trading day begins (pre-session resets at this time).
+          </p>
         </div>
 
-        <div className="flex gap-3 pt-2">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Continue'}
+        <div className="pt-2">
+          <Button onClick={handleSave} disabled={saving} size="lg" className="w-full">
+            {saving ? 'Saving...' : "Let's get started"}
             {!saving && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
         </div>

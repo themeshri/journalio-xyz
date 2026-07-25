@@ -261,7 +261,13 @@ export default function WalletManagementPage() {
       <div className="space-y-3">
         <h2 className="text-sm font-medium">Saved Wallets</h2>
         {mounted && wallets.length === 0 && (
-          <p className="text-sm text-muted-foreground">No saved wallets yet.</p>
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <p className="text-sm font-medium">No wallets yet</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Add your first Solana or EVM wallet using the form above to start
+              importing your trading history.
+            </p>
+          </div>
         )}
         <div className="space-y-2">
           {wallets.map((w) => {

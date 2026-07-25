@@ -507,6 +507,27 @@ export default function SettingsPage() {
         >
           Replay Onboarding
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={async () => {
+            try {
+              // Step 5 = tour pending (skips the setup wizard, replays only the
+              // product tour). See OnboardingGate for the step semantics.
+              await fetch('/api/settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ onboardingStep: 5 }),
+              })
+              window.location.href = '/'
+            } catch {
+              toast.error('Failed to restart tour')
+            }
+          }}
+        >
+          Restart Product Tour
+        </Button>
         <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setResetConfirm(true)}>
           Reset to Default
         </Button>

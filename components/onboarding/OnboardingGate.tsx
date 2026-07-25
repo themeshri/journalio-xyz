@@ -64,7 +64,7 @@ export function OnboardingGate() {
     )
   }
 
-  if (onboardingStep !== null && onboardingStep >= 0 && onboardingStep <= 4) {
+  if (onboardingStep !== null && onboardingStep >= 0 && onboardingStep <= 3) {
     return (
       <OnboardingWizard
         initialStep={onboardingStep}
