@@ -28,6 +28,7 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from '@/components/ui/collapsible'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { useWallet, useMetadata } from '@/lib/wallet-context'
 import { computeTradeDiscipline, disciplineColor, type DisciplineResult } from '@/lib/discipline'
 import type { JournalData } from '@/components/JournalModal'
@@ -42,7 +43,8 @@ import {
 export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { state, setOpen, toggleSidebar } = useSidebar()
+  const { state, setOpen, setOpenMobile, toggleSidebar } = useSidebar()
+  const isMobile = useIsMobile()
   const { tradeComments, journalMap } = useWallet()
   const { preSessionDone, todayRuleScore } = useMetadata()
 
@@ -163,6 +165,7 @@ export function AppSidebar() {
             isActive={isActive(item.href)}
             tooltip={item.label}
             className="h-10 text-sm"
+            onClick={() => { if (isMobile) setOpenMobile(false) }}
           >
             <Link href={item.href} {...(item.dataTour ? { 'data-tour': item.dataTour } : {})}>
               <item.icon />
@@ -204,6 +207,7 @@ export function AppSidebar() {
                   <SidebarMenuSubButton
                     asChild
                     isActive={isActive(child.href)}
+                    onClick={() => { if (isMobile) setOpenMobile(false) }}
                   >
                     <Link href={child.href}>
                       <span>{child.label}</span>
@@ -219,15 +223,44 @@ export function AppSidebar() {
   }
 
   // Home has a single "Dashboard" section — a one-item menu is noise, so the
-  // section sidebar is omitted entirely and the icon rail alone drives nav.
-  if (productId === 'home') return null
+  // section sidebar is omitted on desktop and the icon rail alone drives nav.
+  // On mobile the rail is hidden, so the drawer must still render to carry the
+  // product switcher (see the mobile product nav below).
+  if (productId === 'home' && !isMobile) return null
 
   return (
     <Sidebar collapsible="offcanvas" data-tour="sidebar">
-      {/* Spacer clearing the fixed full-width header (h-12); the wordmark,
-          hamburger, and wallet summary now live in that header. */}
-      <SidebarHeader className="h-12" />
+      {/* Desktop: spacer clearing the fixed full-width header (h-12). On mobile
+          the drawer is a Sheet with its own top, so no spacer is needed. */}
+      {!isMobile && <SidebarHeader className="h-12" />}
       <SidebarContent>
+        {/* Mobile: the icon rail is hidden (hidden md:block in the layout), so
+            the drawer carries BOTH nav levels — the product switcher here, the
+            section list below. On desktop the rail owns product switching. */}
+        {isMobile && (
+          <SidebarGroup className="px-3 pt-3">
+            <div className="pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Products
+            </div>
+            <SidebarMenu className="gap-1.5">
+              {PRODUCTS.map((product) => (
+                <SidebarMenuItem key={product.id}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={product.id === productId}
+                    className="h-10 text-sm"
+                    onClick={() => setOpenMobile(false)}
+                  >
+                    <Link href={product.href}>
+                      <product.icon />
+                      <span>{product.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
         <SidebarGroup className="px-3">
           {/* Journal gets a primary "Add Trade" CTA at the top of its section
               menu (TradeZella pattern), routing to the manual-trade flow. */}
@@ -239,22 +272,31 @@ export function AppSidebar() {
               </Link>
             </Button>
           )}
+          {isMobile && sections.length > 0 && (
+            <div className="pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              {PRODUCTS.find((p) => p.id === productId)?.label}
+            </div>
+          )}
           <SidebarMenu className="gap-1.5">{sections.map(renderNavItem)}</SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="px-2 py-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Collapse Sidebar"
-              onClick={() => toggleSidebar()}
-            >
-              <PanelLeftClose />
-              <span>Collapse Sidebar</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      {/* The collapse control is meaningless in the mobile Sheet (it closes via
+          backdrop/swipe), so the footer is desktop-only. */}
+      {!isMobile && (
+        <SidebarFooter className="px-2 py-3">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Collapse Sidebar"
+                onClick={() => toggleSidebar()}
+              >
+                <PanelLeftClose />
+                <span>Collapse Sidebar</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      )}
     </Sidebar>
   )
 }
