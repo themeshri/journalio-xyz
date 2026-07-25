@@ -23,6 +23,14 @@ import {
   ClipboardCheck,
   SearchX,
   StickyNote,
+  LayoutDashboard,
+  Gauge,
+  Swords,
+  Brain,
+  CalendarClock,
+  CalendarDays,
+  LineChart,
+  Timer,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -36,6 +44,8 @@ export interface NavItem {
   children?: { label: string; href: string }[]
   badge?: 'preSession' | 'discipline' | 'ruleScore'
   dataTour?: string
+  /** Render a divider line after this item in the section menu. */
+  dividerAfter?: boolean
 }
 
 export interface Product {
@@ -104,6 +114,7 @@ export const PRODUCT_SECTIONS: Record<ProductId, NavItem[]> = {
       label: 'Notes',
       href: '/diary/notes',
       icon: StickyNote,
+      dividerAfter: true,
     },
     {
       label: 'Journaling Progress',
@@ -126,33 +137,19 @@ export const PRODUCT_SECTIONS: Record<ProductId, NavItem[]> = {
   ],
 
   analytics: [
-    {
-      label: 'Reports',
-      href: '/analytics',
-      icon: BarChart3,
-      children: [
-        { label: 'Overview', href: '/analytics' },
-        { label: 'Time Analysis', href: '/analytics?tab=time' },
-        { label: 'Discipline', href: '/analytics?tab=discipline' },
-        { label: 'Strategy', href: '/analytics?tab=strategy' },
-        { label: 'Missed Trades', href: '/analytics?tab=missed' },
-        { label: 'Behavior', href: '/analytics?tab=behavior' },
-        { label: 'Sessions', href: '/analytics?tab=sessions' },
-      ],
-    },
+    { label: 'Overview', href: '/analytics', icon: LayoutDashboard },
+    { label: 'Time Analysis', href: '/analytics?tab=time', icon: Clock },
+    { label: 'Discipline', href: '/analytics?tab=discipline', icon: Gauge },
+    { label: 'Strategy', href: '/analytics?tab=strategy', icon: Swords },
+    { label: 'Missed Trades', href: '/analytics?tab=missed', icon: SearchX },
+    { label: 'Behavior', href: '/analytics?tab=behavior', icon: Brain },
+    { label: 'Sessions', href: '/analytics?tab=sessions', icon: CalendarClock, dividerAfter: true },
     { label: 'Compare', href: '/analytics/compare', icon: GitCompare },
-    { label: 'Drawdown', href: '/analytics/drawdown', icon: TrendingDown },
-    {
-      label: 'Charts',
-      href: '/chart-lab',
-      icon: BarChart3,
-      children: [
-        { label: 'Calendar', href: '/chart-lab/calendar' },
-        { label: 'Equity Curve', href: '/chart-lab/equity' },
-        { label: 'Distribution', href: '/chart-lab/distribution' },
-        { label: 'Holding Time', href: '/chart-lab/holding-time' },
-      ],
-    },
+    { label: 'Drawdown', href: '/analytics/drawdown', icon: TrendingDown, dividerAfter: true },
+    { label: 'Calendar', href: '/chart-lab/calendar', icon: CalendarDays },
+    { label: 'Equity Curve', href: '/chart-lab/equity', icon: LineChart },
+    { label: 'Distribution', href: '/chart-lab/distribution', icon: BarChart3 },
+    { label: 'Holding Time', href: '/chart-lab/holding-time', icon: Timer },
   ],
 
   manage: [
