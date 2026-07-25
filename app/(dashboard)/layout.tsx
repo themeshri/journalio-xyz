@@ -78,8 +78,10 @@ export default function DashboardLayout({
             </div>
           </header>
 
-          {/* Nav + content row, offset below the fixed header. */}
-          <div className="hidden md:block">
+          {/* Icon rail — fixed to the viewport (below the h-12 header) so it
+              stays locked while the page scrolls, matching the fixed section
+              sidebar. z-20 keeps it above the sidebar (z-10) when collapsed. */}
+          <div className="fixed left-0 top-12 bottom-0 z-20 hidden md:block">
             <ProductRail />
           </div>
           <AppSidebar />
