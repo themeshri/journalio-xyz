@@ -589,7 +589,7 @@ export default function AnalyticsPage() {
 
   if (!initialized || (isAnyLoading && allTrades.length === 0)) {
     return (
-      <div className="max-w-4xl pt-8">
+      <div className="pt-8">
         <h1 className="text-xl font-semibold mb-6">Analytics</h1>
         <StatStripSkeleton count={5} />
         <div className="space-y-10">
@@ -629,7 +629,7 @@ export default function AnalyticsPage() {
   const avgPLPerTrade = totalTrades > 0 ? totalPL / totalTrades : 0
 
   return (
-    <div className="max-w-4xl">
+    <div>
       <PageHeader title="Analytics" />
 
       {/* Stats row — overview only */}

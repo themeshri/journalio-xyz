@@ -84,20 +84,20 @@ export default function HoldingTimePage() {
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="durationMin"
                   name="Duration"
                   unit="m"
                   type="number"
-                  tick={{ fontSize: 10 }}
-                  label={{ value: 'Duration (minutes)', position: 'insideBottom', offset: -10, style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }}
+                  tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
+                  label={{ value: 'Duration (minutes)', position: 'insideBottom', offset: -10, style: { fontSize: 11, fill: 'var(--color-muted-foreground)' } }}
                 />
                 <YAxis
                   dataKey="pnl"
                   name="P/L"
-                  tick={{ fontSize: 10 }}
-                  label={{ value: 'P/L ($)', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }}
+                  tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
+                  label={{ value: 'P/L ($)', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'var(--color-muted-foreground)' } }}
                 />
                 <Tooltip
                   content={({ payload }) => {
@@ -114,9 +114,9 @@ export default function HoldingTimePage() {
                     )
                   }}
                 />
-                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-                <ReferenceLine x={avgDuration} stroke="hsl(var(--primary))" strokeDasharray="3 3" label={{ value: 'Avg', position: 'top', style: { fontSize: 10, fill: 'hsl(var(--primary))' } }} />
-                <Scatter data={data} fill="hsl(var(--primary))" fillOpacity={0.6} r={4} />
+                <ReferenceLine y={0} stroke="var(--color-muted-foreground)" strokeDasharray="3 3" />
+                <ReferenceLine x={avgDuration} stroke="var(--color-chart-1)" strokeDasharray="3 3" label={{ value: 'Avg', position: 'top', style: { fontSize: 10, fill: 'var(--color-chart-1)' } }} />
+                <Scatter data={data} fill="var(--color-chart-1)" fillOpacity={0.7} r={4} />
               </ScatterChart>
             </ResponsiveContainer>
           </div>

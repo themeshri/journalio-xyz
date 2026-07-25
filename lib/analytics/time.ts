@@ -129,12 +129,11 @@ export function computeEnhancedDurationBuckets(trades: FlattenedTrade[]): Enhanc
   const completed = trades.filter((t) => t.isComplete && t.duration && t.duration > 0)
 
   const buckets: { label: string; max: number }[] = [
-    { label: '<1h', max: 60 * 60 * 1000 },
+    { label: '1-15m', max: 15 * 60 * 1000 },
+    { label: '15m-1h', max: 60 * 60 * 1000 },
     { label: '1-6h', max: 6 * 60 * 60 * 1000 },
     { label: '6-24h', max: 24 * 60 * 60 * 1000 },
-    { label: '1-3d', max: 3 * 24 * 60 * 60 * 1000 },
-    { label: '3-7d', max: 7 * 24 * 60 * 60 * 1000 },
-    { label: '7d+', max: Infinity },
+    { label: '>24h', max: Infinity },
   ]
 
   return buckets.map(({ label, max }, i) => {

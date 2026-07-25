@@ -66,7 +66,7 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
 
   return (
     <>
-      <Card className="col-span-1">
+      <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm">P/L Calendar</CardTitle>
@@ -102,7 +102,7 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
             <div key={wi} className="grid grid-cols-8 gap-0.5 mb-0.5">
               {week.days.map((day, di) => {
                 if (!day) {
-                  return <div key={di} className="h-8 rounded bg-muted/20" />
+                  return <div key={di} className="h-20 rounded bg-muted/20" />
                 }
 
                 const pnl = day.pnl
@@ -113,14 +113,14 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
                   <div
                     key={day.date}
                     onClick={() => day.tradeCount > 0 && setSelectedDay(day)}
-                    className={`h-8 rounded flex flex-col items-center justify-center cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 ${colorClass} ${
+                    className={`h-20 rounded flex flex-col items-center justify-center gap-1 cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 ${colorClass} ${
                       isToday ? 'ring-1 ring-zinc-400' : ''
                     }`}
                   >
-                    <span className="text-[10px] font-medium">{parseInt(day.date.slice(8, 10))}</span>
+                    <span className="text-sm font-medium">{parseInt(day.date.slice(8, 10))}</span>
                     {day.tradeCount > 0 && (
                       <span
-                        className={`text-[7px] font-mono tabular-nums ${
+                        className={`text-xs font-mono tabular-nums ${
                           pnl >= 0 ? 'text-emerald-600' : 'text-red-600'
                         }`}
                       >
@@ -136,17 +136,17 @@ export function PLCalendar({ trades, journalMap, preSessions = [], postSessions 
               {(() => {
                 const daysTraded = week.days.filter((d) => d && d.tradeCount > 0).length
                 return (
-                  <div className="h-8 rounded flex flex-col items-center justify-center bg-muted/20">
+                  <div className="h-20 rounded flex flex-col items-center justify-center gap-0.5 bg-muted/20">
                     {daysTraded > 0 && (
                       <>
                         <span
-                          className={`text-[8px] font-mono tabular-nums leading-tight ${
+                          className={`text-xs font-mono tabular-nums leading-tight ${
                             week.weeklyPnL >= 0 ? 'text-emerald-500' : 'text-red-500'
                           }`}
                         >
                           {week.weeklyPnL >= 0 ? '+' : ''}{formatValue(week.weeklyPnL)}
                         </span>
-                        <span className="text-[7px] text-muted-foreground leading-tight">
+                        <span className="text-[10px] text-muted-foreground leading-tight">
                           {daysTraded}d
                         </span>
                       </>
