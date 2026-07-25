@@ -24,10 +24,13 @@ export function ProductRail() {
   const expanded = active === 'home'
 
   if (expanded) {
+    // Match the section-menu item metrics (SidebarMenuButton: gap-2, p-2, h-10,
+    // text-sm, size-4 icons) so the Home rail reads as the same list — but keep
+    // the emerald highlight for the selected product.
     return (
       <nav
         aria-label="Products"
-        className="flex h-full w-56 shrink-0 flex-col gap-1 border-r bg-sidebar p-3"
+        className="flex h-full w-56 shrink-0 flex-col gap-1 border-r bg-sidebar p-2"
       >
         {PRODUCTS.map((product) => {
           const Icon = product.icon
@@ -37,13 +40,13 @@ export function ProductRail() {
               key={product.id}
               href={product.href}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
+              className={`flex h-10 w-full items-center gap-2 rounded-md p-2 text-sm transition-colors [&>svg]:size-4 [&>svg]:shrink-0 ${
                 isActive
                   ? 'bg-sidebar-accent font-medium text-emerald-500'
-                  : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
+                  : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               }`}
             >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
+              <Icon />
               <span>{product.label}</span>
             </Link>
           )
