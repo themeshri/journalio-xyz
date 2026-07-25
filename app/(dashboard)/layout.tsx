@@ -17,7 +17,7 @@ function DashboardSkeleton() {
   return (
     <div className="flex h-screen flex-col animate-pulse">
       {/* Full-width top header skeleton */}
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b px-3">
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b px-5">
         <div className="h-6 w-6 bg-muted rounded" />
         <div className="h-5 w-24 bg-muted rounded" />
         <div className="ml-auto h-6 w-40 bg-muted rounded" />
@@ -62,7 +62,7 @@ export default function DashboardLayout({
               sidebar (z-10) and rail pass under it; their content is pushed
               below via top padding rather than editing the generated
               components/ui/sidebar.tsx. */}
-          <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-2 border-b bg-background px-3">
+          <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-5">
             {/* Left: hamburger + logo mark + wordmark. */}
             <div className="flex items-center gap-2">
               <SidebarTrigger />
@@ -90,11 +90,11 @@ export default function DashboardLayout({
           {/* Icon rail — kept in flow so it reserves its 56px column (the
               --sidebar-offset the fixed section sidebar and content depend on),
               but made sticky so it stays locked while the page scrolls. */}
-          <div className="sticky top-12 z-20 hidden h-[calc(100svh-3rem)] shrink-0 self-start md:block">
+          <div className="sticky top-14 z-20 hidden h-[calc(100svh-3.5rem)] shrink-0 self-start md:block">
             <ProductRail />
           </div>
           <AppSidebar />
-          <SidebarInset className="pt-12">
+          <SidebarInset className="pt-14">
             <OnboardingGate />
             <div className="flex-1 overflow-auto px-6 py-6">
               <LocalStorageMigration />

@@ -244,7 +244,7 @@ export function AppSidebar() {
 
   const sectionMenu = (
     <SidebarContent>
-      <SidebarGroup className="px-3">
+      <SidebarGroup className="px-3 pt-4">
         {/* Journal gets a primary "Add Trade" CTA at the top of its section
             menu (TradeZella pattern), routing to the manual-trade flow. */}
         {shownProduct === 'journal' && (
@@ -299,8 +299,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="offcanvas" data-tour="sidebar">
-      {/* Spacer clearing the fixed full-width header (h-12). */}
-      <SidebarHeader className="h-12" />
+      {/* Spacer clearing the fixed full-width header (h-14). */}
+      <SidebarHeader className="h-14" />
       {sectionMenu}
       <SidebarFooter className="px-2 py-3">
         <SidebarMenu>
