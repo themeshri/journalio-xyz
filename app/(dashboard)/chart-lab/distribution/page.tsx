@@ -153,15 +153,15 @@ export default function DistributionPage() {
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={buckets} margin={{ top: 10, right: 30, bottom: 20, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 9 }}
+                  tick={{ fontSize: 9, fill: 'var(--color-muted-foreground)' }}
                   angle={-45}
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }} />
                 <Tooltip
                   content={({ payload }) => {
                     if (!payload?.length) return null
@@ -178,8 +178,8 @@ export default function DistributionPage() {
                   {buckets.map((b, i) => (
                     <Cell
                       key={i}
-                      fill={b.isPositive ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))'}
-                      fillOpacity={0.8}
+                      fill={b.isPositive ? 'var(--color-chart-1)' : 'var(--color-destructive)'}
+                      fillOpacity={0.85}
                     />
                   ))}
                 </Bar>

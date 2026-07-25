@@ -113,11 +113,11 @@ export function detectPatterns(
 
   // 4. Holding time sweet spot
   const buckets = [
-    { label: '<1h', max: 3600000, trades: [] as FlattenedTrade[] },
+    { label: '1-15m', max: 900000, trades: [] as FlattenedTrade[] },
+    { label: '15m-1h', max: 3600000, trades: [] as FlattenedTrade[] },
     { label: '1-6h', max: 21600000, trades: [] as FlattenedTrade[] },
     { label: '6-24h', max: 86400000, trades: [] as FlattenedTrade[] },
-    { label: '1-3d', max: 259200000, trades: [] as FlattenedTrade[] },
-    { label: '3d+', max: Infinity, trades: [] as FlattenedTrade[] },
+    { label: '>24h', max: Infinity, trades: [] as FlattenedTrade[] },
   ]
   for (const t of trades.filter((t) => t.isComplete && t.duration)) {
     for (let i = 0; i < buckets.length; i++) {
