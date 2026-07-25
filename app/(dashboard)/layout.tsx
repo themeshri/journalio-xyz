@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ProductRail } from '@/components/nav/ProductRail'
@@ -16,23 +17,30 @@ import { Breadcrumbs } from '@/components/Breadcrumbs'
 
 function DashboardSkeleton() {
   return (
-    <div className="flex h-screen">
-      {/* Sidebar skeleton */}
-      <div className="w-64 border-r bg-sidebar p-4 space-y-4 animate-pulse">
-        <div className="h-8 w-32 bg-muted rounded" />
-        <div className="space-y-2 pt-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-8 w-full bg-muted rounded" />
-          ))}
-        </div>
+    <div className="flex h-screen flex-col animate-pulse">
+      {/* Full-width top header skeleton */}
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b px-3">
+        <div className="h-6 w-6 bg-muted rounded" />
+        <div className="h-5 w-24 bg-muted rounded" />
+        <div className="ml-auto h-6 w-40 bg-muted rounded" />
       </div>
-      {/* Main content skeleton */}
-      <div className="flex-1 p-6 animate-pulse">
-        <div className="h-6 w-32 bg-muted rounded mb-6" />
-        <div className="flex gap-10 mb-10">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-4 w-20 bg-muted rounded" />
-          ))}
+      {/* Rail + sidebar + content row */}
+      <div className="flex flex-1">
+        <div className="hidden w-14 border-r bg-sidebar md:block" />
+        <div className="hidden w-56 border-r bg-sidebar p-4 md:block">
+          <div className="space-y-2 pt-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-8 w-full bg-muted rounded" />
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 p-6">
+          <div className="h-6 w-32 bg-muted rounded mb-6" />
+          <div className="flex gap-10 mb-10">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-4 w-20 bg-muted rounded" />
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -52,27 +60,38 @@ export default function DashboardLayout({
         <SidebarProvider
           style={{ '--sidebar-offset': '3.5rem' } as React.CSSProperties}
         >
-          {/* Two-level nav: product rail (outer) + section sidebar (inner). */}
+          {/* Full-width top header. Sticky + opaque + z-30 so the fixed section
+              sidebar (z-10) and rail pass under it; their content is pushed
+              below via top padding rather than editing the generated
+              components/ui/sidebar.tsx. */}
+          <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-2 border-b bg-background px-3">
+            {/* Left: hamburger + wordmark, sized to sit over the nav column. */}
+            <div className="flex items-center gap-2">
+              <SidebarTrigger />
+              <Link href="/" className="text-base font-semibold tracking-tight">
+                Journalio
+              </Link>
+            </div>
+            <div className="hidden md:flex md:items-center md:gap-1 md:rounded-md md:border md:bg-muted/30 md:px-1 md:py-0.5">
+              <GlobalFilterBar />
+              <div className="h-4 w-px bg-border" />
+              <DateRangeChip />
+              <div className="h-4 w-px bg-border" />
+              <WalletFilterChip />
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <SyncButton />
+              <ThemeToggle />
+              <AccountDropdown />
+            </div>
+          </header>
+
+          {/* Nav + content row, offset below the fixed header. */}
           <div className="hidden md:block">
             <ProductRail />
           </div>
           <AppSidebar />
-          <SidebarInset>
-            <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-              <SidebarTrigger className="md:hidden" />
-              <div className="hidden md:flex md:items-center md:gap-1 md:rounded-md md:border md:bg-muted/30 md:px-1 md:py-0.5">
-                <GlobalFilterBar />
-                <div className="h-4 w-px bg-border" />
-                <DateRangeChip />
-                <div className="h-4 w-px bg-border" />
-                <WalletFilterChip />
-              </div>
-              <div className="ml-auto flex items-center gap-2">
-                <SyncButton />
-                <ThemeToggle />
-                <AccountDropdown />
-              </div>
-            </header>
+          <SidebarInset className="pt-12">
             <OnboardingGate />
             <div className="flex-1 overflow-auto px-6 py-6">
               <LocalStorageMigration />

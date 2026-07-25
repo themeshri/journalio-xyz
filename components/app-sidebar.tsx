@@ -5,12 +5,8 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
   ChevronRight,
-  Menu,
-  Moon,
-  Sun,
   PanelLeftClose,
 } from 'lucide-react'
-import { useTheme } from 'next-themes'
 import {
   Sidebar,
   SidebarContent,
@@ -22,7 +18,6 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarFooter,
-  SidebarSeparator,
   SidebarGroup,
   useSidebar,
 } from '@/components/ui/sidebar'
@@ -31,8 +26,7 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from '@/components/ui/collapsible'
-import { useWallet, useMetadata, makeWalletKey } from '@/lib/wallet-context'
-import { CHAIN_CONFIG, type Chain } from '@/lib/chains'
+import { useWallet, useMetadata } from '@/lib/wallet-context'
 import { computeTradeDiscipline, disciplineColor, type DisciplineResult } from '@/lib/discipline'
 import type { JournalData } from '@/components/JournalModal'
 import {
@@ -47,7 +41,7 @@ export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { state, setOpen, toggleSidebar } = useSidebar()
-  const { activeWallets, walletSlots, tradeComments, journalMap } = useWallet()
+  const { tradeComments, journalMap } = useWallet()
   const { preSessionDone, todayRuleScore } = useMetadata()
 
   // Section list is driven by the product the current path belongs to — the
@@ -55,8 +49,6 @@ export function AppSidebar() {
   const productId = productForPath(pathname)
   const activeProduct = PRODUCTS.find((p) => p.id === productId) ?? PRODUCTS[0]
   const sections = PRODUCT_SECTIONS[productId]
-  const { theme, setTheme } = useTheme()
-  const isDark = theme === 'dark'
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
 
   // Compute discipline from journal map (from context)
@@ -113,10 +105,6 @@ export function AppSidebar() {
       return item.children.some((child) => isActive(child.href))
     }
     return false
-  }
-
-  function truncate(addr: string) {
-    return `${addr.slice(0, 4)}...${addr.slice(-4)}`
   }
 
   function renderBadge(badge?: NavItem['badge']) {
@@ -227,76 +215,11 @@ export function AppSidebar() {
     )
   }
 
-  function renderWalletSummary() {
-    if (activeWallets.length === 0) {
-      return (
-        <Link
-          href="/wallet-management"
-          className="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          No wallets active
-        </Link>
-      )
-    }
-
-    if (activeWallets.length === 1) {
-      const w = activeWallets[0]
-      const key = makeWalletKey(w.address, w.chain)
-      const slot = walletSlots[key]
-      return (
-        <Link
-          href="/wallet-management"
-          className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
-          title={w.nickname || w.address}
-        >
-          <span className="text-[10px] font-medium bg-muted px-1 py-0.5 rounded shrink-0">
-            {CHAIN_CONFIG[w.chain].label.toUpperCase()}
-          </span>
-          <span className="font-mono truncate">
-            {w.nickname || truncate(w.address)}
-          </span>
-          {slot?.isLoading && (
-            <span className="ml-auto text-[10px] text-muted-foreground animate-pulse">loading</span>
-          )}
-        </Link>
-      )
-    }
-
-    const chainBadges = [...new Set(activeWallets.map((w) => w.chain))]
-    return (
-      <Link
-        href="/wallet-management"
-        className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {chainBadges.map((chain) => (
-          <span key={chain} className="text-[10px] font-medium bg-muted px-1 py-0.5 rounded shrink-0">
-            {CHAIN_CONFIG[chain].label.toUpperCase()}
-          </span>
-        ))}
-        <span>{activeWallets.length} wallets active</span>
-      </Link>
-    )
-  }
-
   return (
     <Sidebar collapsible="icon" data-tour="sidebar">
-      <SidebarHeader className="px-4 py-5">
-        <div className="flex items-center justify-between">
-          <div className="text-base font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            Journalio
-          </div>
-          <button
-            onClick={() => toggleSidebar()}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-muted/50 transition-colors"
-            title="Toggle sidebar"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="group-data-[collapsible=icon]:hidden">
-          {renderWalletSummary()}
-        </div>
-      </SidebarHeader>
+      {/* Spacer clearing the fixed full-width header (h-12); the wordmark,
+          hamburger, and wallet summary now live in that header. */}
+      <SidebarHeader className="h-12" />
       <SidebarContent>
         <SidebarGroup>
           {/* Names the active product so the rail selection is legible even
@@ -309,15 +232,6 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="px-2 py-3">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip={isDark ? 'Use Light Mode' : 'Use Dark Mode'}
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            >
-              {isDark ? <Sun /> : <Moon />}
-              <span>{isDark ? 'Use Light Mode' : 'Use Dark Mode'}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Collapse Sidebar"
