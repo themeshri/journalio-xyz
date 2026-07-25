@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ProductRail } from '@/components/nav/ProductRail'
@@ -62,11 +63,19 @@ export default function DashboardLayout({
               below via top padding rather than editing the generated
               components/ui/sidebar.tsx. */}
           <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-2 border-b bg-background px-3">
-            {/* Left: hamburger + wordmark, sized to sit over the nav column. */}
+            {/* Left: hamburger + logo mark + wordmark. */}
             <div className="flex items-center gap-2">
               <SidebarTrigger />
-              <Link href="/" className="text-base font-semibold tracking-tight">
-                Journalio
+              <Link href="/" aria-label="Journalio home" className="flex items-center gap-1.5">
+                <Image
+                  src="/logo.svg"
+                  alt=""
+                  width={1500}
+                  height={1500}
+                  priority
+                  className="h-7 w-7"
+                />
+                <span className="text-base font-semibold tracking-tight">Journalio</span>
               </Link>
             </div>
             {/* Filters/Date/Wallets moved into the page content (PageToolbar),
