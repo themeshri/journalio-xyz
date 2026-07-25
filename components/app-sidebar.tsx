@@ -44,7 +44,7 @@ import {
 export function AppSidebar() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { state, setOpen, setOpenMobile, toggleSidebar } = useSidebar()
+  const { state, setOpen, openMobile, setOpenMobile, toggleSidebar } = useSidebar()
   const isMobile = useIsMobile()
   const { tradeComments, journalMap } = useWallet()
   const { preSessionDone, todayRuleScore } = useMetadata()
@@ -52,7 +52,20 @@ export function AppSidebar() {
   // Section list is driven by the product the current path belongs to — the
   // inner level of the two-level nav (lib/nav-structure.ts).
   const productId = productForPath(pathname)
-  const sections = PRODUCT_SECTIONS[productId]
+
+  // On mobile the drawer lets you browse a product's sections WITHOUT
+  // navigating: tapping a rail icon (except Home) previews that product's
+  // section menu in place. `mobileProduct` is that previewed product; it
+  // resets to the current page's product each time the drawer opens.
+  const [mobileProduct, setMobileProduct] = useState<ProductId>(productId)
+  useEffect(() => {
+    if (openMobile) setMobileProduct(productId)
+  }, [openMobile, productId])
+
+  // Desktop shows the current product's sections; mobile shows the previewed
+  // product's sections while the drawer is open.
+  const shownProduct = isMobile ? mobileProduct : productId
+  const sections = PRODUCT_SECTIONS[shownProduct]
   const [disciplineDotColor, setDisciplineDotColor] = useState<'emerald' | 'yellow' | 'red' | null>(null)
 
   // Compute discipline from journal map (from context)
@@ -234,7 +247,7 @@ export function AppSidebar() {
       <SidebarGroup className="px-3">
         {/* Journal gets a primary "Add Trade" CTA at the top of its section
             menu (TradeZella pattern), routing to the manual-trade flow. */}
-        {productId === 'journal' && (
+        {shownProduct === 'journal' && (
           <Button asChild className="mb-3 w-full justify-center gap-1.5">
             <Link href="/trade-journal" onClick={() => { if (isMobile) setOpenMobile(false) }}>
               <Plus className="h-4 w-4" />
@@ -250,11 +263,25 @@ export function AppSidebar() {
   // Mobile: the icon rail is hidden in the layout (hidden md:block), so the
   // drawer reproduces the SAME two-level nav — the rail beside the section
   // menu — exactly as it appears on desktop, rather than a separate list.
+  //
+  // Tapping a rail icon does NOT navigate (except Home, which has no second
+  // menu): it previews that product's sections in place so you can drill into
+  // the intended section, matching how the desktop rail + sidebar behave.
   if (isMobile) {
     return (
       <Sidebar collapsible="offcanvas" data-tour="sidebar">
         <div className="flex h-full">
-          <MobileRail activeProduct={productId} onNavigate={() => setOpenMobile(false)} />
+          <MobileRail
+            shownProduct={shownProduct}
+            onSelectProduct={(id) => {
+              if (id === 'home') {
+                // Home has no section menu — go straight there.
+                setOpenMobile(false)
+              } else {
+                setMobileProduct(id)
+              }
+            }}
+          />
           <div className="flex min-w-0 flex-1 flex-col pt-3">{sectionMenu}</div>
         </div>
       </Sidebar>
@@ -287,13 +314,18 @@ export function AppSidebar() {
  * The product icon rail as it appears inside the mobile drawer — the same
  * outer nav level as the desktop ProductRail, so mobile shows the identical
  * two-level nav (rail + section menu) rather than a bespoke list.
+ *
+ * A rail tap does NOT navigate; it selects which product's section menu the
+ * drawer previews (`onSelectProduct`). Home is the exception — it has no
+ * section menu, so its handler navigates instead. `shownProduct` drives the
+ * active highlight so the rail reflects the previewed product.
  */
 function MobileRail({
-  activeProduct,
-  onNavigate,
+  shownProduct,
+  onSelectProduct,
 }: {
-  activeProduct: ProductId
-  onNavigate: () => void
+  shownProduct: ProductId
+  onSelectProduct: (id: ProductId) => void
 }) {
   return (
     <nav
@@ -302,22 +334,40 @@ function MobileRail({
     >
       {PRODUCTS.map((product) => {
         const Icon = product.icon
-        const isActive = activeProduct === product.id
+        const isActive = shownProduct === product.id
+        const className = `flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
+          isActive
+            ? 'bg-sidebar-accent text-emerald-500'
+            : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
+        }`
+
+        // Home routes straight to the dashboard (no second menu); every other
+        // product previews its section list in the drawer without navigating.
+        if (product.id === 'home') {
+          return (
+            <Link
+              key={product.id}
+              href={product.href}
+              aria-label={product.label}
+              onClick={() => onSelectProduct('home')}
+              className={className}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+            </Link>
+          )
+        }
+
         return (
-          <Link
+          <button
             key={product.id}
-            href={product.href}
+            type="button"
             aria-label={product.label}
             aria-current={isActive ? 'page' : undefined}
-            onClick={onNavigate}
-            className={`flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
-              isActive
-                ? 'bg-sidebar-accent text-emerald-500'
-                : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
-            }`}
+            onClick={() => onSelectProduct(product.id)}
+            className={className}
           >
             <Icon className="h-[18px] w-[18px]" />
-          </Link>
+          </button>
         )
       })}
     </nav>
