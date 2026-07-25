@@ -5,7 +5,7 @@ interface StepIndicatorProps {
   currentStep: number
 }
 
-const STEP_LABELS = ['Welcome', 'Wallet', 'Timezone', 'Your Workflow', 'Done']
+const STEP_LABELS = ['Setup', 'Wallet', 'Your Workflow', 'Done']
 
 export function StepIndicator({ totalSteps, currentStep }: StepIndicatorProps) {
   return (

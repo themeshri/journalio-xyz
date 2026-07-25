@@ -13,9 +13,11 @@ export function CompletionStep({ onFinish }: CompletionStepProps) {
       <div className="relative mb-6">
         <CheckCircle2 className="h-16 w-16 text-primary animate-pulse" />
       </div>
-      <h2 className="text-2xl font-bold mb-2">You're Ready</h2>
+      <h2 className="text-2xl font-bold mb-2">You&apos;re all set</h2>
       <p className="text-muted-foreground mb-8">
-        Your journal is set up. Start with a pre-session to begin the feedback loop.
+        The <span className="font-medium text-foreground">Getting Started</span>{' '}
+        checklist on your dashboard tracks anything left to finish — connect a
+        wallet, add a strategy, and run your first pre-session to begin the loop.
       </p>
       <Button onClick={onFinish} size="lg">
         Go to Dashboard

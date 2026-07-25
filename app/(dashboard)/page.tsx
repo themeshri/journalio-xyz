@@ -15,6 +15,9 @@ import { DisciplineMeter } from '@/components/overview/DisciplineMeter'
 import { InsightsCard } from '@/components/overview/InsightsCard'
 import { PerformanceScoreCard } from '@/components/overview/PerformanceScoreCard'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+import { Wallet, RefreshCw } from 'lucide-react'
 import { ViewMyDayButton } from '@/components/ViewMyDayButton'
 import { PageHeader } from '@/components/PageHeader'
 import { filterTradesByRange } from '@/lib/time-filters'
@@ -126,11 +129,24 @@ export default function OverviewPage() {
 
   if (!hasActiveWallets) {
     return (
-      <div className="pt-8 space-y-6">
-        <h1 className="text-xl font-semibold">Home</h1>
-        <p className="text-sm text-muted-foreground">
-          Add a wallet in <a href="/wallet-management" className="underline hover:text-foreground">Wallet Management</a> to get started.
-        </p>
+      <div className="pt-8">
+        <h1 className="text-xl font-semibold mb-6">Home</h1>
+        <div className="flex flex-col items-center rounded-xl border border-dashed py-14 text-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Wallet className="h-6 w-6 text-primary" />
+          </div>
+          <p className="text-base font-medium">Connect a wallet to get started</p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Add your Solana or EVM wallet and Journalio imports your trading
+            history automatically — the whole app lights up from here.
+          </p>
+          <Button asChild className="mt-5 gap-1.5">
+            <Link href="/wallet-management">
+              <Wallet className="h-4 w-4" />
+              Connect a wallet
+            </Link>
+          </Button>
+        </div>
       </div>
     )
   }
@@ -151,11 +167,24 @@ export default function OverviewPage() {
 
   if (allTrades.length === 0) {
     return (
-      <div className="max-w-xl pt-8">
-        <h1 className="text-xl font-semibold mb-2">Home</h1>
-        <p className="text-sm text-muted-foreground">
-          No transactions found for your active wallets.
-        </p>
+      <div className="pt-8">
+        <h1 className="text-xl font-semibold mb-6">Home</h1>
+        <div className="flex flex-col items-center rounded-xl border border-dashed py-14 text-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <RefreshCw className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <p className="text-base font-medium">No trades found yet</p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Your active wallets have no trading history for the selected range.
+            Try syncing, or add another wallet.
+          </p>
+          <Button asChild variant="outline" className="mt-5 gap-1.5">
+            <Link href="/wallet-management">
+              <Wallet className="h-4 w-4" />
+              Manage wallets
+            </Link>
+          </Button>
+        </div>
       </div>
     )
   }
