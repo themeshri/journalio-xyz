@@ -1,6 +1,5 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ProductRail } from '@/components/nav/ProductRail'
@@ -67,12 +66,17 @@ export default function DashboardLayout({
             <div className="flex items-center gap-2">
               <SidebarTrigger />
               <Link href="/" aria-label="Journalio home" className="flex items-center gap-1.5">
-                <Image
+                {/* Plain <img>, not next/image: next/image does not optimize
+                    SVG (it passes the file through), so it was machinery for
+                    nothing. `priority` is also gone — it emitted a
+                    <link rel=preload> that put the mark on the critical path
+                    competing with /api/dashboard for bandwidth. Intrinsic size
+                    now matches the 28px render rather than claiming 1500px. */}
+                <img
                   src="/logo.svg"
                   alt=""
-                  width={1500}
-                  height={1500}
-                  priority
+                  width={28}
+                  height={28}
                   className="h-7 w-7"
                 />
                 <span className="text-base font-semibold tracking-tight">Journalio</span>
