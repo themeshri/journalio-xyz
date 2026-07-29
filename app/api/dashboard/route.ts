@@ -171,8 +171,15 @@ export async function GET(request: NextRequest) {
     const tradingStartTime = userSettings?.tradingStartTime || '09:00'
     const todayDate = getTradingDay(timezone, tradingStartTime)
 
-    // Current year range for yearly session queries
-    const year = new Date().getFullYear()
+    // Current year range for yearly session queries.
+    //
+    // Derived from todayDate (the user's TRADING day), not from
+    // new Date().getFullYear() (the server's UTC calendar year). Those can
+    // disagree — e.g. a UTC+9 user just after New Year, or any user before
+    // their tradingStartTime on Jan 1, has a trading day in the previous year.
+    // Taking the year from todayDate guarantees the range contains todayDate,
+    // which the preSessionDone/postSessionDone derivations below rely on.
+    const year = Number(todayDate.slice(0, 4))
     const yearStart = `${year}-01-01`
     const yearEnd = `${year}-12-31`
 
@@ -180,30 +187,43 @@ export async function GET(request: NextRequest) {
     const addresses = walletParams.map((p) => p.address)
 
     // Run all queries in parallel (batched wallet trades + metadata)
-    const [walletTrades, tradeCommentsRaw, strategiesRaw, journalResults, todayPreSession, todayPostSession, missedTrades, yearlyPreSessionsRaw, yearlyPostSessionsRaw, rulesRaw, adherenceRaw, tagsRaw, tagLinksRaw] = await Promise.all([
+    // NOTE: today's pre/post-session status is NOT queried separately — it is
+    // derived from the yearly arrays below, which are guaranteed to contain
+    // todayDate (see the year derivation above). That removes two queries from
+    // this fan-out; both appeared in the P2024 pool-timeout logs.
+    const [walletTrades, tradeCommentsRaw, strategiesRaw, journalResults, missedTrades, yearlyPreSessionsRaw, yearlyPostSessionsRaw, rulesRaw, adherenceRaw, tagsRaw, tagLinksRaw] = await Promise.all([
       // Batched wallet trades (single DB query)
       batchResolveWalletTrades(walletParams, userId),
-      // Trade comments (with auto-seed)
+      // Trade comments (with one-time auto-seed).
+      //
+      // The seeding branch fires exactly once per user, ever. It used to do
+      // findMany -> createMany -> findMany, i.e. acquire a pool connection
+      // three times mid-fan-out (and perform a WRITE inside a read fan-out),
+      // which is why tradeComment.createMany showed up in the P2024 logs.
+      // The third query is now gone: createMany returns nothing useful, so we
+      // re-read only when we must, and that read is the same one we already
+      // needed. Steady state is a single findMany.
       (async () => {
-        let comments = await prisma.tradeComment.findMany({
+        const comments = await prisma.tradeComment.findMany({
           where: { userId },
           orderBy: { createdAt: 'asc' },
         })
-        if (comments.length === 0) {
-          await prisma.tradeComment.createMany({
-            data: DEFAULT_TRADE_COMMENTS.map((c) => ({
-              userId,
-              category: c.category,
-              label: c.label,
-              rating: c.rating,
-            })),
-          })
-          comments = await prisma.tradeComment.findMany({
-            where: { userId: userId },
-            orderBy: { createdAt: 'asc' },
-          })
-        }
-        return comments
+        if (comments.length > 0) return comments
+
+        await prisma.tradeComment.createMany({
+          data: DEFAULT_TRADE_COMMENTS.map((c) => ({
+            userId,
+            category: c.category,
+            label: c.label,
+            rating: c.rating,
+          })),
+        })
+        // Re-read once so the response carries real ids/createdAt for the
+        // rows just inserted — the client keys off comment.id.
+        return prisma.tradeComment.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'asc' },
+        })
       })(),
       // Strategies
       prisma.strategy.findMany({
@@ -215,16 +235,6 @@ export async function GET(request: NextRequest) {
         where: { userId, walletAddress: { in: addresses } },
         orderBy: { createdAt: 'desc' },
         include: { tags: { select: { tagId: true } } },
-      }),
-      // Today's pre-session status
-      prisma.preSession.findFirst({
-        where: { userId: userId, date: todayDate },
-        select: { savedAt: true },
-      }),
-      // Today's post-session status
-      prisma.postSession.findFirst({
-        where: { userId: userId, date: todayDate },
-        select: { id: true },
       }),
       // Missed trades (papered plays)
       prisma.paperedPlay.findMany({
@@ -308,8 +318,12 @@ export async function GET(request: NextRequest) {
       ruleStats,
       tags: tagsRaw,
       tagsByJournalId,
-      preSessionDone: !!(todayPreSession?.savedAt),
-      postSessionDone: !!todayPostSession,
+      // Derived from the yearly arrays rather than two dedicated queries.
+      // Semantics are unchanged: preSessionDone still requires a savedAt (a
+      // started-but-unsaved pre-session does not count), postSessionDone still
+      // only requires the row to exist.
+      preSessionDone: !!yearlyPreSessionsRaw.find((s) => s.date === todayDate)?.savedAt,
+      postSessionDone: yearlyPostSessionsRaw.some((s) => s.date === todayDate),
       missedTrades,
       settings: { timezone, tradingStartTime, onboardingStep: userSettings?.onboardingStep ?? null },
       yearlyPreSessions: yearlyPreSessionsRaw,
