@@ -260,7 +260,13 @@ export function AppSidebar() {
             <Fragment key={item.href}>
               {renderNavItem(item)}
               {item.dividerAfter && (
-                <li className="my-1 border-t border-sidebar-border" role="separator" />
+                // Presentational divider. `role="separator"` is NOT valid as a
+                // direct child of <ul> (axe: "list"), so the li stays a plain
+                // list item and is hidden from assistive tech instead.
+                <li
+                  aria-hidden="true"
+                  className="my-1 border-t border-sidebar-border"
+                />
               )}
             </Fragment>
           ))}

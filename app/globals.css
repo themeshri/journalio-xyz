@@ -64,7 +64,10 @@
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.274 0.006 286.033);
   --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
+  /* 0.552 rendered as #71717b = 4.39:1 on --muted (#f4f4f5), just under the
+     4.5:1 WCAG AA floor and flagged by axe on rating buttons and Yes/No
+     toggles. 0.50 gives 5.49:1 on muted and 6.03:1 on white. */
+  --muted-foreground: oklch(0.50 0.016 285.938);
   --accent: oklch(0.967 0.001 286.375);
   --accent-foreground: oklch(0.274 0.006 286.033);
   /* Destructive: Red for losses/errors */
@@ -79,7 +82,9 @@
   --chart-5: oklch(0.828 0.189 84.429);
   --sidebar: oklch(0.985 0.002 286.286);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.527 0.154 163.225);
+  /* 0.527 = 4.27:1 on --sidebar-accent, under the 4.5:1 AA floor when the
+     emerald is used as text. 0.48 gives 5.2:1. */
+  --sidebar-primary: oklch(0.48 0.15 163.225);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.967 0.001 286.375);
   --sidebar-accent-foreground: oklch(0.274 0.006 286.033);

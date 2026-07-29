@@ -297,3 +297,11 @@ export const updateSettingsSchema = z.object({
   tradingStartTime: z.string().regex(/^\d{2}:\d{2}$/, 'tradingStartTime must be HH:mm format').optional(),
   onboardingStep: z.number().int().min(0).max(6).nullable().optional(),
 })
+
+// ── Auth ──
+export const syncUserSchema = z.object({
+  id: z.string().min(1).optional(),
+  email: z.string().email('email must be a valid email address'),
+  name: z.string().nullish(),
+  image: z.string().nullish(),
+})
