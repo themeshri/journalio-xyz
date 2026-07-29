@@ -4,6 +4,7 @@ import './globals.css'
 import { Providers } from '@/components/Providers'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { Toaster } from '@/components/ui/sonner'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -35,6 +36,7 @@ export default function RootLayout({
           <Providers>{children}</Providers>
           <Toaster />
         </ErrorBoundary>
+        <SpeedInsights />
       </body>
     </html>
   )
