@@ -8,30 +8,14 @@
 
 Solana trading journal with pre-session checklists, post-session reviews, trade cycle analysis, strategy management, and missed trade tracking. Dashboard-based UI with sidebar navigation. Session hero card and GitHub-style activity calendar on the home page.
 
-## Tech Stack
-
-- **Framework**: Next.js 15.5 (App Router), React 19, TypeScript 5.9
-- **Styling**: Tailwind CSS v4, shadcn/ui (New York style, Zinc base)
-- **Fonts**: DM Sans (`--font-dm-sans` body), JetBrains Mono (`--font-jetbrains-mono` numbers/addresses)
-- **Colors**: Zinc (neutral) + Emerald (primary/success), Red (destructive)
-- **Database**: Prisma ORM, PostgreSQL (Supabase) — pooled connection (port 6543) for runtime, direct (port 5432) for migrations
-- **Auth**: Supabase Auth (Google/Twitter OAuth, email magic links)
-- **Deployment**: Vercel (serverless) — `prisma generate && next build` (migrations applied separately)
-- **External APIs**: Solana Tracker API (`data.solanatracker.io`), Zerion (EVM chains)
-
 ## App Structure
 
-App Router under `app/`, with a `(dashboard)` route group holding the authenticated pages and `app/api/` for routes. Run `bash scripts/update-claude-md.sh` to print the current structure.
+App Router under `app/`, with a `(dashboard)` route group holding the authenticated pages and `app/api/` for routes. Run `bash scripts/update-claude-md.sh` to print the current structure. Stack details are in `package.json`, `components.json`, and `prisma/schema.prisma`.
 
 ### Layout Hierarchy
 
-```
-RootLayout (fonts, ErrorBoundary, Providers/SessionProvider)
-  └── DashboardLayout (Suspense → WalletProvider → SidebarProvider)
-        ├── ProductRail (thin icon rail — outer nav level)
-        ├── AppSidebar (section nav for the active product, active wallet, dark mode, collapse)
-        └── SidebarInset → header (GlobalFilterBar, SyncButton + last synced time, ThemeToggle, AccountDropdown) + main content area
-```
+`RootLayout` → `DashboardLayout` → `ProductRail` + `AppSidebar` + `SidebarInset`
+(see `app/layout.tsx` and `app/(dashboard)/layout.tsx`).
 
 **Two-level navigation.** `lib/nav-structure.ts` is the single source for both
 levels: `PRODUCTS` drives `ProductRail`, `PRODUCT_SECTIONS` drives `AppSidebar`,
@@ -81,8 +65,7 @@ Components live in `components/` (shared), `components/overview/` (home-page car
 - All DB queries scoped by `userId`
 
 ### Headers
-- Security headers in `next.config.js`: X-Frame-Options DENY, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Content-Security-Policy
-- CSP allows `connect-src` to `self` + Supabase + Solana Tracker + Zerion APIs only
+- Security headers and CSP live in `next.config.js`. CSP `connect-src` is an allowlist — adding an external API means editing it there too.
 
 ### Error Handling
 - API routes return generic error messages to clients; internal details logged server-side only
@@ -105,12 +88,9 @@ Routes live under `app/api/`; methods and paths are self-describing there. What'
 
 ### localStorage Keys
 
-| Key | Used By | Content |
-|-----|---------|---------|
-| `journalio_saved_wallets` | Wallet Management | Saved wallet objects |
-| `journalio_journal_view_mode` | Settings, Trade Journal | Journal view mode preference (merged/grouped) |
-| `journalio_active_wallets` | WalletProvider | Active wallet selection — **fallback only**; `?wallets=` in the URL wins when present (see below) |
-| `journalio_migration_v1_complete` | LocalStorageMigration | Flag indicating one-time migration is done |
+Keys are prefixed `journalio_` — grep for it. Only one is non-obvious:
+`journalio_active_wallets` is a **fallback only**; `?wallets=` in the URL wins
+when present (see below).
 
 **Migrated to DB (Phase 3)**: strategies, rules, pre-sessions, journals, trade comments — legacy localStorage keys still read by `LocalStorageMigration` component for one-time migration.
 
@@ -130,7 +110,7 @@ prefix so the same code reads both Compare cohorts.
 
 ### Database (Prisma)
 
-Models: `User`, `Account`, `Session`, `Wallet`, `Trade`, `TradeEdit`, `PaperedPlay`, `UserSettings`, `VerificationToken`, `Strategy`, `GlobalRule`, `RuleAdherence`, `TradeTag`, `JournalEntryTag`, `PreSession`, `PostSession`, `JournalEntry`, `TradeComment`, `Note`
+Models are in `prisma/schema.prisma`.
 
 **Grading fields live on `JournalEntry`, not `Trade`.** `Trade` is an immutable
 on-chain swap row wiped and refetched by the 5-min sync cache, and a P&L "trade"
@@ -152,16 +132,6 @@ Analytics data flow: 6 server-side endpoints (`/api/analytics/*`) accept optiona
 - `lib/trading-day.ts` provides `getTradingDay(timezone, tradingStartTime)` — if current time is before start time, returns previous calendar day
 - Dashboard API, pre-session page, post-session page, and context reload callbacks all use this to determine "today"
 - Settings page has a searchable timezone combobox and time input
-
-### Home Page Layout
-
-```
-Row 1: Header + SessionPills + ViewMyDayButton + TimeRangeFilter
-Row 2: SessionHero (tabbed: Pre-Session/Active/Post-Session with session-scoped stats)
-Row 3: KPICards (7 metrics)
-Row 4: RecentCycles (left 3 cols) + Evaluation (right 2 cols)
-Row 5: ActivityCalendar (full width)
-```
 
 ### Activity Calendar Scoring (0-5 per day)
 
@@ -249,20 +219,15 @@ One-off data scripts (all support `--dry-run`, all idempotent):
 - `npm run backfill:tags` — legacy `sellMistakesJson` → `TradeTag` + join rows, and seeds the default mistake tags
 - `npm run seed:templates` — `lib/strategy-templates.ts` → `Strategy` rows with `isTemplate: true`, owned by a system user
 
-**Migration fallback.** On some networks Prisma's migration engine cannot reach
-Supabase (`P1001` on both 5432 and 6543) even though the Prisma *client*
-connects fine. `npx tsx scripts/apply-migration.ts <migration-dir>` applies a
-`migration.sql` statement-by-statement through the client connection and records
-it in `_prisma_migrations`. Prefer `prisma migrate deploy` when it works.
+**Migration fallback.** If `prisma migrate` fails with `P1001`, see the
+`prisma-migrate` skill in `.claude/skills/` for the workaround.
 
 **Do not run `npm run build` while `npm run dev` is running** — the build wipes
 `.next` out from under the dev server and every route 500s until you restart it.
 
 ### Deployment (Vercel)
 
-- Build command: `prisma generate && next build` (cannot run `migrate deploy` at build time — Vercel serverless can't reach DB during build)
-- `postinstall` script runs `prisma generate` for Vercel
-- Migrations must be applied separately via `npx prisma migrate deploy` with `DIRECT_URL`
+- Migrations **cannot** run at build time — Vercel serverless can't reach the DB during build. Apply them separately via `npx prisma migrate deploy` with `DIRECT_URL`.
 - Serverless functions use Supabase connection pooler (port 6543) to avoid connection exhaustion
 - `maxDuration = 60` on `/api/trades` and `/api/dashboard` routes for large wallet fetches
 - Trade storage batched in 200-row chunks to avoid pgBouncer statement timeouts
