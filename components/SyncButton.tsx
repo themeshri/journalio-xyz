@@ -75,8 +75,10 @@ export function SyncButton() {
 
   return (
     <div className="flex items-center gap-1.5">
+      {/* No /70 opacity: it dropped contrast to 2.72:1 against the header
+          background, below the 4.5:1 WCAG AA minimum for this text size. */}
       {lastSyncedAt && !isSyncing && (
-        <span className="text-[11px] text-muted-foreground/70">
+        <span className="text-[11px] text-muted-foreground">
           Synced {formatTimeAgo(lastSyncedAt)}
         </span>
       )}

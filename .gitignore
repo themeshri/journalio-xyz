@@ -40,3 +40,7 @@ next-env.d.ts
 
 # local MCP server config (per-developer tooling)
 .mcp.json
+
+# standalone landing-page project build artifacts (its source is tracked)
+/landingpage/node_modules
+/landingpage/.next

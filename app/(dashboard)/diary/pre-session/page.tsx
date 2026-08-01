@@ -440,7 +440,13 @@ export default function PreSessionPage() {
             <div className="border border-dashed rounded-md px-4 py-3">
               <p className="text-sm text-muted-foreground">
                 No rules defined yet.{' '}
-                <Link href="/strategies" className="text-emerald-600 hover:underline">
+                {/* Underlined at rest, not only on hover: colour alone gave
+                    1.3:1 against the surrounding muted text (axe:
+                    link-in-text-block). Darker emerald for 4.5:1 on white. */}
+                <Link
+                  href="/strategies"
+                  className="text-emerald-700 dark:text-emerald-400 underline underline-offset-2"
+                >
                   Add rules on the Strategies page
                 </Link>{' '}
                 to see your checklist here.

@@ -3,7 +3,15 @@
  * routes ~9 duplicated regex sites through these helpers. Pins that the shared
  * patterns match the same inputs the hardcoded copies did.
  */
-import { isValidAddress, detectChainFromAddress } from '../chains'
+import {
+  isValidAddress,
+  detectChainFromAddress,
+  isEvmChain,
+  isChain,
+  explorerTxUrl,
+  ALL_CHAINS,
+  CHAIN_CONFIG,
+} from '../chains'
 
 // Representative valid addresses.
 const SOL = 'So11111111111111111111111111111111111111112' // 43 chars, base58
@@ -44,12 +52,57 @@ describe('detectChainFromAddress', () => {
     expect(detectChainFromAddress(SOL)).toBe('solana')
   })
 
-  it('0x → null (ambiguous base vs bnb)', () => {
+  it('0x → null (ambiguous across every EVM chain)', () => {
     expect(detectChainFromAddress(EVM)).toBeNull()
   })
 
   it('garbage → null', () => {
     expect(detectChainFromAddress('not-an-address')).toBeNull()
     expect(detectChainFromAddress('')).toBeNull()
+  })
+})
+
+describe('multi-chain support', () => {
+  it('exposes every supported chain', () => {
+    expect(ALL_CHAINS).toEqual(
+      expect.arrayContaining(['solana', 'ethereum', 'base', 'bnb', 'robinhood'])
+    )
+  })
+
+  it('accepts 0x addresses on every EVM chain', () => {
+    for (const chain of ALL_CHAINS.filter(isEvmChain)) {
+      expect(isValidAddress(EVM, chain)).toBe(true)
+      expect(isValidAddress(SOL, chain)).toBe(false)
+    }
+  })
+
+  it('classifies chain kind correctly', () => {
+    expect(isEvmChain('solana')).toBe(false)
+    for (const chain of ['ethereum', 'base', 'bnb', 'robinhood'] as const) {
+      expect(isEvmChain(chain)).toBe(true)
+    }
+  })
+
+  it('gives every EVM chain a Zerion id, and solana none', () => {
+    expect(CHAIN_CONFIG.solana.zerionChainId).toBeNull()
+    for (const chain of ALL_CHAINS.filter(isEvmChain)) {
+      expect(CHAIN_CONFIG[chain].zerionChainId).toBeTruthy()
+    }
+  })
+
+  it('builds an explorer URL for every chain', () => {
+    for (const chain of ALL_CHAINS) {
+      const url = explorerTxUrl(chain, 'HASH123')
+      expect(url).toMatch(/^https:\/\//)
+      expect(url).toContain('HASH123')
+      expect(url).not.toContain('{HASH}')
+    }
+  })
+
+  it('isChain guards the union', () => {
+    expect(isChain('robinhood')).toBe(true)
+    expect(isChain('ethereum')).toBe(true)
+    expect(isChain('dogecoin')).toBe(false)
+    expect(isChain('')).toBe(false)
   })
 })

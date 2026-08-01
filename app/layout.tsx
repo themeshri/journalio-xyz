@@ -17,6 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://app.journalio.xyz'),
   title: {
     default: 'Journalio',
     template: '%s',

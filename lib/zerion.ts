@@ -1,4 +1,4 @@
-// Zerion API integration for EVM chain transaction history (Base, BNB)
+// Zerion API integration for EVM chain transaction history (Ethereum, Base, BNB, Robinhood)
 // Kept fully separate from solana-tracker.ts
 
 import { type Chain, CHAIN_CONFIG } from './chains'
@@ -78,6 +78,12 @@ export async function getWalletTransactionsWithPagination(
   try {
     if (!API_KEY && !USE_PROXY) {
       throw new Error('Zerion API key not configured')
+    }
+    // Without a chain id the filter is omitted and Zerion returns transactions
+    // across every chain — silently wrong data rather than an error. Reaching
+    // here for a non-Zerion chain is a routing bug, so fail loudly.
+    if (!zerionChainId) {
+      throw new Error(`Chain "${chain}" has no Zerion chain id — it cannot be fetched from Zerion`)
     }
 
     let url = USE_PROXY
@@ -322,10 +328,13 @@ export async function getWalletTrades(
   let cursor: string | undefined = undefined
   let pageCount = 0
   const maxPages = 50
+  // Zerion caps page[size] at 100, so a larger `limit` is satisfied by
+  // paginating rather than by a bigger request.
+  const pageSize = Math.min(Math.max(limit, 1), 100)
 
   while (pageCount < maxPages) {
     const result = await getWalletTransactionsWithPagination(walletAddress, {
-      limit: 100,
+      limit: pageSize,
       cursor,
       chain,
     })
@@ -396,10 +405,20 @@ export async function getWalletTrades(
 
     allSwaps.push(...swapsInBatch)
 
+    // Honour the caller's `limit` — stop paginating once we have enough.
+    if (allSwaps.length >= limit) break
+
     cursor = result.nextCursor
     if (!cursor) break
     pageCount++
   }
 
-  return allSwaps
+  if (pageCount >= maxPages && allSwaps.length < limit) {
+    console.warn(
+      `[zerion] hit ${maxPages}-page cap for ${walletAddress} on ${chain}; ` +
+      `returning ${allSwaps.length} swaps — history may be truncated`
+    )
+  }
+
+  return allSwaps.slice(0, limit)
 }

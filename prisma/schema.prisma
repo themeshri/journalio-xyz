@@ -72,7 +72,7 @@ model Wallet {
   userId    String
   address   String
   nickname  String?
-  chain     String   @default("ethereum")
+  chain     String   @default("solana")
   dex       String   @default("other")
   isDefault Boolean  @default(false)
   /// Starting balance in USD — required for the drawdown / balance curve
