@@ -1,82 +1,59 @@
-import { ArrowRight, RefreshCw, TrendingDown } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { ArrowDown, ArrowRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DeviceFrame } from '@/components/media/device-frame'
-import { MockDashboard } from '@/components/media/mock-dashboard'
-import { FloatingCard } from '@/components/media/floating-card'
+import { BeforeAfter } from '@/components/media/before-after'
+
+const OBJECTIONS = [
+  'No manual logging — trades import themselves',
+  'Read-only address. No keys, no custody',
+  'Free while in beta. No card',
+]
 
 export function Hero() {
   return (
     <section id="top" className="relative overflow-hidden bg-hero-glow">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 md:py-24 lg:grid-cols-2">
-        {/* Copy */}
-        <div>
-          <Badge variant="secondary" className="mb-5 rounded-full px-3 py-1">
-            For Solana &amp; EVM traders who hate spreadsheets
-          </Badge>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            Find out what&apos;s{' '}
-            <span className="text-primary">costing you money.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-            Paste a Solana or EVM wallet. Every swap becomes a clean P&amp;L
-            trade — and Journalio shows you which setups print and which ones
-            bleed. No spreadsheets. No manual logging.
-          </p>
+      <div className="mx-auto max-w-5xl px-4 py-16 md:py-24">
+        <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
+          Green week, red month?{' '}
+          <span className="text-primary">
+            Find the trades bleeding your account
+          </span>{' '}
+          in one session — no spreadsheet needed.
+        </h1>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button asChild size="lg">
-              <a href="#early-access">
-                Paste your wallet — it&apos;s free
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </a>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <a href="#how">See how it works</a>
-            </Button>
-          </div>
+        <p className="mt-5 max-w-xl text-lg text-muted-foreground">
+          Paste a wallet. Every swap becomes a real P&amp;L trade, and the leaks
+          you can&apos;t see get ranked by what they actually cost you.
+        </p>
 
-          <p className="mt-5 text-sm text-muted-foreground">
-            Free in beta · No card · See your first insight in 60 seconds
-          </p>
+        <ul className="mt-7 grid gap-2.5 sm:grid-cols-3">
+          {OBJECTIONS.map((o) => (
+            <li key={o} className="flex items-start gap-2 text-sm">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+              <span className="text-muted-foreground">{o}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Soft CTA leads (cold traffic scrolls into the problem), but anyone
+            already convinced needs a way to act without a scroll marathon. */}
+        <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <Button asChild size="lg">
+            <a href="#problem">
+              Show me what I&apos;m losing
+              <ArrowDown className="ml-2 h-4 w-4" />
+            </a>
+          </Button>
+          <a
+            href="#early-access"
+            className="group inline-flex items-center text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Already convinced? Paste a wallet
+            <ArrowRight className="ml-1.5 h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </a>
         </div>
 
-        {/* Device + floating cards */}
-        <div className="relative">
-          <DeviceFrame>
-            <MockDashboard />
-          </DeviceFrame>
-
-          {/* Auto-import feed card */}
-          <FloatingCard className="absolute -bottom-5 -left-4 w-56 sm:-left-8">
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
-                <RefreshCw className="h-3.5 w-3.5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-xs font-medium">Wallet imported</p>
-                <p className="text-[11px] text-muted-foreground">
-                  248 swaps · 92 P&amp;L trades
-                </p>
-              </div>
-            </div>
-          </FloatingCard>
-
-          {/* Insight card — value, not status */}
-          <FloatingCard className="absolute -right-3 -top-5 w-52 sm:-right-6">
-            <div className="mb-1 flex items-center gap-1.5">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/15">
-                <TrendingDown className="h-3.5 w-3.5 text-red-500" />
-              </div>
-              <p className="text-[11px] font-medium text-muted-foreground">
-                Biggest leak
-              </p>
-            </div>
-            <p className="text-mono text-lg font-bold text-red-500">-$1,840</p>
-            <p className="text-[11px] text-muted-foreground">
-              on trades you chased after a loss
-            </p>
-          </FloatingCard>
+        <div className="mt-14">
+          <BeforeAfter />
         </div>
       </div>
     </section>
