@@ -322,10 +322,13 @@ export async function getWalletTrades(
   let cursor: string | undefined = undefined
   let pageCount = 0
   const maxPages = 50
+  // Zerion caps page[size] at 100, so a larger `limit` is satisfied by
+  // paginating rather than by a bigger request.
+  const pageSize = Math.min(Math.max(limit, 1), 100)
 
   while (pageCount < maxPages) {
     const result = await getWalletTransactionsWithPagination(walletAddress, {
-      limit: 100,
+      limit: pageSize,
       cursor,
       chain,
     })
@@ -396,10 +399,20 @@ export async function getWalletTrades(
 
     allSwaps.push(...swapsInBatch)
 
+    // Honour the caller's `limit` — stop paginating once we have enough.
+    if (allSwaps.length >= limit) break
+
     cursor = result.nextCursor
     if (!cursor) break
     pageCount++
   }
 
-  return allSwaps
+  if (pageCount >= maxPages && allSwaps.length < limit) {
+    console.warn(
+      `[zerion] hit ${maxPages}-page cap for ${walletAddress} on ${chain}; ` +
+      `returning ${allSwaps.length} swaps — history may be truncated`
+    )
+  }
+
+  return allSwaps.slice(0, limit)
 }
