@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useWallet, makeWalletKey } from '@/lib/wallet-context'
-import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
+import { type Chain, ALL_CHAINS, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -28,12 +28,6 @@ const DEX_OPTIONS = [
   { value: 'gmgn', label: 'GMGN' },
   { value: 'other', label: 'Other' },
 ] as const
-
-const CHAIN_LABELS: Record<Chain, string> = {
-  solana: 'SOL',
-  base: 'BASE',
-  bnb: 'BNB',
-}
 
 export default function WalletManagementPage() {
   const { activeWallets, walletSlots, setWalletActive, refreshWallet, isAnyLoading, reloadWallets } = useWallet()
@@ -208,8 +202,8 @@ export default function WalletManagementPage() {
                 className="text-sm"
               />
             </div>
-            <div className="flex gap-1.5">
-              {(['solana', 'base', 'bnb'] as Chain[]).map((chain) => {
+            <div className="flex flex-wrap gap-1.5">
+              {ALL_CHAINS.map((chain) => {
                 const isSelected = selectedChain === chain
                 return (
                   <button
@@ -292,7 +286,7 @@ export default function WalletManagementPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
-                        {CHAIN_LABELS[w.chain]}
+                        {CHAIN_CONFIG[w.chain]?.label ?? w.chain}
                       </span>
                       {w.dex && w.dex !== 'other' && (
                         <span className="text-xs bg-muted px-1.5 py-0.5 rounded">

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { CheckCircle2, ArrowRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { type Chain, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
+import { type Chain, ALL_CHAINS, CHAIN_CONFIG, detectChainFromAddress, isValidAddress } from '@/lib/chains'
 import { useWallet } from '@/lib/wallet-context'
 import { toast } from 'sonner'
 
@@ -141,8 +141,8 @@ export function AddWalletStep({ onNext }: AddWalletStepProps) {
             className="text-sm"
           />
         </div>
-        <div className="flex gap-1.5">
-          {(['solana', 'base', 'bnb'] as Chain[]).map((chain) => (
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_CHAINS.map((chain) => (
             <button
               key={chain}
               type="button"

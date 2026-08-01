@@ -1,5 +1,15 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
+import { ALL_CHAINS } from './chains'
+
+/**
+ * Chain allowlist derived from CHAIN_CONFIG, so an unsupported chain is
+ * rejected at the boundary rather than persisted and cast blind on read.
+ */
+const chainSchema = z
+  .enum(ALL_CHAINS as [string, ...string[]])
+  .optional()
+  .default('solana')
 
 // Helper to validate request body against a Zod schema
 export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown): { data: T } | { error: NextResponse } {
@@ -182,7 +192,7 @@ const manualTradeSchema = z.object({
   walletAddress: z.string().min(1, 'walletAddress is required'),
   signature: z.string().min(1, 'signature is required'),
   timestamp: z.number().int(),
-  chain: z.string().optional().default('solana'),
+  chain: chainSchema,
   type: z.string().optional().default('trade'),
   tokenIn: z.any().nullish(),
   tokenOut: z.any().nullish(),
@@ -263,7 +273,7 @@ export const createWalletSchema = z.object({
   address: z.string().min(1, 'address is required'),
   nickname: z.string().nullish(),
   isDefault: z.boolean().optional().default(false),
-  chain: z.string().optional().default('solana'),
+  chain: chainSchema,
   dex: z.string().optional().default('other'),
 })
 

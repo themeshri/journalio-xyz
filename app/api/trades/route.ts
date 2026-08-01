@@ -4,7 +4,7 @@ import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { rateLimitByUser } from '@/lib/rate-limit'
 import { getWalletTrades as getSolanaWalletTrades } from '@/lib/solana-tracker'
 import { getWalletTrades as getEvmWalletTrades } from '@/lib/zerion'
-import { type Chain, isEvmChain } from '@/lib/chains'
+import { type Chain, CHAIN_CONFIG, isChain, isEvmChain } from '@/lib/chains'
 import { calculateTradeCycles, flattenTradeCycles, type TradeInput } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { invalidatePrefix } from '@/lib/server/analytics-cache'
@@ -39,8 +39,17 @@ export async function GET(request: NextRequest) {
     const walletAddress = searchParams.get('address')
     const forceRefresh = searchParams.get('refresh') === 'true'
     
-    // Read chain from query param (default to solana for backward compat)
-    const chain = (searchParams.get('chain') || 'solana') as Chain
+    // Read chain from query param (default to solana for backward compat).
+    // Validated against CHAIN_CONFIG so an unknown value 400s here rather than
+    // being cast blind and dispatched to the wrong upstream API.
+    const rawChain = searchParams.get('chain') || 'solana'
+    if (!isChain(rawChain)) {
+      return NextResponse.json(
+        { error: `Unsupported chain: ${rawChain}` },
+        { status: 400 }
+      )
+    }
+    const chain: Chain = rawChain
     const wantCycles = searchParams.get('cycles') === 'true'
     const dex = searchParams.get('dex') || ''
 
@@ -111,9 +120,22 @@ export async function GET(request: NextRequest) {
 
     // Fetch fresh data from appropriate API
     try {
-      const apiTrades = isEvmChain(chain)
-        ? await getEvmWalletTrades(walletAddress, 1000, chain)
-        : await getSolanaWalletTrades(walletAddress, 1000);
+      // Dispatch on the chain's kind rather than naming chains, so adding a
+      // chain to CHAIN_CONFIG can't silently route to the wrong API.
+      const kind = CHAIN_CONFIG[chain].kind
+      let apiTrades: Awaited<ReturnType<typeof getSolanaWalletTrades>>
+      switch (kind) {
+        case 'evm':
+          apiTrades = await getEvmWalletTrades(walletAddress, 1000, chain)
+          break
+        case 'svm':
+          apiTrades = await getSolanaWalletTrades(walletAddress, 1000)
+          break
+        default: {
+          const exhaustive: never = kind
+          throw new Error(`Unhandled chain kind: ${exhaustive}`)
+        }
+      }
       // Find existing trade signatures to only process new ones
       const existingSignatures = new Set(cachedTrades.map(t => t.signature));
       const newTrades = apiTrades.filter(trade => !existingSignatures.has(trade.signature));

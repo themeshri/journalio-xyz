@@ -1,4 +1,4 @@
-// Zerion API integration for EVM chain transaction history (Base, BNB)
+// Zerion API integration for EVM chain transaction history (Ethereum, Base, BNB, Robinhood)
 // Kept fully separate from solana-tracker.ts
 
 import { type Chain, CHAIN_CONFIG } from './chains'
@@ -78,6 +78,12 @@ export async function getWalletTransactionsWithPagination(
   try {
     if (!API_KEY && !USE_PROXY) {
       throw new Error('Zerion API key not configured')
+    }
+    // Without a chain id the filter is omitted and Zerion returns transactions
+    // across every chain — silently wrong data rather than an error. Reaching
+    // here for a non-Zerion chain is a routing bug, so fail loudly.
+    if (!zerionChainId) {
+      throw new Error(`Chain "${chain}" has no Zerion chain id — it cannot be fetched from Zerion`)
     }
 
     let url = USE_PROXY
