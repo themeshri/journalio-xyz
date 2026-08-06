@@ -14,10 +14,28 @@ import {
 } from '@/components/ui/tooltip'
 import { DayDetailModal } from '@/components/DayDetailModal'
 import { useWallet, useMetadata } from '@/lib/wallet-context'
+import {
+  computePreSessionQuality,
+  countPreSessionSections,
+  PRE_SESSION_QUALITY_CHECK_COUNT,
+  PRE_SESSION_QUALITY_THRESHOLD,
+  type PreSessionQualityInput,
+} from '@/lib/session-framework'
 
 interface PreSessionRecord {
   date: string
   savedAt?: string
+  // Quality inputs — a saved-but-empty pre-session used to score the same as a
+  // full framework run. See computePreSessionQuality.
+  energyLevel?: number
+  emotionalState?: string
+  sessionIntent?: string
+  maxTrades?: string
+  maxLoss?: string
+  timeLimit?: string
+  rulesChecked?: string[]
+  narrativeStage?: string
+  conviction?: number
 }
 
 interface PostSessionRecord {
@@ -75,9 +93,10 @@ function buildActivityData(
   const tradeDays = computeYearlyHeatmap(trades, year)
   const tradeDayMap = new Map(tradeDays.map(d => [d.date, d]))
 
-  // Build pre/post session lookup sets
-  const preSessionDates = new Set(
-    preSessions.filter(p => p.savedAt).map(p => p.date)
+  // Keyed by date rather than a bare Set — the pre-session point is now scored
+  // on completeness, so the whole record is needed, not just its existence.
+  const preSessionByDate = new Map(
+    preSessions.filter(p => p.savedAt).map(p => [p.date, p])
   )
   const postSessionDates = new Set(postSessions.map(p => p.date))
 
@@ -96,7 +115,7 @@ function buildActivityData(
   // Collect all active dates
   const allDates = new Set<string>()
   tradeDayMap.forEach((_, k) => allDates.add(k))
-  preSessionDates.forEach(d => allDates.add(d))
+  preSessionByDate.forEach((_, d) => allDates.add(d))
   postSessionDates.forEach(d => allDates.add(d))
   // A day with only rule adherence recorded still deserves a square.
   adherenceByDate.forEach((_, d) => { if (d.startsWith(String(year))) allDates.add(d) })
@@ -107,7 +126,13 @@ function buildActivityData(
     const tradeDay = tradeDayMap.get(date)
     const dayTrades = tradesByDate.get(date) || []
     const traded = (tradeDay?.tradeCount || 0) > 0
-    const preSession = preSessionDates.has(date)
+    const preSessionRecord = preSessionByDate.get(date)
+    const preSessionSections = countPreSessionSections(preSessionRecord as PreSessionQualityInput)
+    // Earned on substance, not on the row existing.
+    const preSession =
+      Boolean(preSessionRecord) &&
+      computePreSessionQuality(preSessionRecord as PreSessionQualityInput) >=
+        PRE_SESSION_QUALITY_THRESHOLD
     const postSession = postSessionDates.has(date)
 
     // Journal coverage
@@ -151,7 +176,14 @@ function buildActivityData(
     // WHICH points were earned — "explainable instead of binary" (docs §4).
     const points: ScorePoint[] = [
       { label: 'Traded', earned: traded },
-      { label: 'Pre-session', earned: preSession },
+      {
+        label: 'Pre-session',
+        earned: preSession,
+        // Names what was actually filled in, so a missed point is explainable.
+        detail: preSessionRecord
+          ? `${preSessionSections}/${PRE_SESSION_QUALITY_CHECK_COUNT} sections`
+          : undefined,
+      },
       { label: 'Post-session', earned: postSession },
       { label: 'All trades journaled', earned: journalCoverage >= 1 },
       {

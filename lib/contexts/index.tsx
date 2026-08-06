@@ -36,7 +36,7 @@ import {
   makeWalletKey,
 } from './wallet-context'
 import { TradeContext, type WalletSlot, type RawTrade } from './trade-context'
-import { MetadataContext } from './metadata-context'
+import { MetadataContext, type YearlyPreSession } from './metadata-context'
 import { BalanceContext } from './balance-context'
 
 // Re-export everything consumers need
@@ -154,7 +154,7 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
   const [preSessionDone, setPreSessionDone] = useState(false)
   const [postSessionDone, setPostSessionDone] = useState(false)
   const [missedTrades, setMissedTrades] = useState<MissedTradeEntry[]>([])
-  const [yearlyPreSessions, setYearlyPreSessions] = useState<{ date: string; savedAt?: string }[]>([])
+  const [yearlyPreSessions, setYearlyPreSessions] = useState<YearlyPreSession[]>([])
   const [yearlyPostSessions, setYearlyPostSessions] = useState<{ date: string }[]>([])
   const [rules, setRules] = useState<TypedRule[]>([])
   const [adherence, setAdherence] = useState<AdherenceRecord[]>([])
@@ -558,6 +558,17 @@ export function DashboardProviders({ children }: { children: ReactNode }) {
       const res = await fetch(`/api/pre-sessions/${today}`)
       const data = await res.json()
       setPreSessionDone(data !== null && !!data?.savedAt)
+
+      // Keep the yearly list in step too. It previously went stale on save, so
+      // the ActivityCalendar kept showing yesterday's state until a full
+      // dashboard reload — and now that the calendar scores pre-session
+      // quality, a stale row shows the wrong score, not just a missing square.
+      if (data !== null) {
+        setYearlyPreSessions((prev) => {
+          const rest = prev.filter((s) => s.date !== today)
+          return [...rest, data].sort((a, b) => a.date.localeCompare(b.date))
+        })
+      }
     } catch (err) {
       console.error('Failed to reload pre-session status:', err)
     }

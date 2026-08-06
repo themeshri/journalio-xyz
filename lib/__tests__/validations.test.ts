@@ -18,6 +18,8 @@ import {
   updateSettingsSchema,
   createManualTradesSchema,
   createJournalSchema,
+  createPreSessionSchema,
+  createPostSessionSchema,
 } from '../validations'
 
 function ok<T>(r: { data: T } | { error: unknown }): T {
@@ -188,5 +190,130 @@ describe('createJournalSchema', () => {
     expect('error' in validateBody(createJournalSchema, { ...base, tokenMint: '' })).toBe(true)
     expect('error' in validateBody(createJournalSchema, { ...base, tradeNumber: 1.5 })).toBe(true)
     expect('error' in validateBody(createJournalSchema, { ...base, tradeNumber: -1 })).toBe(true)
+  })
+
+  // ── Four-layer thesis scorecard ──
+  it('accepts the thesis scorecard', () => {
+    const d = ok(validateBody(createJournalSchema, {
+      ...base,
+      narrativeStage: 'early',
+      narrativeThesis: 'first mover',
+      fundTeam: 4, fundUsage: 3, fundTokenomics: 2,
+      riskToZero: 'unlock cliff', riskSignal: 'watch the wallet',
+      entryReason: 'research',
+    }))
+    expect(d.narrativeStage).toBe('early')
+    expect(d.fundTeam).toBe(4)
+    expect(d.entryReason).toBe('research')
+  })
+
+  it('rejects an unknown narrative stage or entry reason', () => {
+    // Analytics groups on these, so an unconstrained typo would split a bucket.
+    expect('error' in validateBody(createJournalSchema, { ...base, narrativeStage: 'peaking' })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, entryReason: 'vibes' })).toBe(true)
+  })
+
+  it('treats empty string as "not answered" for the thesis enums', () => {
+    const d = ok(validateBody(createJournalSchema, { ...base, narrativeStage: '', entryReason: '' }))
+    expect(d.narrativeStage).toBe('')
+    expect(d.entryReason).toBe('')
+  })
+
+  it('bounds the fundamentals ratings to 0-5', () => {
+    expect('error' in validateBody(createJournalSchema, { ...base, fundTeam: 6 })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, fundUsage: -1 })).toBe(true)
+  })
+})
+
+describe('createPreSessionSchema — framework fields', () => {
+  const base = { date: '2026-08-06' }
+
+  it('defaults every framework field so old clients keep working', () => {
+    const d = ok(validateBody(createPreSessionSchema, base))
+    expect(d.narrativeStage).toBe('')
+    expect(d.conviction).toBe(0)
+    expect(d.watchlist).toEqual([])
+    expect(d.sectors).toEqual([])
+    expect(d.communities).toEqual([])
+  })
+
+  it('accepts a populated watchlist', () => {
+    const d = ok(validateBody(createPreSessionSchema, {
+      ...base,
+      narrativeStage: 'discovery',
+      conviction: 7,
+      watchlist: [{ symbol: 'FOO', narrativeStage: 'early', thesis: 't', invalidation: 'i' }],
+      sectors: ['DeFi'],
+      communities: ['pump.fun'],
+    }))
+    expect(d.watchlist).toHaveLength(1)
+    expect(d.watchlist[0].symbol).toBe('FOO')
+    expect(d.sectors).toEqual(['DeFi'])
+  })
+
+  it('fills watchlist row defaults for a partial row', () => {
+    const d = ok(validateBody(createPreSessionSchema, { ...base, watchlist: [{ symbol: 'BAR' }] }))
+    expect(d.watchlist[0]).toEqual({
+      symbol: 'BAR', narrativeStage: '', thesis: '', invalidation: '',
+    })
+  })
+
+  it('rejects an invalid stage on the session or a watchlist row', () => {
+    expect('error' in validateBody(createPreSessionSchema, { ...base, narrativeStage: 'hot' })).toBe(true)
+    expect('error' in validateBody(createPreSessionSchema, {
+      ...base, watchlist: [{ symbol: 'X', narrativeStage: 'hot' }],
+    })).toBe(true)
+  })
+
+  it('bounds conviction to 0-10', () => {
+    expect('error' in validateBody(createPreSessionSchema, { ...base, conviction: 11 })).toBe(true)
+    expect('error' in validateBody(createPreSessionSchema, { ...base, conviction: -1 })).toBe(true)
+  })
+
+  // z.object is non-strict: a field the UI sends but the schema omits is
+  // dropped silently rather than rejected. Pinned because that failure mode is
+  // invisible — the save succeeds and the data just never lands.
+  it('silently strips unknown keys rather than rejecting them', () => {
+    const result = validateBody(createPreSessionSchema, { ...base, notAField: 'dropped' })
+    expect('error' in result).toBe(false)
+    expect(ok(result)).not.toHaveProperty('notAField')
+  })
+})
+
+describe('createPostSessionSchema — plan vs outcome', () => {
+  const base = { date: '2026-08-06' }
+
+  it('defaults the adherence fields', () => {
+    const d = ok(validateBody(createPostSessionSchema, base))
+    expect(d.followedPlan).toBeUndefined()
+    expect(d.fomoEntries).toBe(0)
+    expect(d.limitsBreached).toEqual([])
+    expect(d.processRating).toBe(0)
+  })
+
+  it('accepts a full plan-vs-outcome payload', () => {
+    const d = ok(validateBody(createPostSessionSchema, {
+      ...base,
+      followedPlan: false,
+      planDeviations: 'took a 4th trade',
+      fomoEntries: 2,
+      narrativeCallCorrect: true,
+      limitsBreached: ['trades', 'loss'],
+      processRating: 6,
+    }))
+    expect(d.followedPlan).toBe(false)
+    expect(d.limitsBreached).toEqual(['trades', 'loss'])
+    expect(d.processRating).toBe(6)
+  })
+
+  it('rejects an unknown limit kind', () => {
+    expect('error' in validateBody(createPostSessionSchema, {
+      ...base, limitsBreached: ['position-size'],
+    })).toBe(true)
+  })
+
+  it('rejects a negative fomo count and an out-of-range process rating', () => {
+    expect('error' in validateBody(createPostSessionSchema, { ...base, fomoEntries: -1 })).toBe(true)
+    expect('error' in validateBody(createPostSessionSchema, { ...base, processRating: 11 })).toBe(true)
   })
 })

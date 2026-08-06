@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { handleApiError } from '@/lib/api-error'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
+import { parsePostSession } from '@/lib/server/parse-sessions'
 
 export async function GET(
   request: NextRequest,
@@ -21,7 +22,7 @@ export async function GET(
       return NextResponse.json(null)
     }
 
-    return NextResponse.json(session)
+    return NextResponse.json(parsePostSession(session))
   } catch (error) {
     return handleApiError(error, 'Failed to fetch post-session')
   }

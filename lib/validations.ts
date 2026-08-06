@@ -1,6 +1,29 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { ALL_CHAINS } from './chains'
+import { NARRATIVE_STAGE_VALUES, ENTRY_REASON_VALUES } from './session-framework'
+
+/**
+ * Framework enums, accepting '' as "not answered".
+ *
+ * Constrained here (unlike the older emotionalState / marketSentiment / solTrend
+ * columns, which stay free-form to avoid rewriting historical rows) because
+ * analytics groups on these values — an unconstrained typo would silently
+ * split a bucket.
+ */
+const narrativeStageSchema = z.enum(
+  ['', ...NARRATIVE_STAGE_VALUES] as ['', ...string[]]
+)
+const entryReasonSchema = z.enum(
+  ['', ...ENTRY_REASON_VALUES] as ['', ...string[]]
+)
+
+const watchlistItemSchema = z.object({
+  symbol: z.string().optional().default(''),
+  narrativeStage: narrativeStageSchema.optional().default(''),
+  thesis: z.string().optional().default(''),
+  invalidation: z.string().optional().default(''),
+})
 
 /**
  * Chain allowlist derived from CHAIN_CONFIG, so an unsupported chain is
@@ -112,6 +135,15 @@ export const createJournalSchema = z.object({
   reviewed: z.boolean().optional(),
   /** TradeTag ids; replaces the legacy freeform sellMistakes string array. */
   tagIds: z.array(z.string()).optional(),
+  // ── Four-layer thesis scorecard (lib/session-framework.ts) ──
+  narrativeStage: narrativeStageSchema.nullish(),
+  narrativeThesis: z.string().nullish(),
+  fundTeam: z.number().int().min(0).max(5).nullish(),
+  fundUsage: z.number().int().min(0).max(5).nullish(),
+  fundTokenomics: z.number().int().min(0).max(5).nullish(),
+  riskToZero: z.string().nullish(),
+  riskSignal: z.string().nullish(),
+  entryReason: entryReasonSchema.nullish(),
 })
 
 // ── Notes ──
@@ -165,6 +197,15 @@ export const createPreSessionSchema = z.object({
   marketSnapshot: z.record(z.string(), z.any()).optional().default({}),
   rulesChecked: z.array(z.any()).optional().default([]),
   savedAt: z.string().optional(),
+  // ── Framework fields ──
+  narrativeStage: narrativeStageSchema.optional().default(''),
+  narrativeNotes: z.string().optional().default(''),
+  conviction: z.number().int().min(0).max(10).optional().default(0),
+  setupsWorking: z.string().optional().default(''),
+  planAdherenceIntent: z.string().optional().default(''),
+  watchlist: z.array(watchlistItemSchema).optional().default([]),
+  sectors: z.array(z.string()).optional().default([]),
+  communities: z.array(z.string()).optional().default([]),
 })
 
 // ── Post-Sessions ──
@@ -178,6 +219,16 @@ export const createPostSessionSchema = z.object({
   rulesFollowed: z.boolean().nullish(),
   rulesNotes: z.string().optional().default(''),
   planForTomorrow: z.string().optional().default(''),
+  // ── Plan-vs-outcome ──
+  followedPlan: z.boolean().nullish(),
+  planDeviations: z.string().optional().default(''),
+  fomoEntries: z.number().int().min(0).optional().default(0),
+  narrativeCallCorrect: z.boolean().nullish(),
+  limitsBreached: z
+    .array(z.enum(['trades', 'loss', 'time']))
+    .optional()
+    .default([]),
+  processRating: z.number().int().min(0).max(10).optional().default(0),
 })
 
 // ── Trade Edits ──

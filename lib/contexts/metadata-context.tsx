@@ -9,6 +9,17 @@ import { type TimePreset, type TimeRange } from '../time-filters'
 import { type TypedRule } from '../rules-engine'
 import { type AdherenceRecord, type RuleStats } from '../analytics/rule-stats'
 import { type TradeTag } from '../tags'
+import { type PreSessionQualityInput } from '../session-framework'
+
+/**
+ * The per-day pre-session summary the dashboard returns for the calendar.
+ * Carries the quality inputs (not just `savedAt`) because the ActivityCalendar
+ * now scores completeness rather than mere existence.
+ */
+export type YearlyPreSession = PreSessionQualityInput & {
+  date: string
+  savedAt?: string
+}
 
 export interface MetadataContextValue {
   tradeComments: TradeComment[]
@@ -18,7 +29,7 @@ export interface MetadataContextValue {
   preSessionDone: boolean
   postSessionDone: boolean
   missedTrades: MissedTradeEntry[]
-  yearlyPreSessions: { date: string; savedAt?: string }[]
+  yearlyPreSessions: YearlyPreSession[]
   yearlyPostSessions: { date: string }[]
   /** Typed rules + their evaluated adherence (Phase B1). */
   rules: TypedRule[]
