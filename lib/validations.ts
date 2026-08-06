@@ -86,9 +86,12 @@ export const createJournalSchema = z.object({
   ruleResults: z.array(z.any()).optional().default([]),
   emotionalState: z.string().optional().default(''),
   buyNotes: z.string().optional().default(''),
-  buyRating: z.number().int().min(0).max(5).optional().default(0),
+  /** Execution scores on a 1-10 scale (0 = unrated). Distinct from the 1-5
+   *  subjective `tradeRating` grade below — RatingScale renders these with its
+   *  default max of 10, so the bound here must match. */
+  buyRating: z.number().int().min(0).max(10).optional().default(0),
   exitPlan: z.string().optional().default(''),
-  sellRating: z.number().int().min(0).max(5).optional().default(0),
+  sellRating: z.number().int().min(0).max(10).optional().default(0),
   followedExitRule: z.boolean().nullish(),
   sellMistakes: z.array(z.any()).optional().default([]),
   sellNotes: z.string().optional().default(''),

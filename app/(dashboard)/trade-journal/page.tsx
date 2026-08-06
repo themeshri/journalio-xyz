@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useWallet } from '@/lib/wallet-context'
-import { saveJournal } from '@/lib/journals'
+import { saveJournal, getLastSaveJournalError } from '@/lib/journals'
 import { type FlattenedTrade } from '@/lib/tradeCycles'
 import { formatValue, formatDuration, formatPrice, formatPercentage } from '@/lib/formatters'
 import { Button } from '@/components/ui/button'
@@ -112,7 +112,9 @@ export default function TradeJournalPage() {
       updateJournalEntry(key, saved)
       toast.success('Trade journaled')
     } else {
-      toast.error('Failed to save journal entry')
+      toast.error('Failed to save journal entry', {
+        description: getLastSaveJournalError() ?? undefined,
+      })
     }
     setJournalModalTrade(null)
   }, [journalModalTrade, updateJournalEntry])
@@ -130,7 +132,9 @@ export default function TradeJournalPage() {
       updateJournalEntry(key, saved)
       toast.success('Saved — moving to next trade')
     } else {
-      toast.error('Failed to save journal entry')
+      toast.error('Failed to save journal entry', {
+        description: getLastSaveJournalError() ?? undefined,
+      })
       return // Don't advance on failure
     }
 

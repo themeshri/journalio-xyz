@@ -42,6 +42,19 @@ import { YesNoToggle } from '@/components/ui/yes-no-toggle';
 import type { JournalData, TradeRuleResult } from '@/lib/types/journal';
 export type { JournalData, TradeRuleResult };
 
+/**
+ * Parse a numeric `<input type="number">` value to a number, or null.
+ *
+ * A partial entry ("-", ".", "1e") reaches onChange as a non-numeric string and
+ * `parseFloat` yields NaN, which the journal schema rejects — surfacing as an
+ * opaque "Failed to save journal entry". Treat unparseable input as "not set".
+ */
+function parseNumericInput(value: string): number | null {
+  if (value.trim() === '') return null;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 interface JournalModalProps {
   trade: FlattenedTrade;
   initialData: JournalData | null;
@@ -537,7 +550,7 @@ const JournalModal = memo(function JournalModal({
                     step="any"
                     placeholder="0.00"
                     value={stopLoss ?? ''}
-                    onChange={(e) => setStopLoss(e.target.value === '' ? null : parseFloat(e.target.value))}
+                    onChange={(e) => setStopLoss(parseNumericInput(e.target.value))}
                   />
                 </div>
                 <div>
@@ -548,7 +561,7 @@ const JournalModal = memo(function JournalModal({
                     step="any"
                     placeholder="0.00"
                     value={takeProfit ?? ''}
-                    onChange={(e) => setTakeProfit(e.target.value === '' ? null : parseFloat(e.target.value))}
+                    onChange={(e) => setTakeProfit(parseNumericInput(e.target.value))}
                   />
                 </div>
               </div>
