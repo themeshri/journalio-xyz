@@ -17,6 +17,7 @@ import {
   updatePaperedPlaySchema,
   updateSettingsSchema,
   createManualTradesSchema,
+  createJournalSchema,
 } from '../validations'
 
 function ok<T>(r: { data: T } | { error: unknown }): T {
@@ -132,5 +133,60 @@ describe('createManualTradesSchema', () => {
     expect(d.trades[0].chain).toBe('solana')
     expect(d.trades[0].dex).toBe('Manual')
     expect(d.trades[0].amountIn).toBe(0)
+  })
+})
+
+describe('createJournalSchema', () => {
+  const base = { walletAddress: 'w', tokenMint: 't', tradeNumber: 0 }
+
+  // Regression: buy/sell RatingScale renders 1-10 (its default max), so a
+  // rating above 5 used to 400 and surface only "Failed to save journal entry".
+  it.each([1, 5, 6, 10])('accepts buyRating/sellRating of %i', (n) => {
+    const d = ok(validateBody(createJournalSchema, { ...base, buyRating: n, sellRating: n }))
+    expect(d.buyRating).toBe(n)
+    expect(d.sellRating).toBe(n)
+  })
+
+  it('rejects ratings past the 1-10 scale', () => {
+    expect('error' in validateBody(createJournalSchema, { ...base, buyRating: 11 })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, sellRating: 11 })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, buyRating: -1 })).toBe(true)
+  })
+
+  // tradeRating is the separate 1-5 subjective grade and keeps its own bound.
+  it('keeps tradeRating on a 1-5 scale', () => {
+    expect(ok(validateBody(createJournalSchema, { ...base, tradeRating: 5 })).tradeRating).toBe(5)
+    expect('error' in validateBody(createJournalSchema, { ...base, tradeRating: 6 })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, tradeRating: 0 })).toBe(true)
+    expect(ok(validateBody(createJournalSchema, { ...base, tradeRating: null })).tradeRating).toBeNull()
+  })
+
+  it('accepts the full modal payload with everything left at its default', () => {
+    const d = ok(validateBody(createJournalSchema, {
+      ...base,
+      strategy: '', strategyId: '', ruleResults: [], emotionalState: '',
+      buyNotes: '', buyRating: 0, exitPlan: '', sellRating: 0,
+      followedExitRule: null, sellMistakes: [], sellNotes: '',
+      entryCommentId: '', exitCommentId: '', managementCommentId: '',
+      emotionTag: '', stopLoss: null, takeProfit: null, tagIds: [],
+      tradeRating: null, reviewed: false, rMultiple: null,
+      journaledAt: '2026-08-06T00:00:00.000Z',
+    }))
+    expect(d.buyRating).toBe(0)
+    expect(d.stopLoss).toBeNull()
+  })
+
+  // NaN reaches the schema as a number-typed value that z.number() rejects.
+  // JournalModal now maps unparseable input to null before it gets here.
+  it('rejects NaN for stopLoss/takeProfit', () => {
+    expect('error' in validateBody(createJournalSchema, { ...base, stopLoss: NaN })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, takeProfit: NaN })).toBe(true)
+  })
+
+  it('still requires wallet, mint and a non-negative int tradeNumber', () => {
+    expect('error' in validateBody(createJournalSchema, { ...base, walletAddress: '' })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, tokenMint: '' })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, tradeNumber: 1.5 })).toBe(true)
+    expect('error' in validateBody(createJournalSchema, { ...base, tradeNumber: -1 })).toBe(true)
   })
 })
