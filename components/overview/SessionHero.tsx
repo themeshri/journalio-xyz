@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Check, TrendingUp, BookOpen, Shield, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, Check, TrendingUp, BookOpen, Shield, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { loadRules, type GlobalRule } from '@/lib/rules'
 import { loadPreSession, type PreSessionData } from '@/lib/pre-sessions'
+import { computeLimitBreaches, type LimitBreach } from '@/lib/session-framework'
 import { getTradingDay } from '@/lib/trading-day'
 import { formatValue } from '@/lib/formatters'
 import type { FlattenedTrade } from '@/lib/tradeCycles'
@@ -168,6 +169,22 @@ export function SessionHero({
     [sessionCompleted]
   )
 
+  // Self-imposed limits, checked against the live session. Advisory only —
+  // these were captured but never read before, so the journal watched you
+  // blow through your own boundaries in silence.
+  const limitBreaches = useMemo(() => {
+    if (!preSessionData?.savedAt) return []
+    return computeLimitBreaches({
+      maxTrades: preSessionData.maxTrades,
+      maxLoss: preSessionData.maxLoss,
+      timeLimit: preSessionData.timeLimit,
+      tradeCount: sessionTrades.length,
+      sessionPL,
+      elapsedMinutes: (Date.now() / 1000 - sessionStartEpoch) / 60,
+    })
+    // sessionDuration ticks every 60s, which re-evaluates the time limit.
+  }, [preSessionData, sessionTrades.length, sessionPL, sessionStartEpoch, sessionDuration])
+
   const tradeCount = sessionTrades.length
 
   const journalProgress = useMemo(() => {
@@ -214,6 +231,7 @@ export function SessionHero({
           journalProgress={journalProgress}
           journalRemaining={journalRemaining}
           onJournalClick={onJournalClick}
+          limitBreaches={limitBreaches}
         />
       )}
       {selectedTab === 'post' && (
@@ -298,6 +316,7 @@ function ActivePanel({
   journalProgress,
   journalRemaining,
   onJournalClick,
+  limitBreaches,
 }: {
   preSessionDone: boolean
   sessionDuration: string
@@ -308,6 +327,7 @@ function ActivePanel({
   journalProgress: { done: number; total: number }
   journalRemaining: number
   onJournalClick: () => void
+  limitBreaches: LimitBreach[]
 }) {
   if (!preSessionDone) {
     return (
@@ -337,6 +357,23 @@ function ActivePanel({
         </div>
 
         <h2 className="text-lg font-semibold mb-1">Session in progress</h2>
+
+        {/* Advisory only — the journal reports, it never gates. Mirrors the
+            pre-session energy warning's treatment. */}
+        {limitBreaches.length > 0 && (
+          <div className="my-3 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-md">
+            {limitBreaches.map((b) => (
+              <p
+                key={b.kind}
+                className="flex items-center gap-1.5 text-sm font-medium text-red-600"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {b.message}
+              </p>
+            ))}
+          </div>
+        )}
+
         {preSessionData?.sessionIntent && (
           <p className="text-sm text-muted-foreground mb-3">
             Your plan: <span className="text-foreground font-medium">{preSessionData.sessionIntent}</span>

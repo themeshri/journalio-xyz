@@ -81,6 +81,15 @@ export async function POST(request: NextRequest) {
       rMultiple: v.rMultiple ?? null,
       tradeRating: v.tradeRating ?? null,
       reviewed: v.reviewed ?? false,
+      // Four-layer thesis scorecard (lib/session-framework.ts)
+      narrativeStage: v.narrativeStage ?? null,
+      narrativeThesis: v.narrativeThesis ?? null,
+      fundTeam: v.fundTeam ?? null,
+      fundUsage: v.fundUsage ?? null,
+      fundTokenomics: v.fundTokenomics ?? null,
+      riskToZero: v.riskToZero ?? null,
+      riskSignal: v.riskSignal ?? null,
+      entryReason: v.entryReason ?? null,
     }
 
     const journal = await prisma.journalEntry.upsert({

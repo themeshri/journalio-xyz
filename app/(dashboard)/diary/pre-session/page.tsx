@@ -22,6 +22,16 @@ import { getTradingDay } from '@/lib/trading-day'
 import { toast } from 'sonner'
 import { RatingScale } from '@/components/ui/rating-scale'
 import { YesNoToggle } from '@/components/ui/yes-no-toggle'
+import { SegmentedEnum } from '@/components/ui/segmented-enum'
+import { ChipInput } from '@/components/ui/chip-input'
+import {
+  NARRATIVE_STAGES,
+  MAX_WATCHLIST_ITEMS,
+  emptyWatchlistItem,
+  type NarrativeStage,
+  type WatchlistItem,
+} from '@/lib/session-framework'
+import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react'
 
 const emotionalOptions = [
   'Calm',
@@ -44,19 +54,16 @@ function getEnergyDescription(level: number): { text: string; className: string 
   return null
 }
 
-function getTodayDateUTC(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-async function fetchTradingDay(): Promise<string> {
-  try {
-    const res = await fetch('/api/settings')
-    if (res.ok) {
-      const settings = await res.json()
-      return getTradingDay(settings.timezone || 'UTC', settings.tradingStartTime || '09:00')
-    }
-  } catch {}
-  return getTodayDateUTC()
+/** Does a loaded session already carry extended-tier answers? */
+function hasExtendedAnswers(s: PreSessionData): boolean {
+  return Boolean(
+    s.narrativeNotes ||
+      s.setupsWorking ||
+      s.planAdherenceIntent ||
+      s.watchlist?.length ||
+      s.sectors?.length ||
+      s.communities?.length
+  )
 }
 
 function formatDisplayDate(date: Date): string {
@@ -76,7 +83,9 @@ function formatDisplayTime(date: Date): string {
 }
 
 export default function PreSessionPage() {
-  const { reloadPreSessionStatus } = useMetadata()
+  // timezone/tradingStartTime come from context — this page used to fetch
+  // /api/settings twice (once on load, once on save) for values already here.
+  const { reloadPreSessionStatus, timezone, tradingStartTime } = useMetadata()
   const [data, setData] = useState<PreSessionData>(defaultPreSessionData)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -85,6 +94,9 @@ export default function PreSessionPage() {
   const [isCompletedToday, setIsCompletedToday] = useState(false)
   const [displayDate, setDisplayDate] = useState('')
   const [displayTime, setDisplayTime] = useState('')
+  /** Extended tier: the full framework. Auto-opens when the saved session
+   *  already has extended answers, so editing never hides existing data. */
+  const [extended, setExtended] = useState(false)
 
   useEffect(() => {
     let stale = false
@@ -92,22 +104,45 @@ export default function PreSessionPage() {
     setDisplayDate(formatDisplayDate(now))
     setDisplayTime(formatDisplayTime(now))
 
-    Promise.all([fetchTradingDay(), loadRules()]).then(async ([today, loadedRules]) => {
-      if (stale) return
-      const session = await loadPreSession(today)
+    const today = getTradingDay(timezone, tradingStartTime)
+
+    Promise.all([loadPreSession(today), loadRules()]).then(([session, loadedRules]) => {
       if (stale) return
       if (session) {
-        setData({ ...defaultPreSessionData, ...session })
-        if (session.savedAt) {
-          setIsCompletedToday(true)
-        }
+        const merged = { ...defaultPreSessionData, ...session }
+        setData(merged)
+        if (session.savedAt) setIsCompletedToday(true)
+        if (hasExtendedAnswers(merged)) setExtended(true)
       }
       setGlobalRules(loadedRules)
       setLoaded(true)
     })
 
     return () => { stale = true }
-  }, [])
+  }, [timezone, tradingStartTime])
+
+  // ── Watchlist row helpers ──
+  function updateWatchlistItem(index: number, patch: Partial<WatchlistItem>) {
+    setData((prev) => ({
+      ...prev,
+      watchlist: prev.watchlist.map((it, i) => (i === index ? { ...it, ...patch } : it)),
+    }))
+  }
+
+  function addWatchlistItem() {
+    setData((prev) =>
+      prev.watchlist.length >= MAX_WATCHLIST_ITEMS
+        ? prev
+        : { ...prev, watchlist: [...prev.watchlist, { ...emptyWatchlistItem }] }
+    )
+  }
+
+  function removeWatchlistItem(index: number) {
+    setData((prev) => ({
+      ...prev,
+      watchlist: prev.watchlist.filter((_, i) => i !== index),
+    }))
+  }
 
   function update<K extends keyof PreSessionData>(key: K, value: PreSessionData[K]) {
     setData((prev) => ({ ...prev, [key]: value }))
@@ -117,7 +152,7 @@ export default function PreSessionPage() {
     setSaving(true)
     try {
       const now = new Date()
-      const todayDate = await fetchTradingDay()
+      const todayDate = getTradingDay(timezone, tradingStartTime)
       const savedData: PreSessionData = {
         ...data,
         date: todayDate,
@@ -249,6 +284,44 @@ export default function PreSessionPage() {
                 placeholder="e.g. Focus on SOL pairs only. Max 2 scalps. Stick to 5-minute chart setups. No trading in first 30 minutes."
                 rows={2}
                 className="resize-none"
+              />
+            </div>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Market Read — layer 1 of the framework, market-wide.
+            Stage + conviction are Simple tier; the rest sits behind Extended. */}
+        <section>
+          <Label className="text-sm font-medium mb-1 block">Market Read</Label>
+          <p className="text-xs text-muted-foreground mb-3">
+            Where is the current story in its lifecycle?
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Narrative Stage
+              </Label>
+              <SegmentedEnum
+                options={NARRATIVE_STAGES}
+                value={data.narrativeStage}
+                onChange={(v) => update('narrativeStage', v as NarrativeStage | '')}
+                ariaLabel="Narrative stage"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Conviction in this read
+              </Label>
+              <RatingScale
+                value={data.conviction}
+                onChange={(n) => update('conviction', n)}
+                size="sm"
+                lowLabel="Low"
+                highLabel="High"
               />
             </div>
           </div>
@@ -482,6 +555,171 @@ export default function PreSessionPage() {
                   <span className="text-sm">{rule.text}</span>
                 </label>
               ))}
+            </div>
+          )}
+        </section>
+
+        <Separator />
+
+        {/* Extended tier — the full framework. Collapsed by default so the
+            morning routine stays fast; auto-opens when answers already exist. */}
+        <section>
+          <button
+            type="button"
+            onClick={() => setExtended((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-medium hover:text-foreground/80 transition-colors"
+            aria-expanded={extended}
+          >
+            {extended ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+            Deep prep
+            <span className="text-xs font-normal text-muted-foreground">
+              (watchlist, sectors, setups)
+            </span>
+          </button>
+
+          {extended && (
+            <div className="space-y-5 mt-4">
+              {/* Layer 1 detail */}
+              <div>
+                <Label htmlFor="narrative-notes" className="text-xs text-muted-foreground mb-1.5 block">
+                  Which story, and why that stage?
+                </Label>
+                <Textarea
+                  id="narrative-notes"
+                  value={data.narrativeNotes}
+                  onChange={(e) => update('narrativeNotes', e.target.value)}
+                  placeholder="e.g. AI agents — still early. Only a few working products, no mainstream coverage yet."
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">
+                  Sectors gaining momentum
+                </Label>
+                <ChipInput
+                  value={data.sectors}
+                  onChange={(v) => update('sectors', v)}
+                  placeholder="Type a sector and press Enter"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">
+                  Communities leading the market
+                </Label>
+                <ChipInput
+                  value={data.communities}
+                  onChange={(v) => update('communities', v)}
+                  placeholder="Type a community and press Enter"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="setups-working" className="text-xs text-muted-foreground mb-1.5 block">
+                  What setups are working right now?
+                </Label>
+                <Textarea
+                  id="setups-working"
+                  value={data.setupsWorking}
+                  onChange={(e) => update('setupsWorking', e.target.value)}
+                  placeholder="e.g. Breakout retests are holding. Fading wicks into resistance is not."
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
+
+              {/* Watchlist — the one genuinely new interaction. Each row is a
+                  per-asset layer-1 read plus its invalidation. */}
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">
+                  Watchlist
+                </Label>
+                {data.watchlist.length === 0 && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Nothing on the list yet — add what you&apos;re stalking today.
+                  </p>
+                )}
+
+                <div className="space-y-3">
+                  {data.watchlist.map((item, i) => (
+                    <div key={i} className="rounded-md border border-border p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={item.symbol}
+                          onChange={(e) => updateWatchlistItem(i, { symbol: e.target.value })}
+                          placeholder="Ticker"
+                          className="h-8"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeWatchlistItem(i)}
+                          className="text-muted-foreground hover:text-foreground shrink-0"
+                          aria-label={`Remove watchlist row ${i + 1}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <SegmentedEnum
+                        options={NARRATIVE_STAGES}
+                        value={item.narrativeStage}
+                        onChange={(v) =>
+                          updateWatchlistItem(i, { narrativeStage: v as NarrativeStage | '' })
+                        }
+                        size="sm"
+                        showDescription={false}
+                        ariaLabel={`Narrative stage for row ${i + 1}`}
+                      />
+
+                      <Input
+                        value={item.thesis}
+                        onChange={(e) => updateWatchlistItem(i, { thesis: e.target.value })}
+                        placeholder="Thesis — why this, why now"
+                        className="h-8"
+                      />
+                      <Input
+                        value={item.invalidation}
+                        onChange={(e) => updateWatchlistItem(i, { invalidation: e.target.value })}
+                        placeholder="Invalidation — what tells you you're wrong"
+                        className="h-8"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {data.watchlist.length < MAX_WATCHLIST_ITEMS && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addWatchlistItem}
+                    className="mt-2"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Add asset
+                  </Button>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="plan-adherence" className="text-xs text-muted-foreground mb-1.5 block">
+                  Which rule is most at risk today?
+                </Label>
+                <Textarea
+                  id="plan-adherence"
+                  value={data.planAdherenceIntent}
+                  onChange={(e) => update('planAdherenceIntent', e.target.value)}
+                  placeholder="e.g. Sizing up after a loss. If I feel that pull, I stop for the day."
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
             </div>
           )}
         </section>

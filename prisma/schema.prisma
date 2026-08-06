@@ -35,13 +35,13 @@ model Session {
 }
 
 model User {
-  id             String         @id @default(cuid())
+  id             String          @id @default(cuid())
   name           String?
-  email          String?        @unique
+  email          String?         @unique
   emailVerified  DateTime?
   image          String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   accounts       Account[]
   globalRules    GlobalRule[]
   journalEntries JournalEntry[]
@@ -68,19 +68,19 @@ model VerificationToken {
 }
 
 model Wallet {
-  id        String   @id @default(cuid())
-  userId    String
-  address   String
-  nickname  String?
-  chain     String   @default("solana")
-  dex       String   @default("other")
-  isDefault Boolean  @default(false)
+  id             String   @id @default(cuid())
+  userId         String
+  address        String
+  nickname       String?
+  chain          String   @default("solana")
+  dex            String   @default("other")
+  isDefault      Boolean  @default(false)
   /// Starting balance in USD — required for the drawdown / balance curve
   initialBalance Float?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  trades    Trade[]
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  trades         Trade[]
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, address, chain])
   @@index([address])
@@ -217,18 +217,18 @@ model Strategy {
 }
 
 model GlobalRule {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   userId    String
   text      String
   /// manual | time | percentage | currency | count
-  type      String   @default("manual")
+  type      String          @default("manual")
   /// Target the rule is evaluated against: "09:30" | "100" (percent) | "100" (USD) | "5" (count)
-  condition String   @default("")
-  isActive  Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  condition String          @default("")
+  isActive  Boolean         @default(true)
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   adherence RuleAdherence[]
 
   @@index([userId, sortOrder])
@@ -236,20 +236,20 @@ model GlobalRule {
 
 /// One row per (user, rule, trading day) — the persisted evaluation of a rule.
 model RuleAdherence {
-  id       String   @id @default(cuid())
-  userId   String
-  ruleId   String
+  id        String     @id @default(cuid())
+  userId    String
+  ruleId    String
   /// Trading day, YYYY-MM-DD (from getTradingDay(), not the calendar date)
-  date     String
-  followed Boolean  @default(false)
+  date      String
+  followed  Boolean    @default(false)
   /// Observed value for the "09:26 / 09:30" actual-vs-condition display
-  actual   String   @default("")
+  actual    String     @default("")
   /// auto | manual
-  source   String   @default("auto")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rule     GlobalRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  source    String     @default("auto")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rule      GlobalRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, ruleId, date])
   @@index([userId, date])
@@ -276,6 +276,20 @@ model PreSession {
   normalVolume        Boolean?
   marketSnapshotJson  String   @default("{}")
   rulesCheckedJson    String   @default("[]")
+  /// Narrative lifecycle read for the day: early | discovery | memed | exhausted.
+  /// A discrete column (not JSON) so analytics can group P/L by stage.
+  narrativeStage      String   @default("")
+  narrativeNotes      String   @default("")
+  /// 1-10 conviction in today's market read; 0 = unset.
+  conviction          Int      @default(0)
+  setupsWorking       String   @default("")
+  planAdherenceIntent String   @default("")
+  /// WatchlistItem[] — { symbol, narrativeStage, thesis, invalidation }
+  watchlistJson       String   @default("[]")
+  /// string[] — sectors/narratives gaining momentum
+  sectorsJson         String   @default("[]")
+  /// string[] — communities leading the market right now
+  communitiesJson     String   @default("[]")
   savedAt             String   @default("")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -286,30 +300,30 @@ model PreSession {
 }
 
 model JournalEntry {
-  id                  String   @id @default(cuid())
+  id                  String            @id @default(cuid())
   userId              String
   walletAddress       String
   tokenMint           String
   tradeNumber         Int
-  strategy            String   @default("")
+  strategy            String            @default("")
   strategyId          String?
-  ruleResultsJson     String   @default("[]")
-  emotionalState      String   @default("")
-  buyNotes            String   @default("")
-  buyRating           Int      @default(0)
-  exitPlan            String   @default("")
-  sellRating          Int      @default(0)
+  ruleResultsJson     String            @default("[]")
+  emotionalState      String            @default("")
+  buyNotes            String            @default("")
+  buyRating           Int               @default(0)
+  exitPlan            String            @default("")
+  sellRating          Int               @default(0)
   followedExitRule    Boolean?
-  sellMistakesJson    String   @default("[]")
-  sellNotes           String   @default("")
+  sellMistakesJson    String            @default("[]")
+  sellNotes           String            @default("")
   attachment          String?
   entryCommentId      String?
   exitCommentId       String?
   managementCommentId String?
   emotionTag          String?
-  journaledAt         String   @default("")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  journaledAt         String            @default("")
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
   stopLoss            Float?
   takeProfit          Float?
   tradeHigh           Float?
@@ -318,8 +332,21 @@ model JournalEntry {
   rMultiple           Float?
   /// Subjective 1-5 self-grade
   tradeRating         Int?
-  reviewed            Boolean  @default(false)
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewed            Boolean           @default(false)
+  // ── Four-layer thesis scorecard (see lib/session-framework.ts) ──
+  /// Layer 1 — narrative lifecycle: early | discovery | memed | exhausted
+  narrativeStage      String?
+  narrativeThesis     String?
+  /// Layer 2 — fundamentals, 1-5 each: team track record, real usage, tokenomics
+  fundTeam            Int?
+  fundUsage           Int?
+  fundTokenomics      Int?
+  /// Layer 3 — the realistic path to zero, and how you'd see it coming
+  riskToZero          String?
+  riskSignal          String?
+  /// Layer 4 — honest entry reason: research | fomo | continuation | other
+  entryReason         String?
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   tags                JournalEntryTag[]
 
   @@unique([userId, walletAddress, tokenMint, tradeNumber])
@@ -329,42 +356,53 @@ model JournalEntry {
 }
 
 model PostSession {
-  id              String   @id @default(cuid())
-  userId          String
-  date            String
-  rating          Int      @default(0)
-  emotionalState  String   @default("")
-  whatWentWell    String   @default("")
-  whatWentWrong   String   @default("")
-  keyLessons      String   @default("")
-  rulesFollowed   Boolean?
-  rulesNotes      String   @default("")
-  planForTomorrow String   @default("")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  userId               String
+  date                 String
+  rating               Int      @default(0)
+  emotionalState       String   @default("")
+  whatWentWell         String   @default("")
+  whatWentWrong        String   @default("")
+  keyLessons           String   @default("")
+  rulesFollowed        Boolean?
+  rulesNotes           String   @default("")
+  planForTomorrow      String   @default("")
+  /// Plan-vs-outcome: did the session follow the morning pre-session plan?
+  followedPlan         Boolean?
+  planDeviations       String   @default("")
+  /// Count of entries taken on FOMO rather than research (framework layer 4).
+  fomoEntries          Int      @default(0)
+  /// Was the morning's narrative-lifecycle read correct in hindsight?
+  narrativeCallCorrect Boolean?
+  /// ('trades' | 'loss' | 'time')[] — prefilled from live data, user-confirmed.
+  limitsBreachedJson   String   @default("[]")
+  /// 1-10 rating of process quality, deliberately separate from P/L; 0 = unset.
+  processRating        Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
   @@index([userId])
 }
 
 model Note {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String   @default("")
-  content   String   @default("")
-  tagsJson  String   @default("[]")
+  id                  String   @id @default(cuid())
+  userId              String
+  title               String   @default("")
+  content             String   @default("")
+  tagsJson            String   @default("[]")
   /// trade-notes | daily-journal | sessions-recap | my-notes
-  folder    String   @default("my-notes")
-  favorite  Boolean  @default(false)
+  folder              String   @default("my-notes")
+  favorite            Boolean  @default(false)
   /// Mirrors the JournalEntry composite key — trade cycles are derived at read
   /// time (lib/tradeCycles.ts), so there is no stable synthetic trade id to FK to.
   linkedWalletAddress String?
   linkedTokenMint     String?
   linkedTradeNumber   Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, folder])
@@ -374,17 +412,17 @@ model Note {
 /// User-defined tag. Two namespaces via `kind`: "mistake" drives the
 /// what-is-costing-me-money report; "custom" is a freeform taxonomy.
 model TradeTag {
-  id         String   @id @default(cuid())
-  userId     String
-  label      String
+  id             String            @id @default(cuid())
+  userId         String
+  label          String
   /// mistake | custom
-  kind       String
-  color      String   @default("#71717a")
-  isArchived Boolean  @default(false)
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind           String
+  color          String            @default("#71717a")
+  isArchived     Boolean           @default(false)
+  sortOrder      Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   journalEntries JournalEntryTag[]
 
   @@unique([userId, label, kind])
@@ -395,7 +433,7 @@ model TradeTag {
 model JournalEntryTag {
   journalEntryId String
   tagId          String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime     @default(now())
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   tag            TradeTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 

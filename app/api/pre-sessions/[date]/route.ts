@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { handleApiError } from '@/lib/api-error'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helper'
-
-function parsePreSession(s: any) {
-  return {
-    ...s,
-    marketSnapshot: JSON.parse(s.marketSnapshotJson || '{}'),
-    rulesChecked: JSON.parse(s.rulesCheckedJson || '[]'),
-    marketSnapshotJson: undefined,
-    rulesCheckedJson: undefined,
-  }
-}
+import { parsePreSession } from '@/lib/server/parse-sessions'
 
 export async function GET(
   request: NextRequest,

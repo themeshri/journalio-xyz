@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAuth, ensureUserExists } from '@/lib/auth-helper'
 import { rateLimitByUser } from '@/lib/rate-limit'
 import { parseWalletParams, mapDbRowsToTradeInput } from '@/lib/server/resolve-trades'
+import { safeParseArray } from '@/lib/server/parse-sessions'
 import { calculateTradeCycles, flattenTradeCycles } from '@/lib/tradeCycles'
 import { APP_FEE_RATES } from '@/lib/constants'
 import { DEFAULT_TRADE_COMMENTS } from '@/lib/trade-comments'
@@ -244,7 +245,21 @@ export async function GET(request: NextRequest) {
       // Yearly pre-sessions for ActivityCalendar
       prisma.preSession.findMany({
         where: { userId, date: { gte: yearStart, lte: yearEnd } },
-        select: { date: true, savedAt: true },
+        // Kept to the narrow set the ActivityCalendar's quality score reads —
+        // this query sits in the pool-pressure fan-out, so no `include`.
+        select: {
+          date: true,
+          savedAt: true,
+          energyLevel: true,
+          emotionalState: true,
+          sessionIntent: true,
+          maxTrades: true,
+          maxLoss: true,
+          timeLimit: true,
+          rulesCheckedJson: true,
+          narrativeStage: true,
+          conviction: true,
+        },
         orderBy: { date: 'asc' },
       }),
       // Yearly post-sessions for ActivityCalendar
@@ -326,7 +341,12 @@ export async function GET(request: NextRequest) {
       postSessionDone: yearlyPostSessionsRaw.some((s) => s.date === todayDate),
       missedTrades,
       settings: { timezone, tradingStartTime, onboardingStep: userSettings?.onboardingStep ?? null },
-      yearlyPreSessions: yearlyPreSessionsRaw,
+      // rulesChecked is parsed here so the calendar's quality scoring sees an
+      // array rather than the raw JSON column.
+      yearlyPreSessions: yearlyPreSessionsRaw.map(({ rulesCheckedJson, ...s }) => ({
+        ...s,
+        rulesChecked: safeParseArray(rulesCheckedJson),
+      })),
       yearlyPostSessions: yearlyPostSessionsRaw,
       savedWallets: savedWalletsResponse,
     }

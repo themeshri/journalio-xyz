@@ -1,5 +1,7 @@
 // Post-session types and async API helpers
 
+import type { LimitKind } from './session-framework'
+
 export interface PostSessionData {
   id?: string
   date: string
@@ -11,6 +13,16 @@ export interface PostSessionData {
   rulesFollowed: boolean | null
   rulesNotes: string
   planForTomorrow: string
+  // ── Plan-vs-outcome (graded against the morning pre-session) ──
+  followedPlan: boolean | null
+  planDeviations: string
+  /** Entries taken on FOMO rather than research (framework layer 4). */
+  fomoEntries: number
+  narrativeCallCorrect: boolean | null
+  /** Prefilled from live trade data, then user-confirmed. */
+  limitsBreached: LimitKind[]
+  /** 1-10 process grade, deliberately separate from P/L; 0 = unset. */
+  processRating: number
 }
 
 export const defaultPostSessionData: PostSessionData = {
@@ -23,6 +35,12 @@ export const defaultPostSessionData: PostSessionData = {
   rulesFollowed: null,
   rulesNotes: '',
   planForTomorrow: '',
+  followedPlan: null,
+  planDeviations: '',
+  fomoEntries: 0,
+  narrativeCallCorrect: null,
+  limitsBreached: [],
+  processRating: 0,
 }
 
 export async function loadPostSessions(from?: string, to?: string): Promise<PostSessionData[]> {

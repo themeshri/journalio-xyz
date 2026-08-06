@@ -26,6 +26,7 @@ import { Separator } from '@/components/ui/separator'
 import { TableRowsSkeleton } from '@/components/skeletons'
 
 import { loadPreSessions, type PreSessionData } from '@/lib/pre-sessions'
+import { NARRATIVE_STAGES } from '@/lib/session-framework'
 import { loadPostSessions, type PostSessionData } from '@/lib/post-sessions'
 import { loadJournals, type JournalRecord } from '@/lib/journals'
 import { formatValue } from '@/lib/formatters'
@@ -271,6 +272,82 @@ function PreSessionDetailDialog({
             )}
             <DetailRow label="Normal Volume">{boolLabel(session.normalVolume)}</DetailRow>
           </div>
+
+          {/* Market Read — the framework's layer 1, market-wide */}
+          {(session.narrativeStage || session.conviction > 0 || session.narrativeNotes) && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-sm font-medium mb-2">Market Read</h4>
+                <DetailRow label="Narrative Stage">
+                  {session.narrativeStage
+                    ? NARRATIVE_STAGES.find((s) => s.value === session.narrativeStage)?.label ??
+                      capitalize(session.narrativeStage)
+                    : '-'}
+                </DetailRow>
+                <DetailRow label="Conviction">
+                  {session.conviction > 0 ? `${session.conviction}/10` : '-'}
+                </DetailRow>
+                {session.narrativeNotes && (
+                  <DetailRow label="Notes">{session.narrativeNotes}</DetailRow>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Deep prep */}
+          {(session.watchlist?.length > 0 ||
+            session.sectors?.length > 0 ||
+            session.communities?.length > 0 ||
+            session.setupsWorking ||
+            session.planAdherenceIntent) && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-sm font-medium mb-2">Deep Prep</h4>
+                {session.sectors?.length > 0 && (
+                  <DetailRow label="Sectors">{session.sectors.join(', ')}</DetailRow>
+                )}
+                {session.communities?.length > 0 && (
+                  <DetailRow label="Communities">{session.communities.join(', ')}</DetailRow>
+                )}
+                {session.setupsWorking && (
+                  <DetailRow label="Setups Working">{session.setupsWorking}</DetailRow>
+                )}
+                {session.planAdherenceIntent && (
+                  <DetailRow label="Rule At Risk">{session.planAdherenceIntent}</DetailRow>
+                )}
+                {session.watchlist?.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground mb-1.5">Watchlist</p>
+                    <div className="space-y-1.5">
+                      {session.watchlist.map((w, i) => (
+                        <div key={i} className="text-sm border border-border rounded-md p-2">
+                          <span className="font-medium">{w.symbol || '—'}</span>
+                          {w.narrativeStage && (
+                            <span className="text-muted-foreground">
+                              {' '}
+                              ·{' '}
+                              {NARRATIVE_STAGES.find((s) => s.value === w.narrativeStage)?.label ??
+                                w.narrativeStage}
+                            </span>
+                          )}
+                          {w.thesis && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{w.thesis}</p>
+                          )}
+                          {w.invalidation && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Invalidation: {w.invalidation}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Rules Checked */}
           {session.rulesChecked && session.rulesChecked.length > 0 && (

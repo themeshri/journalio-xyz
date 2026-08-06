@@ -41,6 +41,13 @@ import { YesNoToggle } from '@/components/ui/yes-no-toggle';
 // use and re-exported here for back-compat with existing UI importers.
 import type { JournalData, TradeRuleResult } from '@/lib/types/journal';
 export type { JournalData, TradeRuleResult };
+import { SegmentedEnum } from '@/components/ui/segmented-enum';
+import {
+  NARRATIVE_STAGES,
+  ENTRY_REASONS,
+  type NarrativeStage,
+  type EntryReason,
+} from '@/lib/session-framework';
 
 /**
  * Parse a numeric `<input type="number">` value to a number, or null.
@@ -147,6 +154,19 @@ const JournalModal = memo(function JournalModal({
   const [takeProfit, setTakeProfit] = useState<number | null>(initialData?.takeProfit ?? null);
   const [tagIds, setTagIds] = useState<string[]>(initialData?.tagIds ?? []);
   const [tradeRating, setTradeRating] = useState<number>(initialData?.tradeRating ?? 0);
+  // ── Four-layer thesis scorecard ──
+  const [narrativeStage, setNarrativeStage] = useState<NarrativeStage | ''>(
+    (initialData?.narrativeStage as NarrativeStage | '') ?? ''
+  );
+  const [narrativeThesis, setNarrativeThesis] = useState(initialData?.narrativeThesis ?? '');
+  const [fundTeam, setFundTeam] = useState<number>(initialData?.fundTeam ?? 0);
+  const [fundUsage, setFundUsage] = useState<number>(initialData?.fundUsage ?? 0);
+  const [fundTokenomics, setFundTokenomics] = useState<number>(initialData?.fundTokenomics ?? 0);
+  const [riskToZero, setRiskToZero] = useState(initialData?.riskToZero ?? '');
+  const [riskSignal, setRiskSignal] = useState(initialData?.riskSignal ?? '');
+  const [entryReason, setEntryReason] = useState<EntryReason | ''>(
+    (initialData?.entryReason as EntryReason | '') ?? ''
+  );
   const [reviewed, setReviewed] = useState<boolean>(initialData?.reviewed ?? false);
   const [saving, setSaving] = useState(false);
 
@@ -169,7 +189,13 @@ const JournalModal = memo(function JournalModal({
   const hasAdvancedData = Boolean(
     initialData?.strategyId || initialData?.entryCommentId || initialData?.exitCommentId ||
     initialData?.managementCommentId || initialData?.exitPlan || initialData?.stopLoss != null ||
-    initialData?.takeProfit != null || (initialData?.attachment && initialData.attachment.length > 0)
+    initialData?.takeProfit != null || (initialData?.attachment && initialData.attachment.length > 0) ||
+    // Thesis fields live behind the same gate, so an entry that has them must
+    // open expanded or the data would be invisible when editing.
+    initialData?.narrativeStage || initialData?.narrativeThesis ||
+    initialData?.fundTeam != null || initialData?.fundUsage != null ||
+    initialData?.fundTokenomics != null || initialData?.riskToZero ||
+    initialData?.riskSignal || initialData?.entryReason
   );
   const [showAdvanced, setShowAdvanced] = useState(hasAdvancedData);
 
@@ -184,6 +210,14 @@ const JournalModal = memo(function JournalModal({
     exitCommentId: initialData?.exitCommentId ?? null,
     managementCommentId: initialData?.managementCommentId ?? null,
     emotionTag: initialData?.emotionTag ?? null,
+    narrativeStage: (initialData?.narrativeStage as NarrativeStage | '') ?? '',
+    narrativeThesis: initialData?.narrativeThesis ?? '',
+    fundTeam: initialData?.fundTeam ?? 0,
+    fundUsage: initialData?.fundUsage ?? 0,
+    fundTokenomics: initialData?.fundTokenomics ?? 0,
+    riskToZero: initialData?.riskToZero ?? '',
+    riskSignal: initialData?.riskSignal ?? '',
+    entryReason: (initialData?.entryReason as EntryReason | '') ?? '',
   });
   const isDirty =
     strategy !== initialSnapshot.current.strategy ||
@@ -194,7 +228,15 @@ const JournalModal = memo(function JournalModal({
     entryCommentId !== initialSnapshot.current.entryCommentId ||
     exitCommentId !== initialSnapshot.current.exitCommentId ||
     managementCommentId !== initialSnapshot.current.managementCommentId ||
-    emotionTag !== initialSnapshot.current.emotionTag;
+    emotionTag !== initialSnapshot.current.emotionTag ||
+    narrativeStage !== initialSnapshot.current.narrativeStage ||
+    narrativeThesis !== initialSnapshot.current.narrativeThesis ||
+    fundTeam !== initialSnapshot.current.fundTeam ||
+    fundUsage !== initialSnapshot.current.fundUsage ||
+    fundTokenomics !== initialSnapshot.current.fundTokenomics ||
+    riskToZero !== initialSnapshot.current.riskToZero ||
+    riskSignal !== initialSnapshot.current.riskSignal ||
+    entryReason !== initialSnapshot.current.entryReason;
 
   const handleClose = useCallback(() => {
     if (isDirty && !window.confirm('You have unsaved changes. Discard them?')) return;
@@ -229,7 +271,17 @@ const JournalModal = memo(function JournalModal({
     reviewed,
     rMultiple,
     journaledAt: initialData?.journaledAt || new Date().toISOString(),
-  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachments, entryCommentId, exitCommentId, managementCommentId, emotionTag, stopLoss, takeProfit, tagIds, tradeRating, reviewed, rMultiple, initialData?.journaledAt]);
+    // Thesis scorecard. Ratings send null rather than 0 so "unrated" stays
+    // distinguishable from a deliberate low score.
+    narrativeStage,
+    narrativeThesis,
+    fundTeam: fundTeam > 0 ? fundTeam : null,
+    fundUsage: fundUsage > 0 ? fundUsage : null,
+    fundTokenomics: fundTokenomics > 0 ? fundTokenomics : null,
+    riskToZero,
+    riskSignal,
+    entryReason,
+  }), [strategy, strategyId, ruleResults, emotionalState, buyNotes, buyRating, exitPlan, sellRating, followedExitRule, sellMistakes, sellNotes, attachments, entryCommentId, exitCommentId, managementCommentId, emotionTag, stopLoss, takeProfit, tagIds, tradeRating, reviewed, rMultiple, initialData?.journaledAt, narrativeStage, narrativeThesis, fundTeam, fundUsage, fundTokenomics, riskToZero, riskSignal, entryReason]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -710,6 +762,114 @@ const JournalModal = memo(function JournalModal({
 
 
           {showAdvanced && (<>
+          <Separator />
+
+          {/* Trade thesis — the four-layer research framework, per-asset.
+              Behind Advanced because it is deliberate research, not something
+              that should slow down quick journaling. */}
+          <section>
+            <h4 className="text-sm font-medium mb-1">Trade thesis</h4>
+            <p className="text-xs text-muted-foreground mb-3">
+              Why this asset, and what would have told you to stay out
+            </p>
+
+            <div className="space-y-4">
+              {/* Layer 1 — narrative */}
+              <div>
+                <Label className="text-xs mb-1.5">Narrative stage</Label>
+                <SegmentedEnum
+                  options={NARRATIVE_STAGES}
+                  value={narrativeStage}
+                  onChange={(v) => setNarrativeStage(v as NarrativeStage | '')}
+                  size="sm"
+                  ariaLabel="Narrative stage"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="narrative-thesis" className="text-xs mb-1.5">
+                  What story is this riding?
+                </Label>
+                <Textarea
+                  id="narrative-thesis"
+                  value={narrativeThesis ?? ''}
+                  onChange={(e) => setNarrativeThesis(e.target.value)}
+                  placeholder="e.g. First mover on agent tooling; the sector is still early."
+                  rows={2}
+                />
+              </div>
+
+              {/* Layer 2 — fundamentals */}
+              <div>
+                <Label className="text-xs mb-1.5">Fundamentals</Label>
+                <div className="space-y-2 mt-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      Team track record
+                    </span>
+                    <RatingScale value={fundTeam} onChange={setFundTeam} max={5} size="sm" />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      Real usage vs price
+                    </span>
+                    <RatingScale value={fundUsage} onChange={setFundUsage} max={5} size="sm" />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      Tokenomics / unlocks
+                    </span>
+                    <RatingScale
+                      value={fundTokenomics}
+                      onChange={setFundTokenomics}
+                      max={5}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Layer 3 — risk mapping */}
+              <div>
+                <Label htmlFor="risk-to-zero" className="text-xs mb-1.5">
+                  How does this go to zero?
+                </Label>
+                <Textarea
+                  id="risk-to-zero"
+                  value={riskToZero ?? ''}
+                  onChange={(e) => setRiskToZero(e.target.value)}
+                  placeholder="e.g. Team wallet unlocks in March and they have sold every prior cliff."
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="risk-signal" className="text-xs mb-1.5">
+                  How would you know in time?
+                </Label>
+                <Textarea
+                  id="risk-signal"
+                  value={riskSignal ?? ''}
+                  onChange={(e) => setRiskSignal(e.target.value)}
+                  placeholder="e.g. Watch the unlock wallet; exit on the first outbound transfer."
+                  rows={2}
+                />
+              </div>
+
+              {/* Layer 4 — entry discipline */}
+              <div>
+                <Label className="text-xs mb-1.5">Why did you enter?</Label>
+                <SegmentedEnum
+                  options={ENTRY_REASONS}
+                  value={entryReason}
+                  onChange={(v) => setEntryReason(v as EntryReason | '')}
+                  size="sm"
+                  ariaLabel="Entry reason"
+                />
+              </div>
+            </div>
+          </section>
+
           <Separator />
 
           {/* Attachments */}

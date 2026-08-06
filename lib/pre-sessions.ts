@@ -1,5 +1,7 @@
 // Pre-session types and async API helpers
 
+import type { NarrativeStage, WatchlistItem } from './session-framework'
+
 export interface MarketSnapshot {
   btcPrice: number | null
   ethPrice: number | null
@@ -29,6 +31,17 @@ export interface PreSessionData {
   time: string
   savedAt: string
   marketSnapshot: MarketSnapshot
+  // ── Framework fields (see lib/session-framework.ts) ──
+  /** Market-wide narrative lifecycle read for the day. */
+  narrativeStage: NarrativeStage | ''
+  narrativeNotes: string
+  /** 1-10; 0 = unset. */
+  conviction: number
+  setupsWorking: string
+  planAdherenceIntent: string
+  watchlist: WatchlistItem[]
+  sectors: string[]
+  communities: string[]
 }
 
 export const defaultMarketSnapshot: MarketSnapshot = {
@@ -59,6 +72,14 @@ export const defaultPreSessionData: PreSessionData = {
   time: '',
   savedAt: '',
   marketSnapshot: defaultMarketSnapshot,
+  narrativeStage: '',
+  narrativeNotes: '',
+  conviction: 0,
+  setupsWorking: '',
+  planAdherenceIntent: '',
+  watchlist: [],
+  sectors: [],
+  communities: [],
 }
 
 export async function loadPreSessions(from?: string, to?: string): Promise<PreSessionData[]> {

@@ -7,6 +7,8 @@
  * The JournalModal component re-exports these for backward compatibility.
  */
 
+import type { NarrativeStage, EntryReason } from '../session-framework'
+
 export interface TradeRuleResult {
   ruleId: string
   ruleGroupId: string
@@ -40,6 +42,19 @@ export interface JournalData {
   reviewed?: boolean
   /** Tag ids attached to this entry (TradeTag, kind: mistake | custom) */
   tagIds?: string[]
+  // ── Four-layer thesis scorecard (see lib/session-framework.ts) ──
+  /** Layer 1 — where this asset's story sits in its lifecycle. */
+  narrativeStage?: NarrativeStage | '' | null
+  narrativeThesis?: string | null
+  /** Layer 2 — fundamentals, 1-5 each; 0/null = unrated. */
+  fundTeam?: number | null
+  fundUsage?: number | null
+  fundTokenomics?: number | null
+  /** Layer 3 — written before entry, so sizing reflects it. */
+  riskToZero?: string | null
+  riskSignal?: string | null
+  /** Layer 4 — the honest reason for the entry. */
+  entryReason?: EntryReason | '' | null
   // Legacy fields preserved for backward compat when reading old data
   buyCategory?: string
   fomoLevel?: number
